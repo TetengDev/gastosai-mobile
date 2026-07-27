@@ -1,12 +1,17 @@
 # CLAUDE.md — gastosai-mobile
 
-Expo (SDK 57) + React Native + TypeScript. A capture surface over the gastosai backend,
+Expo (SDK 54) + React Native + TypeScript. A capture surface over the gastosai backend,
 consuming the **same published contract** as web. Read `CONTRACT.md` first, then
 `KNOWN-GAPS.md`.
 
-**Status: v1 scaffold.** The contract loop, auth and the core capture screens exist. Scope is
-deliberately the thing a phone is better at than a laptop — recording spend at the moment it
-happens. Admin, pricing and legal surfaces stay web-only.
+**Status: v0.2.** The contract loop, auth, the full capture loop (add / edit / delete) and
+AI quick-add exist, plus read-only budgets and goals. Scope is deliberately the thing a phone is
+better at than a laptop — recording spend at the moment it happens. Admin, pricing and legal
+surfaces stay web-only.
+
+**SDK 54, not the latest.** Pinned to match the Expo Go build on the target device. The simulator
+installs a matching Expo Go per SDK and is unaffected; a development build would remove the
+coupling entirely (`KNOWN-GAPS.md`).
 
 ---
 
@@ -31,7 +36,7 @@ happens. Admin, pricing and legal surfaces stay web-only.
 
 ## 2. Stack
 
-- Expo SDK 57, React Native 0.86, React 19, TypeScript 6 (strict).
+- Expo SDK 54, React Native 0.81.5, React 19.1, TypeScript 5.9 (strict).
 - `expo-router` for navigation (file-based, `app/`).
 - TanStack Query over the generated client for server state.
 - `expo-secure-store` for the JWT. **Never `AsyncStorage`.**
@@ -97,16 +102,31 @@ app/                       expo-router routes
 ├── login.tsx              email/password (sign in + sign up)
 └── (app)/                 authenticated group, guarded in _layout
     ├── dashboard.tsx      month total + recent
-    ├── expenses.tsx       list + client-side filter
-    ├── add-expense.tsx    the reason a phone app exists
+    ├── expenses.tsx       list + filter + pull-to-refresh
+    ├── expense/[id].tsx   edit + delete
+    ├── add-expense.tsx    manual entry
+    ├── quick-add.tsx      AI parse -> confirm -> save
+    ├── budgets.tsx        server-computed summary
+    ├── goals.tsx          server-computed progress
     └── settings.tsx       account, API base URL, sign out
 src/
-├── api/{client,auth,expenses,types}.ts   types.ts only aliases generated shapes
+├── api/{client,auth,expenses,budgets,goals,types}.ts   types.ts only aliases generated shapes
 ├── api/generated/                        never hand-edited
 ├── context/AuthContext.tsx
 ├── lib/{formatters,tokenStore}.ts
-└── components/ui.tsx
+└── components/{ui,ExpenseForm}.tsx
 ```
+
+---
+
+## Before opening a PR
+
+Run the gate in `ai/skills/shared/pre-pr-checklist.md`, or the `pre-pr` agent
+(`.claude/agents/pre-pr.md`) which executes it and reports a table.
+
+The item that is not automatable and is skipped most often: **runtime execution.** A green test
+suite is not evidence that the code was run. State in the PR body what you executed and what you
+observed.
 
 ---
 
