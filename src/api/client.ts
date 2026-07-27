@@ -1,5 +1,6 @@
 import axios, { AxiosError } from "axios";
 import Constants from "expo-constants";
+import { Platform } from "react-native";
 import { tokenStore } from "../lib/tokenStore";
 
 /**
@@ -34,9 +35,22 @@ export const api = axios.create({
   timeout: 20_000,
 });
 
+/**
+ * Which build is talking. Sent on every request.
+ *
+ * CONTRACT.md makes mobile the pacing constraint for breaking API changes: a `/api/v1` endpoint
+ * cannot be retired until old installs have drained. Answering "have they?" requires the server
+ * to have been told, and a shipped binary can never be retrofitted — so the clients that will
+ * one day need counting must start reporting *before* they are in the wild, not after.
+ */
+export const APP_VERSION = Constants.expoConfig?.version ?? "unknown";
+export const APP_PLATFORM = Platform.OS;
+
 api.interceptors.request.use(async (config) => {
   const token = await tokenStore.getToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  config.headers["X-App-Version"] = APP_VERSION;
+  config.headers["X-App-Platform"] = APP_PLATFORM;
   return config;
 });
 

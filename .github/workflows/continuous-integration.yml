@@ -100,6 +100,12 @@ jobs:
           fi
           echo "Generated client matches the pinned contract."
 
+      # This job is called "Mobile lint & test" and, until now, never linted. Behaviour fixed
+      # rather than the name changed — a green check that does not run the thing it claims to
+      # is worse than no check.
+      - name: Lint
+        run: npm run lint
+
       - name: Type check
         run: npm run typecheck
 

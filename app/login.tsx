@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Text } from "react-native";
 import { errorMessage } from "../src/api/client";
@@ -35,6 +35,9 @@ export default function Login() {
       style={{ flex: 1, backgroundColor: colors.bg }}
     >
       <Screen>
+        {/* expo-router falls back to the filename when a screen sets no title, so this
+            header read "login" in lowercase. */}
+        <Stack.Screen options={{ title: "Sign in" }} />
         <Text style={{ color: colors.text, fontSize: 28, fontWeight: "700" }}>GastosAI</Text>
         <Text style={{ color: colors.muted }}>
           {mode === "signin" ? "Sign in to track your spending." : "Create an account."}

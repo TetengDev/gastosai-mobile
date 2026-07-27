@@ -67,6 +67,30 @@ export function Button({
   );
 }
 
+export function Badge({ label, tone = "neutral" }: { label: string; tone?: "good" | "warn" | "bad" | "neutral" }) {
+  const bg = { good: colors.accent, warn: "#E8B84B", bad: colors.danger, neutral: colors.border }[tone];
+  const fg = tone === "neutral" ? colors.text : colors.bg;
+  return (
+    <View style={[styles.badge, { backgroundColor: bg }]}>
+      <Text style={[styles.badgeText, { color: fg }]}>{label}</Text>
+    </View>
+  );
+}
+
+/**
+ * Renders a percentage the backend already computed. It clamps only for drawing — the label
+ * shows the true value, so an over-budget 130% still reads as 130% rather than being hidden.
+ */
+export function ProgressBar({ percent, tone = "good" }: { percent: number; tone?: "good" | "warn" | "bad" }) {
+  const width = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
+  const fill = { good: colors.accent, warn: "#E8B84B", bad: colors.danger }[tone];
+  return (
+    <View style={styles.track}>
+      <View style={[styles.fill, { width: `${width}%`, backgroundColor: fill }]} />
+    </View>
+  );
+}
+
 export function ErrorText({ children }: { children?: string | null }) {
   if (!children) return null;
   return <Text style={styles.error}>{children}</Text>;
@@ -105,4 +129,8 @@ const styles = StyleSheet.create({
   buttonText: { color: colors.bg, fontWeight: "700", fontSize: 16 },
   buttonTextGhost: { color: colors.text },
   error: { color: colors.danger, fontSize: 14 },
+  badge: { alignSelf: "flex-start", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  badgeText: { fontSize: 12, fontWeight: "700" },
+  track: { height: 8, borderRadius: 999, backgroundColor: colors.border, overflow: "hidden" },
+  fill: { height: 8, borderRadius: 999 },
 });
