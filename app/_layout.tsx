@@ -27,7 +27,12 @@ export default function RootLayout() {
             headerTintColor: colors.text,
             contentStyle: { backgroundColor: colors.bg },
           }}
-        />
+        >
+          {/* The (app) group renders its own Stack. Without this the two nest and you get two
+              header bars, the outer one titled with the literal group name "(app)". */}
+          <Stack.Screen name="(app)" options={{ headerShown: false }} />
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+        </Stack>
       </AuthProvider>
     </QueryClientProvider>
   );

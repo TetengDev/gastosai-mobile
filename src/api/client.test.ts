@@ -1,5 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import type { InternalAxiosRequestConfig } from "axios";
+// jest.mock calls below are hoisted above these imports by babel-jest, so the mocks still apply.
+import { api, APP_PLATFORM, APP_VERSION, errorMessage } from "./client";
 
 jest.mock("../lib/tokenStore", () => ({
   tokenStore: { getToken: async () => "test-jwt", clear: async () => {} },
@@ -13,7 +15,6 @@ jest.mock("expo-constants", () => ({
   default: { expoConfig: { version: "9.9.9" }, expoGoConfig: null },
 }));
 
-import { api, APP_PLATFORM, APP_VERSION, errorMessage } from "./client";
 
 /** Runs the registered request interceptor the way axios would, and returns the final config. */
 async function runRequestInterceptor(): Promise<InternalAxiosRequestConfig> {

@@ -4,6 +4,8 @@ import type {
   ExpenseRequest,
   ExpenseResponse,
   MonthlyReportItem,
+  ParseExpenseRequest,
+  ParsedExpenseResult,
 } from "./types";
 
 /**
@@ -16,6 +18,9 @@ import type {
 
 export const listExpenses = () =>
   api.get<ExpenseResponse[]>("/expenses").then((r) => r.data);
+
+export const getExpense = (id: number) =>
+  api.get<ExpenseResponse>(`/expenses/${id}`).then((r) => r.data);
 
 export const createExpense = (body: ExpenseRequest) =>
   api.post<ExpenseResponse>("/expenses", body).then((r) => r.data);
@@ -32,3 +37,12 @@ export const listCategories = () =>
 /** Month totals for the dashboard. `GET /expenses/report/monthly`. */
 export const monthlyReport = () =>
   api.get<MonthlyReportItem[]>("/expenses/report/monthly").then((r) => r.data);
+
+/**
+ * Turns free text into a candidate expense. Consumes AI quota, so callers must handle 429.
+ *
+ * The result is a *proposal*, never a saved expense — see `saveable`, `confidence`,
+ * `rejectionMessage` and `hint`. Saving is a separate, explicit POST.
+ */
+export const parseExpense = (body: ParseExpenseRequest) =>
+  api.post<ParsedExpenseResult>("/expenses/parse", body).then((r) => r.data);

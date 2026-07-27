@@ -1,14 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Text, TextInput, View } from "react-native";
-import { listExpenses } from "../../src/api/expenses";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { errorMessage } from "../../src/api/client";
+import { listExpenses } from "../../src/api/expenses";
 import { formatCurrency, formatDayMonth } from "../../src/lib/formatters";
-import { ErrorText, colors } from "../../src/components/ui";
+import { Button, ErrorText, colors } from "../../src/components/ui";
 
 export default function Expenses() {
-  const { data, isLoading, isError, error } = useQuery({
+  const router = useRouter();
+  const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
     queryKey: ["expenses"],
     queryFn: listExpenses,
   });
@@ -26,6 +35,18 @@ export default function Expenses() {
         (e.category ?? "").toLowerCase().includes(q),
     );
   }, [data, filter]);
+
+  const hasAny = (data ?? []).length > 0;
+
+  // "No expenses yet", "your filter matched nothing" and "the request failed" are three
+  // different situations and deserve three different messages — the first version of this
+  // screen showed "Nothing matches." for all of them.
+  const emptyMessage = () => {
+    if (isLoading) return null;
+    if (isError) return null;
+    if (!hasAny) return "No expenses yet. Add your first one from the dashboard.";
+    return `Nothing matches “${filter.trim()}”.`;
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg, padding: 20, gap: 12 }}>
@@ -45,23 +66,45 @@ export default function Expenses() {
           paddingVertical: 10,
         }}
       />
+
       {isLoading && <ActivityIndicator color={colors.accent} />}
-      <ErrorText>{isError ? errorMessage(error) : null}</ErrorText>
+
+      {isError && (
+        <View style={{ gap: 12 }}>
+          <ErrorText>{errorMessage(error, "Could not load your expenses.")}</ErrorText>
+          <Button title="Try again" onPress={() => refetch()} />
+        </View>
+      )}
+
       <FlatList
         data={rows}
         keyExtractor={(e) => String(e.id)}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor={colors.accent}
+          />
+        }
         ListEmptyComponent={
-          isLoading ? null : <Text style={{ color: colors.muted }}>Nothing matches.</Text>
+          emptyMessage() ? (
+            <Text style={{ color: colors.muted, paddingVertical: 12 }}>{emptyMessage()}</Text>
+          ) : null
         }
         renderItem={({ item }) => (
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              paddingVertical: 10,
-              borderBottomColor: colors.border,
-              borderBottomWidth: 1,
-            }}
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push(`/(app)/expense/${item.id}`)}
+            style={({ pressed }) => [
+              {
+                flexDirection: "row",
+                justifyContent: "space-between",
+                paddingVertical: 12,
+                borderBottomColor: colors.border,
+                borderBottomWidth: 1,
+              },
+              pressed && { opacity: 0.6 },
+            ]}
           >
             <View style={{ flex: 1, paddingRight: 12 }}>
               <Text style={{ color: colors.text }} numberOfLines={1}>
@@ -74,7 +117,7 @@ export default function Expenses() {
             <Text style={{ color: colors.text, fontWeight: "600" }}>
               {formatCurrency(item.amount ?? 0)}
             </Text>
-          </View>
+          </Pressable>
         )}
       />
     </View>
