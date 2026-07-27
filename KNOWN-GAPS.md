@@ -43,47 +43,8 @@ repo migrates only after that ships. See `gastosai-backend/KNOWN-GAPS.md`.
 
 ---
 
-## 4. No app-version header yet
-
-`CONTRACT.md` makes mobile the pacing constraint for breaking changes: a `/api/v1` endpoint
-cannot be retired until analytics show old installs have drained. Nothing currently reports the
-app version to the backend, so that question is **unanswerable today**.
-
-Cheap to add now (an `X-App-Version` header in `src/api/client.ts` plus backend logging),
-expensive to retrofit — by the time it matters, the clients that need counting are already in
-the wild without it.
-
----
-
-## 5. `openapi-typescript` needs a peer-dependency override
-
-`openapi-typescript@7.13.0` declares `peer typescript@^5.x`; the Expo SDK 57 template ships
-TypeScript 6, so a plain install fails with `ERESOLVE`. `package.json` carries a narrow
-override pinning openapi-typescript's `typescript` to the root version — the same fix
-`gastosai-web` needed, and preferred over `legacy-peer-deps`, which would disable peer
-resolution project-wide and mask unrelated conflicts.
-
----
-
-## 6. No lint configuration
-
-`package.json` has a `lint` script but no ESLint config, so it is not wired into CI. Web's
-config (`eslint.config.js`, flat config with `typescript-eslint` and the React hooks plugin) is
-the model to copy, plus `eslint-config-expo`.
-
----
-
-## 7. No EAS build or store release pipeline
+## 4. No EAS build or store release pipeline
 
 CI runs typecheck, tests and the drift guard. There is no `eas.json`, no build profile and no
 store submission. Deliberate — a release pipeline before there is anything to release is
 premature, and EAS credentials are a separate setup.
-
----
-
-## 8. Branch protection
-
-The repo needs the same two rulesets as backend and web (`Protect main` requiring the
-`Mobile lint & test` and `Validate release branch` checks; `Protect release/**`). Rulesets
-require a public repo or a paid plan on this org's free tier — the same constraint the other
-two repos hit.
