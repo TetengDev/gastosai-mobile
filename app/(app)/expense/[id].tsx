@@ -5,7 +5,8 @@ import { ActivityIndicator, Alert, View } from "react-native";
 import { errorMessage } from "../../../src/api/client";
 import { deleteExpense, getExpense, updateExpense } from "../../../src/api/expenses";
 import ExpenseForm from "../../../src/components/ExpenseForm";
-import { Button, ErrorText, colors } from "../../../src/components/ui";
+import { Button, ErrorText } from "../../../src/components/ui";
+import { useTheme } from "../../../src/theme/useTheme";
 
 export default function EditExpense() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -13,6 +14,7 @@ export default function EditExpense() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const t = useTheme();
 
   const expense = useQuery({
     queryKey: ["expense", expenseId],
@@ -59,20 +61,20 @@ export default function EditExpense() {
 
   if (expense.isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: "center" }}>
+      <View style={{ flex: 1, backgroundColor: t.colors.page, justifyContent: "center" }}>
         <Stack.Screen options={{ title: "Edit expense" }} />
-        <ActivityIndicator color={colors.accent} />
+        <ActivityIndicator color={t.colors.text2} />
       </View>
     );
   }
 
   if (expense.isError || !expense.data) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg, padding: 20, gap: 16 }}>
+      <View style={{ flex: 1, backgroundColor: t.colors.page, padding: t.spacing.screen, gap: t.spacing.gap }}>
         <Stack.Screen options={{ title: "Edit expense" }} />
         <ErrorText>{errorMessage(expense.error, "That expense could not be loaded.")}</ErrorText>
         <Button title="Try again" onPress={() => expense.refetch()} />
-        <Button variant="ghost" title="Go back" onPress={() => router.back()} />
+        <Button variant="secondary" title="Go back" onPress={() => router.back()} />
       </View>
     );
   }
@@ -99,7 +101,7 @@ export default function EditExpense() {
         }}
         footer={
           <Button
-            variant="ghost"
+            variant="danger"
             title={remove.isPending ? "Deleting…" : "Delete expense"}
             onPress={confirmDelete}
             loading={remove.isPending}

@@ -1,13 +1,15 @@
 import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Text } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { errorMessage } from "../src/api/client";
 import { useAuth } from "../src/context/AuthContext";
-import { Button, ErrorText, Field, Screen, colors } from "../src/components/ui";
+import { Body, Button, ErrorText, Field, PageHeader } from "../src/components/ui";
+import { useTheme } from "../src/theme/useTheme";
 
 export default function Login() {
   const { signIn, signUp } = useAuth();
   const router = useRouter();
+  const t = useTheme();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,16 +34,17 @@ export default function Login() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: colors.bg }}
+      style={{ flex: 1, backgroundColor: t.colors.page }}
     >
-      <Screen>
-        {/* expo-router falls back to the filename when a screen sets no title, so this
-            header read "login" in lowercase. */}
+      <ScrollView
+        contentContainerStyle={{ padding: t.spacing.screen, gap: t.spacing.gap, flexGrow: 1, justifyContent: "center" }}
+        keyboardShouldPersistTaps="handled"
+      >
         <Stack.Screen options={{ title: "Sign in" }} />
-        <Text style={{ color: colors.text, fontSize: 28, fontWeight: "700" }}>GastosAI</Text>
-        <Text style={{ color: colors.muted }}>
-          {mode === "signin" ? "Sign in to track your spending." : "Create an account."}
-        </Text>
+        <PageHeader
+          title="GastosAI"
+          subtitle={mode === "signin" ? "Sign in to track your spending." : "Create an account."}
+        />
 
         {mode === "signup" && (
           <Field label="Name" value={name} onChangeText={setName} autoCapitalize="words" />
@@ -71,7 +74,10 @@ export default function Login() {
             setError(null);
           }}
         />
-      </Screen>
+        <Body dim style={{ fontSize: 12.5, textAlign: "center" }}>
+          Magic-link sign-in is web-only for now.
+        </Body>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }

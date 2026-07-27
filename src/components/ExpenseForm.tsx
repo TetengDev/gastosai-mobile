@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, Text } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { listCategories } from "../api/expenses";
 import type { ExpenseRequest } from "../api/types";
 import { nowForApi } from "../lib/formatters";
-import { Button, ErrorText, Field, colors } from "./ui";
+import { Body, Button, ErrorText, Field } from "./ui";
+import { useTheme } from "../theme/useTheme";
 
 export interface ExpenseFormValues {
   amount: string;
@@ -38,6 +39,7 @@ export default function ExpenseForm({
   onSubmit,
   footer,
 }: Props) {
+  const t = useTheme();
   const categories = useQuery({ queryKey: ["categories"], queryFn: listCategories });
 
   const [amount, setAmount] = useState(initial?.amount ?? "");
@@ -69,7 +71,7 @@ export default function ExpenseForm({
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: colors.bg }}
+      style={{ flex: 1, backgroundColor: t.colors.page }}
     >
       <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }} keyboardShouldPersistTaps="handled">
         <Field
@@ -92,9 +94,9 @@ export default function ExpenseForm({
           onChangeText={setCategory}
           placeholder={categories.data?.[0]?.name ?? "Food"}
         />
-        <Text style={{ color: colors.muted, fontSize: 12 }}>
+        <Body dim style={{ fontSize: 12.5 }}>
           Unknown categories are created automatically by the backend.
-        </Text>
+        </Body>
         <ErrorText>{localError ?? serverError}</ErrorText>
         <Button title={submitLabel} onPress={submit} loading={submitting} />
         {footer}
