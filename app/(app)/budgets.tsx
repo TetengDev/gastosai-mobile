@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { Stack } from "expo-router";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import { budgetSummary } from "../../src/api/budgets";
@@ -28,14 +27,12 @@ export default function Budgets() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: t.colors.page }}
-      contentContainerStyle={{ padding: t.spacing.screen, gap: t.spacing.gap }}
+      contentContainerStyle={{ padding: t.spacing.screen, gap: t.spacing.gap, paddingBottom: 96 }}
       refreshControl={
         <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={t.colors.text2} />
       }
     >
-      <Stack.Screen options={{ title: "Budgets" }} />
-
-      {isLoading && <ActivityIndicator color={t.colors.text2} />}
+            {isLoading && <ActivityIndicator color={t.colors.text2} />}
 
       {isError && (
         <View style={{ gap: 12 }}>

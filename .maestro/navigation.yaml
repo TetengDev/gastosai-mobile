@@ -1,0 +1,39 @@
+# Every destination reachable in one tap, and the tab bar always present.
+#
+# Compare this against the version before v0.4: that one needed `scrollUntilVisible` before every
+# single navigation tap, because the destinations were buttons stacked below the fold on the
+# dashboard. That was the app telling us its navigation was unreachable — a person hit exactly the
+# same wall. There is not one scroll left in this flow, and that is the point.
+#
+# iOS notes that cost time to learn:
+#   - `- back` is Android's hardware button and is a no-op here; with tabs it is not needed at all.
+#   - assertions are case-insensitive and `.*`-wrapped: `textTransform: "uppercase"` changes only
+#     how text is drawn, and Maestro matches whole text nodes rather than substrings.
+#   - tabs are targeted by test id, not by their visible label: React Navigation's tab labels are
+#     not reliably exposed as text nodes to UI automation, and "Home" additionally collides with
+#     Expo Go's own launcher tab.
+appId: host.exp.Exponent
+---
+- runFlow: launch.yaml
+
+- tapOn:
+    id: "tab-expenses"
+- assertVisible: "Filter by description or category"
+
+- tapOn:
+    id: "tab-budgets"
+- assertVisible: "(?i).*safe to spend.*"
+
+- tapOn:
+    id: "tab-goals"
+- assertVisible:
+    id: "goals-screen"
+
+- tapOn:
+    id: "tab-home"
+- assertVisible: "(?i).*spent this month.*"
+
+# Settings is a header action rather than a tab — infrequent, and a tab slot is scarce.
+- tapOn:
+    id: "header-settings"
+- assertVisible: "(?i).*signed in as.*"

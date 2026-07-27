@@ -23,7 +23,7 @@ export default function Login() {
     try {
       if (mode === "signin") await signIn({ email, password });
       else await signUp({ email, password, name });
-      router.replace("/(app)/dashboard");
+      router.replace("/(app)");
     } catch (e) {
       setError(errorMessage(e, "Sign-in failed."));
     } finally {
@@ -50,6 +50,7 @@ export default function Login() {
           <Field label="Name" value={name} onChangeText={setName} autoCapitalize="words" />
         )}
         <Field
+          testID="login-email"
           label="Email"
           value={email}
           onChangeText={setEmail}
@@ -57,6 +58,7 @@ export default function Login() {
           autoComplete="email"
         />
         <Field
+          testID="login-password"
           label="Password"
           value={password}
           onChangeText={setPassword}
@@ -65,7 +67,12 @@ export default function Login() {
         />
 
         <ErrorText>{error}</ErrorText>
-        <Button title={mode === "signin" ? "Sign in" : "Create account"} onPress={submit} loading={busy} />
+        <Button
+          testID="login-submit"
+          title={mode === "signin" ? "Sign in" : "Create account"}
+          onPress={submit}
+          loading={busy}
+        />
         <Button
           variant="ghost"
           title={mode === "signin" ? "Need an account? Sign up" : "Have an account? Sign in"}

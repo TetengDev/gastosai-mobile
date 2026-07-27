@@ -161,12 +161,19 @@ export function Button({
   loading,
   variant = "cta",
   size = "md",
+  testID,
 }: {
   title: string;
   onPress: () => void;
   loading?: boolean;
   variant?: ButtonVariant;
   size?: "sm" | "md";
+  /**
+   * For UI automation. Worth setting wherever the button's title also appears as a screen title:
+   * a text match hits the header first and taps nothing, which reads in a test log as a button
+   * that silently does not work.
+   */
+  testID?: string;
 }) {
   const t = useTheme();
   const pad =
@@ -184,6 +191,7 @@ export function Button({
 
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="button"
       disabled={loading}
       onPress={onPress}
@@ -213,29 +221,60 @@ export function Button({
   );
 }
 
-/** Rounded-full chip with an optional leading dot, as web uses for statuses. */
-export function Pill({ label, dotColor }: { label: string; dotColor?: string }) {
+/**
+ * Rounded-full chip with an optional leading dot, as web uses for statuses.
+ *
+ * With `onPress` it becomes a selectable category chip — tapping a category is far faster than
+ * typing one, which is the difference between logging an expense in seconds and abandoning it.
+ */
+export function Pill({
+  label,
+  dotColor,
+  selected,
+  onPress,
+  testID,
+}: {
+  label: string;
+  dotColor?: string;
+  selected?: boolean;
+  onPress?: () => void;
+  testID?: string;
+}) {
   const t = useTheme();
+  const Container = onPress ? Pressable : View;
   return (
-    <View
+    <Container
+      testID={testID}
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityState={onPress ? { selected: !!selected } : undefined}
+      onPress={onPress}
       style={{
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
         alignSelf: "flex-start",
-        backgroundColor: t.colors.surface4,
-        borderColor: t.colors.border2,
+        backgroundColor: selected ? t.colors.cta : t.colors.surface4,
+        borderColor: selected ? t.colors.cta : t.colors.border2,
         borderWidth: 1,
         borderRadius: t.radii.pill,
-        paddingHorizontal: 12,
-        paddingVertical: 4,
+        paddingHorizontal: 14,
+        // Taller when tappable, to stay near the 44pt target.
+        paddingVertical: onPress ? 9 : 4,
       }}
     >
       {dotColor ? (
         <View style={{ width: 7, height: 7, borderRadius: 999, backgroundColor: dotColor }} />
       ) : null}
-      <Text style={{ fontFamily: t.fonts.body, fontSize: 13, color: t.colors.text }}>{label}</Text>
-    </View>
+      <Text
+        style={{
+          fontFamily: t.fonts.body,
+          fontSize: 13,
+          color: selected ? t.colors.ctaFg : t.colors.text,
+        }}
+      >
+        {label}
+      </Text>
+    </Container>
   );
 }
 
@@ -280,6 +319,62 @@ export function Body({
     >
       {children}
     </Text>
+  );
+}
+
+/**
+ * The primary capture action, floating above the tab bar in the bottom-right — the easiest place
+ * to reach one-handed, which matters because logging an expense should take seconds and often
+ * happens while walking or paying.
+ *
+ * Kept out of the tab bar on purpose: that bar is for destinations, and mixing an action into it
+ * is the most consistently warned-against tab-bar mistake.
+ */
+export function FloatingAddButton({
+  onPress,
+  bottomOffset,
+}: {
+  onPress: () => void;
+  bottomOffset: number;
+}) {
+  const t = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Add expense"
+      testID="fab-add"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        position: "absolute",
+        right: 20,
+        bottom: bottomOffset,
+        width: 56, // comfortably above the 44pt minimum target
+        height: 56,
+        borderRadius: 999,
+        backgroundColor: t.colors.cta,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: pressed ? 0.8 : 1,
+        // Lifts it off the content beneath, so it reads as floating rather than inline.
+        shadowColor: "#000",
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 6,
+      })}
+    >
+      <Text style={{ color: t.colors.ctaFg, fontSize: 30, lineHeight: 34, fontFamily: t.fonts.display }}>
+        +
+      </Text>
+    </Pressable>
+  );
+}
+
+/** Card-shaped loading placeholder, matching web's `h-40 rounded-2xl bg-surface-2` skeletons. */
+export function Skeleton({ height = 96 }: { height?: number }) {
+  const t = useTheme();
+  return (
+    <View style={{ height, borderRadius: t.radii.card, backgroundColor: t.colors.surface2 }} />
   );
 }
 
