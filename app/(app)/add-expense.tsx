@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { errorMessage } from "../../src/api/client";
 import { createExpense } from "../../src/api/expenses";
@@ -32,7 +32,6 @@ export default function AddExpense() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Add expense" }} />
       <ExpenseForm
         initial={{
           amount: params.amount,

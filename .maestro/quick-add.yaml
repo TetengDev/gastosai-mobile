@@ -1,0 +1,50 @@
+# The AI quick-add golden path: free text -> parse -> confirm -> saved.
+#
+# This is the flow that most justifies the app existing on a phone, and it was the least
+# verifiable before Maestro: the parse endpoint could be exercised by curl, but "does the
+# confidence pill appear, and does Save actually write the expense" could not.
+#
+# Entry is the floating + button, not a dashboard row. Before v0.4 this tapped a "Quick add with
+# AI" button that sat below the fold on the dashboard; that button is gone, and the capture action
+# now floats in thumb reach on every tab.
+#
+# Assertions deliberately avoid the description. The model *rewrites* it — "quick add 177 at
+# Jollibee" comes back as something like "Jollibee" — so asserting on the text typed in makes the
+# flow fail on correct behaviour. The amount is the stable identifier, and 177 is chosen to be
+# unlikely to collide with seeded data.
+appId: host.exp.Exponent
+---
+- runFlow: launch.yaml
+
+- tapOn:
+    id: "fab-add"
+- assertVisible: "What did you spend on?"
+
+- tapOn:
+    id: "quick-add-input"
+- inputText: "lunch 177 at Jollibee"
+- tapOn: "Read it"
+
+# The model is asked for structure, so assert on what it must produce: the amount it extracted,
+# and a confidence the UI turned into a pill.
+- extendedWaitUntil:
+      visible: "₱177.00"
+      timeout: 30000
+- assertVisible: "HIGH|MEDIUM|LOW"
+
+- tapOn: "Save this"
+
+# Saving pops back to whichever tab launched the +, which is Home. Assert on the month total's
+# sub-line rather than a screen title: Home has no title of its own now that it is a tab, and
+# "Home" as a text match collides with Expo Go's own launcher tab.
+- assertVisible: "(?i).*spent this month.*"
+
+# The new expense must appear under Recent — proof it round-tripped through the API rather than
+# only rendering locally.
+#
+# extendedWaitUntil, not assertVisible: saving invalidates the expense and report queries, so Home
+# is mid-refetch when this runs. A plain assertion races the spinner and fails on behaviour that
+# is actually correct.
+- extendedWaitUntil:
+      visible: "₱177.00"
+      timeout: 20000

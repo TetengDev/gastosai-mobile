@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Stack, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, TextInput, View } from "react-native";
 import { errorMessage } from "../../src/api/client";
@@ -36,13 +36,12 @@ export default function Expenses() {
   // different situations and deserve three different messages.
   const emptyMessage = () => {
     if (isLoading || isError) return null;
-    if (!hasAny) return "No expenses yet. Add your first one from the dashboard.";
+    if (!hasAny) return "No expenses yet — tap + to add your first one.";
     return `Nothing matches “${filter.trim()}”.`;
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.page, padding: t.spacing.screen, gap: 12 }}>
-      <Stack.Screen options={{ title: "Expenses" }} />
       <TextInput
         placeholder="Filter by description or category"
         placeholderTextColor={t.colors.text3}
@@ -75,6 +74,7 @@ export default function Expenses() {
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={t.colors.text2} />
         }
+        contentContainerStyle={{ paddingBottom: 96 }}
         ListEmptyComponent={
           emptyMessage() ? (
             <Body dim style={{ paddingVertical: 12 }}>{emptyMessage()}</Body>

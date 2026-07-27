@@ -1,0 +1,70 @@
+# Opens the project inside Expo Go and gets to a signed-in Home screen.
+#
+# `launchApp` alone lands on Expo Go's own home screen — it starts the host app, not our project.
+# Tapping the entry under "Recently opened" needs no URL, so nothing here is machine-specific
+# (the dev-server address moves with DHCP).
+#
+# The readiness check asserts on "spent this month", NOT on "Home". Expo Go's own shell has a tab
+# labelled "Home", so asserting on that passed while the flow was still sitting on Expo Go's
+# launcher — a false pass that made every later step fail for the wrong reason. Assert on
+# something only this app renders.
+#
+# Sign-in is conditional because the JWT in the Keychain expires. Every flow used to assume a
+# session that some earlier manual run happened to leave behind; the day it lapsed, all four flows
+# failed at their first assertion with nothing to suggest authentication was the cause. Nothing
+# here depends on a session existing, and nothing disturbs one that does.
+#
+# Credentials come from `env` and default to the backend's local demo account (`gastos.demo.*` in
+# application.properties) — dev defaults already committed there, not secrets. Override for any
+# other environment: `maestro test --env GASTOSAI_EMAIL=... .maestro/<flow>.yaml`.
+#
+# Precondition: the project has been opened in Expo Go at least once on this simulator.
+appId: host.exp.Exponent
+env:
+  GASTOSAI_EMAIL: demo@gastosai.dev
+  GASTOSAI_PASSWORD: demo123
+---
+- launchApp:
+    clearState: false
+
+- runFlow:
+    when:
+      notVisible: "(?i).*spent this month.*"
+    commands:
+      - tapOn: "gastosai-mobile"
+      # The JS bundle has to download and evaluate before anything is assertable. Either screen
+      # settles this wait — which one arrives decides whether the next block runs.
+      - extendedWaitUntil:
+          visible: "(?i)(sign in|.*spent this month.*)"
+          timeout: 90000
+
+# Matched on the subtitle rather than "Sign in": that string is both the header title and the
+# button, and it also appears on the sign-up screen's toggle link.
+- runFlow:
+    when:
+      visible: "Sign in to track your spending."
+    commands:
+      - tapOn:
+          id: "login-email"
+      - inputText: ${GASTOSAI_EMAIL}
+      - tapOn:
+          id: "login-password"
+      - inputText: ${GASTOSAI_PASSWORD}
+      # Dismiss the keyboard first — it covers the button on the shorter simulators.
+      - hideKeyboard
+      # By id, not by text: "Sign in" is also the navigation header title, and a text match hits
+      # that first and taps nothing at all.
+      - tapOn:
+          id: "login-submit"
+      - extendedWaitUntil:
+          visible: "(?i).*spent this month.*"
+          timeout: 30000
+      # iOS offers to save the password to the Keychain. It is a system sheet drawn over the app,
+      # so it swallows the next tap and the flow fails one step later on an assertion that has
+      # nothing to do with the real cause. Conditional because it only appears when the OS decides
+      # to offer it.
+      - runFlow:
+          when:
+            visible: "Save Password?"
+          commands:
+            - tapOn: "Not Now"

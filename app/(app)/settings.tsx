@@ -1,4 +1,4 @@
-import { Stack, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import { View } from "react-native";
 import { useAuth } from "../../src/context/AuthContext";
@@ -13,7 +13,6 @@ export default function Settings() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: "Settings" }} />
       <Card>
         <StatTile label="Signed in as" value={user?.email ?? "-"} sub={user?.name ?? undefined} />
       </Card>

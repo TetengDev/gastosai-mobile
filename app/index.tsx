@@ -17,5 +17,5 @@ export default function Index() {
     );
   }
 
-  return <Redirect href={user ? "/(app)/dashboard" : "/login"} />;
+  return <Redirect href={user ? "/(app)" : "/login"} />;
 }

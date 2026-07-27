@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Stack, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import axios from "axios";
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native";
@@ -84,9 +84,9 @@ export default function QuickAdd() {
         contentContainerStyle={{ padding: t.spacing.screen, gap: t.spacing.gap }}
         keyboardShouldPersistTaps="handled"
       >
-        <Stack.Screen options={{ title: "Quick add" }} />
-
+  
         <Field
+          testID="quick-add-input"
           label="What did you spend on?"
           value={text}
           onChangeText={setText}

@@ -1,0 +1,53 @@
+# Edit then delete an expense — the capture loop's correction path.
+#
+# Until v0.2 this was impossible in the app at all: the API wrappers existed with no UI. This
+# asserts the hole is closed from the user's side, and cleans up after itself so the flow can be
+# re-run against a shared dev database.
+#
+# Depends on quick-add.yaml having created the ₱177.00 expense, which — being dated today against
+# a list ordered date-descending — is the first row under Recent.
+#
+# **Rows are targeted by position, amounts are only ever asserted.** Tapping a row by its amount
+# is ambiguous: Home's month-total tile renders the identical string whenever that expense is the
+# month's only one, and the tile is not pressable, so the tap silently does nothing. Matching on
+# the description is worse — the AI parser rewrites it. Before anything is deleted the flow
+# re-opens the row and checks the amount on the edit screen, so a mistargeted row cannot be
+# destroyed silently; a cleanup step matching loosely on a round ₱175.00 is how a seeded expense
+# was lost during the original Maestro bring-up.
+appId: host.exp.Exponent
+---
+- runFlow: launch.yaml
+
+- tapOn:
+    id: "recent-row-0"
+- assertVisible: "Edit expense"
+# Confirm this is the row quick-add created before touching it.
+- assertVisible: "177"
+
+- tapOn:
+    id: "expense-amount"
+- eraseText
+- inputText: "226.53"
+# Dismiss the decimal keypad before reaching for Save: it has no return key of its own and it
+# covers the button. Skipping this does not fail cleanly — the tap lands on a keypad digit and
+# appends it to the amount, so the flow saves a different number than it typed.
+- tapOn:
+    id: "amount-done"
+- tapOn: "Save changes"
+
+# The edit must show up in the list, not merely be accepted by the server. Home is a tab now and
+# carries no title of its own, so the month total's sub-line stands in for "we are back".
+- assertVisible: "(?i).*spent this month.*"
+- assertVisible: "₱226.53"
+
+# Delete it, restoring the database to its prior state.
+- tapOn:
+    id: "recent-row-0"
+- assertVisible: "Edit expense"
+- assertVisible: "226.53"
+- tapOn: "Delete expense"
+- assertVisible: "Delete expense?"
+- tapOn: "Delete"
+
+- assertVisible: "(?i).*spent this month.*"
+- assertNotVisible: "₱226.53"

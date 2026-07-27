@@ -4,10 +4,16 @@ Expo (SDK 54) + React Native + TypeScript. A capture surface over the gastosai b
 consuming the **same published contract** as web. Read `CONTRACT.md` first, then
 `KNOWN-GAPS.md`.
 
-**Status: v0.2.** The contract loop, auth, the full capture loop (add / edit / delete) and
-AI quick-add exist, plus read-only budgets and goals. Scope is deliberately the thing a phone is
-better at than a laptop — recording spend at the moment it happens. Admin, pricing and legal
-surfaces stay web-only.
+**Status: v0.4.** The contract loop, auth, the full capture loop (add / edit / delete) and
+AI quick-add exist, plus read-only budgets and goals. Navigation is a bottom tab bar with a
+floating add button; the web design system is mirrored in `src/theme/`. Scope is deliberately the
+thing a phone is better at than a laptop — recording spend at the moment it happens. Admin,
+pricing and legal surfaces stay web-only.
+
+**Navigation is tabs, and the add button is not one of them.** Four destinations sit in the tab
+bar; capture is a floating action button above it. Mixing an action into a tab bar is the most
+consistently warned-against tab-bar mistake, and adding a fifth destination there starts the
+crowding this structure exists to avoid — put new screens behind a tab, not beside them.
 
 **SDK 54, not the latest.** Pinned to match the Expo Go build on the target device. The simulator
 installs a matching Expo Go per SDK and is unaffected; a development build would remove the
@@ -98,17 +104,19 @@ every cold start.
 ```
 app/                       expo-router routes
 ├── _layout.tsx            QueryClient + AuthProvider + Stack
-├── index.tsx              session gate -> dashboard | login
+├── index.tsx              session gate -> (app) | login
 ├── login.tsx              email/password (sign in + sign up)
 └── (app)/                 authenticated group, guarded in _layout
-    ├── dashboard.tsx      month total + recent
-    ├── expenses.tsx       list + filter + pull-to-refresh
-    ├── expense/[id].tsx   edit + delete
-    ├── add-expense.tsx    manual entry
-    ├── quick-add.tsx      AI parse -> confirm -> save
-    ├── budgets.tsx        server-computed summary
-    ├── goals.tsx          server-computed progress
-    └── settings.tsx       account, API base URL, sign out
+    ├── _layout.tsx        <Tabs> + auth guard + floating add button
+    │                        4 tabs; everything else is href: null and pushed over them
+    ├── index.tsx          Home tab — month total, safe-to-spend, 4 recent
+    ├── expenses.tsx       Expenses tab — list + filter + pull-to-refresh
+    ├── budgets.tsx        Budgets tab — server-computed summary
+    ├── goals.tsx          Goals tab — server-computed progress
+    ├── expense/[id].tsx   pushed — edit + delete
+    ├── add-expense.tsx    pushed — manual entry
+    ├── quick-add.tsx      pushed — AI parse -> confirm -> save
+    └── settings.tsx       pushed from Home's header — account, API base URL, sign out
 src/
 ├── api/{client,auth,expenses,budgets,goals,types}.ts   types.ts only aliases generated shapes
 ├── api/generated/                        never hand-edited
