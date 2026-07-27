@@ -1,30 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, TextInput, View } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import { listExpenses } from "../../src/api/expenses";
 import { formatCurrency, formatDayMonth } from "../../src/lib/formatters";
-import { Button, ErrorText, colors } from "../../src/components/ui";
+import { Body, Button, ErrorText } from "../../src/components/ui";
+import { useTheme } from "../../src/theme/useTheme";
 
 export default function Expenses() {
   const router = useRouter();
+  const t = useTheme();
   const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
     queryKey: ["expenses"],
     queryFn: listExpenses,
   });
   const [filter, setFilter] = useState("");
 
-  // Client-side filtering only — this narrows an already-fetched list. Anything that changes
-  // a total or a bucket stays on the backend (CLAUDE.md: no business logic on-device).
+  // Client-side filtering only — this narrows an already-fetched list. Anything that changes a
+  // total or a bucket stays on the backend (CLAUDE.md: no business logic on-device).
   const rows = useMemo(() => {
     const q = filter.trim().toLowerCase();
     const all = data ?? [];
@@ -39,35 +33,34 @@ export default function Expenses() {
   const hasAny = (data ?? []).length > 0;
 
   // "No expenses yet", "your filter matched nothing" and "the request failed" are three
-  // different situations and deserve three different messages — the first version of this
-  // screen showed "Nothing matches." for all of them.
+  // different situations and deserve three different messages.
   const emptyMessage = () => {
-    if (isLoading) return null;
-    if (isError) return null;
+    if (isLoading || isError) return null;
     if (!hasAny) return "No expenses yet. Add your first one from the dashboard.";
     return `Nothing matches “${filter.trim()}”.`;
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg, padding: 20, gap: 12 }}>
+    <View style={{ flex: 1, backgroundColor: t.colors.page, padding: t.spacing.screen, gap: 12 }}>
       <Stack.Screen options={{ title: "Expenses" }} />
       <TextInput
         placeholder="Filter by description or category"
-        placeholderTextColor={colors.muted}
+        placeholderTextColor={t.colors.text3}
         value={filter}
         onChangeText={setFilter}
         style={{
-          backgroundColor: colors.card,
-          borderColor: colors.border,
+          backgroundColor: t.colors.inputBg,
+          borderColor: t.colors.borderInput,
           borderWidth: 1,
-          borderRadius: 10,
-          color: colors.text,
-          paddingHorizontal: 12,
+          borderRadius: t.radii.input,
+          color: t.colors.textHi,
+          fontFamily: t.fonts.body,
+          paddingHorizontal: 14,
           paddingVertical: 10,
         }}
       />
 
-      {isLoading && <ActivityIndicator color={colors.accent} />}
+      {isLoading && <ActivityIndicator color={t.colors.text2} />}
 
       {isError && (
         <View style={{ gap: 12 }}>
@@ -80,15 +73,11 @@ export default function Expenses() {
         data={rows}
         keyExtractor={(e) => String(e.id)}
         refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={refetch}
-            tintColor={colors.accent}
-          />
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={t.colors.text2} />
         }
         ListEmptyComponent={
           emptyMessage() ? (
-            <Text style={{ color: colors.muted, paddingVertical: 12 }}>{emptyMessage()}</Text>
+            <Body dim style={{ paddingVertical: 12 }}>{emptyMessage()}</Body>
           ) : null
         }
         renderItem={({ item }) => (
@@ -99,22 +88,20 @@ export default function Expenses() {
               {
                 flexDirection: "row",
                 justifyContent: "space-between",
-                paddingVertical: 12,
-                borderBottomColor: colors.border,
+                paddingVertical: 14,
+                borderBottomColor: t.colors.border3,
                 borderBottomWidth: 1,
               },
               pressed && { opacity: 0.6 },
             ]}
           >
             <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={{ color: colors.text }} numberOfLines={1}>
-                {item.description ?? "-"}
-              </Text>
-              <Text style={{ color: colors.muted, fontSize: 12 }}>
+              <Body numberOfLines={1}>{item.description ?? "-"}</Body>
+              <Body dim style={{ fontSize: 12.5 }}>
                 {item.category ?? "Uncategorized"} · {formatDayMonth(item.date)}
-              </Text>
+              </Body>
             </View>
-            <Text style={{ color: colors.text, fontWeight: "600" }}>
+            <Text style={{ fontFamily: t.fonts.display, fontSize: 15, color: t.colors.textHi }}>
               {formatCurrency(item.amount ?? 0)}
             </Text>
           </Pressable>

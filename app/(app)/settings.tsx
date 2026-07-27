@@ -1,36 +1,39 @@
 import { Stack, useRouter } from "expo-router";
-import { Text, View } from "react-native";
 import Constants from "expo-constants";
+import { View } from "react-native";
 import { useAuth } from "../../src/context/AuthContext";
 import { API_BASE_URL } from "../../src/api/client";
-import { Button, Card, colors } from "../../src/components/ui";
+import { Body, Button, Card, Screen, StatTile } from "../../src/components/ui";
+import { useTheme } from "../../src/theme/useTheme";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const t = useTheme();
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg, padding: 20, gap: 16 }}>
+    <Screen>
       <Stack.Screen options={{ title: "Settings" }} />
       <Card>
-        <Text style={{ color: colors.muted, fontSize: 13 }}>Signed in as</Text>
-        <Text style={{ color: colors.text, fontSize: 16 }}>{user?.email ?? "-"}</Text>
-        {user?.name ? <Text style={{ color: colors.muted }}>{user.name}</Text> : null}
+        <StatTile label="Signed in as" value={user?.email ?? "-"} sub={user?.name ?? undefined} />
       </Card>
       <Card>
-        <Text style={{ color: colors.muted, fontSize: 13 }}>API</Text>
-        <Text style={{ color: colors.text }}>{API_BASE_URL}</Text>
-        <Text style={{ color: colors.muted, fontSize: 13, marginTop: 8 }}>App version</Text>
-        <Text style={{ color: colors.text }}>{Constants.expoConfig?.version ?? "-"}</Text>
+        <Body dim style={{ fontSize: 12.5 }}>API</Body>
+        <Body>{API_BASE_URL}</Body>
+        <View style={{ height: 8 }} />
+        <Body dim style={{ fontSize: 12.5 }}>App version</Body>
+        <Body>
+          {Constants.expoConfig?.version ?? "-"} · {t.scheme} theme
+        </Body>
       </Card>
       <Button
-        variant="ghost"
+        variant="secondary"
         title="Sign out"
         onPress={async () => {
           await signOut();
           router.replace("/login");
         }}
       />
-    </View>
+    </Screen>
   );
 }

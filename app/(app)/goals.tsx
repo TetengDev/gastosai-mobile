@@ -4,9 +4,11 @@ import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from "react
 import { errorMessage } from "../../src/api/client";
 import { listGoals } from "../../src/api/goals";
 import { formatCurrency, formatDateOnly } from "../../src/lib/formatters";
-import { Badge, Button, Card, ErrorText, ProgressBar, colors } from "../../src/components/ui";
+import { Body, Button, Card, ErrorText, Pill, ProgressBar } from "../../src/components/ui";
+import { useTheme } from "../../src/theme/useTheme";
 
 export default function Goals() {
+  const t = useTheme();
   const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
     queryKey: ["goals"],
     queryFn: listGoals,
@@ -16,15 +18,15 @@ export default function Goals() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: colors.bg }}
-      contentContainerStyle={{ padding: 20, gap: 16 }}
+      style={{ flex: 1, backgroundColor: t.colors.page }}
+      contentContainerStyle={{ padding: t.spacing.screen, gap: t.spacing.gap }}
       refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.accent} />
+        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={t.colors.text2} />
       }
     >
       <Stack.Screen options={{ title: "Goals" }} />
 
-      {isLoading && <ActivityIndicator color={colors.accent} />}
+      {isLoading && <ActivityIndicator color={t.colors.text2} />}
 
       {isError && (
         <View style={{ gap: 12 }}>
@@ -34,23 +36,25 @@ export default function Goals() {
       )}
 
       {!isLoading && !isError && goals.length === 0 && (
-        <Text style={{ color: colors.muted }}>No savings goals yet. Add them in the web app.</Text>
+        <Body dim>No savings goals yet. Add them in the web app.</Body>
       )}
 
       {goals.map((g) => (
         <Card key={g.id}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ color: colors.text, fontWeight: "600" }}>{g.name}</Text>
-            {g.paused ? <Badge label="PAUSED" tone="neutral" /> : null}
+            <Text style={{ fontFamily: t.fonts.bodySemi, fontSize: 15, color: t.colors.textHi }}>
+              {g.name}
+            </Text>
+            {g.paused ? <Pill label="Paused" /> : null}
           </View>
           {/* progressPercent is server-computed; the client renders it as given. */}
           <ProgressBar percent={g.progressPercent ?? 0} />
-          <Text style={{ color: colors.muted, fontSize: 13 }}>
+          <Body dim style={{ fontSize: 12.5 }}>
             {formatCurrency(g.savedAmount ?? 0)} of {formatCurrency(g.targetAmount ?? 0)} ·{" "}
             {Math.round(g.progressPercent ?? 0)}%
-          </Text>
+          </Body>
           {g.targetDate ? (
-            <Text style={{ color: colors.muted, fontSize: 12 }}>by {formatDateOnly(g.targetDate)}</Text>
+            <Body dim style={{ fontSize: 12 }}>by {formatDateOnly(g.targetDate)}</Body>
           ) : null}
         </Card>
       ))}

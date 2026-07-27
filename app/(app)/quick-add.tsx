@@ -7,13 +7,15 @@ import { errorMessage } from "../../src/api/client";
 import { createExpense, parseExpense } from "../../src/api/expenses";
 import type { ParsedExpenseResult } from "../../src/api/types";
 import { formatCurrency, formatDate } from "../../src/lib/formatters";
-import { Badge, Button, Card, ErrorText, Field, colors } from "../../src/components/ui";
+import { Body, Button, Card, ErrorText, Field, Pill } from "../../src/components/ui";
+import { useTheme } from "../../src/theme/useTheme";
+import { accents } from "../../src/theme";
 
-/** HIGH / MEDIUM / LOW from the model, mapped to a visual tone. */
-function confidenceTone(c?: string): "good" | "warn" | "bad" {
-  if (c === "HIGH") return "good";
-  if (c === "MEDIUM") return "warn";
-  return "bad";
+/** HIGH / MEDIUM / LOW from the model, mapped to the shared accent colours. */
+function confidenceColor(c?: string): string {
+  if (c === "HIGH") return accents.brand;
+  if (c === "MEDIUM") return accents.amber;
+  return accents.alert;
 }
 
 export default function QuickAdd() {
@@ -23,6 +25,7 @@ export default function QuickAdd() {
   const [parsed, setParsed] = useState<ParsedExpenseResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [quotaReached, setQuotaReached] = useState(false);
+  const t = useTheme();
 
   const parse = useMutation({
     mutationFn: parseExpense,
@@ -75,9 +78,12 @@ export default function QuickAdd() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: colors.bg }}
+      style={{ flex: 1, backgroundColor: t.colors.page }}
     >
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={{ padding: t.spacing.screen, gap: t.spacing.gap }}
+        keyboardShouldPersistTaps="handled"
+      >
         <Stack.Screen options={{ title: "Quick add" }} />
 
         <Field
@@ -94,26 +100,29 @@ export default function QuickAdd() {
         <ErrorText>{error}</ErrorText>
 
         {quotaReached && (
-          <Button variant="ghost" title="Add manually instead" onPress={editInstead} />
+          <Button variant="secondary" title="Add manually instead" onPress={editInstead} />
         )}
 
         {parsed && (
           <Card>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <Text style={{ color: colors.text, fontSize: 24, fontWeight: "700" }}>
+              <Text style={{ fontFamily: t.fonts.display, fontSize: 28, color: t.colors.textHi }}>
                 {formatCurrency(parsed.amount ?? 0)}
               </Text>
-              <Badge label={parsed.confidence ?? "UNKNOWN"} tone={confidenceTone(parsed.confidence)} />
+              <Pill
+                label={parsed.confidence ?? "UNKNOWN"}
+                dotColor={confidenceColor(parsed.confidence)}
+              />
             </View>
-            <Text style={{ color: colors.text }}>{parsed.description ?? "-"}</Text>
-            <Text style={{ color: colors.muted, fontSize: 13 }}>
+            <Body>{parsed.description ?? "-"}</Body>
+            <Body dim style={{ fontSize: 13 }}>
               {parsed.category ?? "Uncategorized"} · {formatDate(parsed.date)}
-            </Text>
+            </Body>
 
             {/* The backend explains itself through these two fields; surfacing them is the
                 difference between "it didn't work" and knowing what to type instead. */}
             {parsed.hint ? (
-              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 6 }}>{parsed.hint}</Text>
+              <Body dim style={{ fontSize: 13, marginTop: 6 }}>{parsed.hint}</Body>
             ) : null}
             {parsed.rejectionMessage ? (
               <ErrorText>{parsed.rejectionMessage}</ErrorText>
@@ -137,10 +146,10 @@ export default function QuickAdd() {
                     });
                   }}
                 />
-                <Button variant="ghost" title="Edit first" onPress={editInstead} />
+                <Button variant="secondary" title="Edit first" onPress={editInstead} />
               </>
             ) : (
-              <Button variant="ghost" title="Add manually instead" onPress={editInstead} />
+              <Button variant="secondary" title="Add manually instead" onPress={editInstead} />
             )}
           </Card>
         )}
