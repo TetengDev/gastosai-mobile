@@ -39,3 +39,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Env — real values never leave the developer machine.
+.env
+.env.*
+!.env.example

@@ -1,0 +1,109 @@
+name: Continuous Integration
+
+# Same shape as gastosai-web's PR gate. The contract loop is the important part: this repo is
+# the third consumer of @tetengdev/gastosai-api-contract, and per CONTRACT.md mobile is the
+# *pacing constraint* for breaking changes — so drift here is the most expensive kind.
+#
+# Job names are referenced by the branch ruleset's required status checks; renaming one silently
+# un-gates the branch.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main, release/**]
+
+jobs:
+  validate-release-branch:
+    name: Validate release branch
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Enforce main merge policy
+        env:
+          HEAD: ${{ github.head_ref }}
+          BASE: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+
+          # release/* is the only path for application changes and version bumps.
+          if [[ "$HEAD" == release/* ]]; then
+            echo "Branch '$HEAD' is a release branch — allowed."
+            exit 0
+          fi
+
+          # meta/* and dependabot/* are non-application lanes, subject to the guards below.
+          if [[ "$HEAD" != meta/* && "$HEAD" != dependabot/* ]]; then
+            echo "::error::PRs to main must come from release/* (application changes + version bumps), meta/* (non-application changes), or dependabot/* (dependency updates). Got: $HEAD"
+            exit 1
+          fi
+
+          git fetch origin "$BASE" --depth=1
+
+          # Guard 1: a non-application PR must not change the project's own version.
+          base_ver=$(git show "origin/$BASE:package.json" | jq -r .version)
+          head_ver=$(jq -r .version package.json)
+          if [[ "$base_ver" != "$head_ver" ]]; then
+            echo "::error::$HEAD must not change the project version ($base_ver -> $head_ver). Version bumps belong on release/*."
+            exit 1
+          fi
+
+          # Guard 2: a non-application PR must not touch application source.
+          app_changes=$(git diff --name-only "origin/$BASE" -- src app)
+          if [[ -n "$app_changes" ]]; then
+            echo "::error::$HEAD must not modify application source. Route these through release/*:"
+            echo "$app_changes" | sed 's/^/  - /'
+            exit 1
+          fi
+
+          echo "Branch '$HEAD' is a non-application lane ($HEAD) — no version change, no app-source changes — allowed."
+
+  mobile:
+    name: Mobile lint & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        env:
+          PACKAGE_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
+        run: npm ci
+
+      # The drift guard. src/api/generated/ is produced from the EXACT pinned contract version.
+      - name: Regenerate API types from the pinned contract
+        run: npm run gen:api
+
+      - name: Fail if generated client is stale
+        run: |
+          set -euo pipefail
+          # --porcelain, not `git diff`: a never-committed src/api/generated/ is UNTRACKED and
+          # git diff ignores untracked files, so the guard would pass without checking anything.
+          CHANGES=$(git status --porcelain -- src/api/generated)
+          if [ -n "$CHANGES" ]; then
+            echo "::error::src/api/generated/ is stale or uncommitted versus the pinned contract version. Run 'npm run gen:api' and commit the result."
+            echo "$CHANGES"
+            exit 1
+          fi
+          if [ ! -d src/api/generated ]; then
+            echo "::error::src/api/generated/ does not exist after gen:api — check the pinned contract package."
+            exit 1
+          fi
+          echo "Generated client matches the pinned contract."
+
+      - name: Type check
+        run: npm run typecheck
+
+      # jest.globalSetup.js forces TZ=America/New_York for the whole run, so the Asia/Manila
+      # formatting guards are exercised against a non-PHT device rather than passing by accident.
+      - name: Tests
+        run: npm run test:run

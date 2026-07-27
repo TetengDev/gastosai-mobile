@@ -2,7 +2,7 @@
   "expo": {
     "name": "gastosai-mobile",
     "slug": "gastosai-mobile",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -20,6 +20,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "scheme": "gastosai",
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ]
   }
 }
