@@ -4,16 +4,23 @@ Expo (SDK 54) + React Native + TypeScript. A capture surface over the gastosai b
 consuming the **same published contract** as web. Read `CONTRACT.md` first, then
 `KNOWN-GAPS.md`.
 
-**Status: v0.4.** The contract loop, auth, the full capture loop (add / edit / delete) and
-AI quick-add exist, plus read-only budgets and goals. Navigation is a bottom tab bar with a
-floating add button; the web design system is mirrored in `src/theme/`. Scope is deliberately the
-thing a phone is better at than a laptop — recording spend at the moment it happens. Admin,
-pricing and legal surfaces stay web-only.
+**Status: v0.5.** The contract loop, auth, the full capture loop (add / edit / delete), AI
+quick-add and **receipt scanning** exist, plus **writable** budgets and goals, recurring bills,
+alerts, categories and AI chat. Navigation is a five-tab bar with a floating add button; the web
+design system is mirrored in `src/theme/`. Scope is deliberately the thing a phone is better at
+than a laptop — recording spend at the moment it happens, now including photographing the
+receipt. Pricing, billing and admin stay web-only.
 
-**Navigation is tabs, and the add button is not one of them.** Four destinations sit in the tab
+**Navigation is tabs, and the add button is not one of them.** Five destinations sit in the tab
 bar; capture is a floating action button above it. Mixing an action into a tab bar is the most
-consistently warned-against tab-bar mistake, and adding a fifth destination there starts the
-crowding this structure exists to avoid — put new screens behind a tab, not beside them.
+consistently warned-against tab-bar mistake. **The tab bar is now full** — three to five is the
+guidance and this is five, so a new screen belongs behind `more/`, not beside the existing tabs.
+
+**Writable screens still compute nothing.** Budgets, goals and recurring all mutate now, and the
+temptation is to advance a progress bar locally so the UI feels quick. Don't: `percentUsed`,
+`progressPercent`, `safeToSpend` and every due date are server-computed. Mutate, invalidate, render
+what comes back. `.maestro/goals.yaml` asserts a server-returned percentage precisely to catch
+this.
 
 **SDK 54, not the latest.** Pinned to match the Expo Go build on the target device. The simulator
 installs a matching Expo Go per SDK and is unaffected; a development build would remove the
@@ -111,12 +118,17 @@ app/                       expo-router routes
     │                        4 tabs; everything else is href: null and pushed over them
     ├── index.tsx          Home tab — month total, safe-to-spend, 4 recent
     ├── expenses.tsx       Expenses tab — list + filter + pull-to-refresh
-    ├── budgets.tsx        Budgets tab — server-computed summary
-    ├── goals.tsx          Goals tab — server-computed progress
+    ├── budgets.tsx        Budgets tab — server-computed summary, set/edit/remove limits
+    ├── goals.tsx          Goals tab — server-computed progress, create/contribute/delete
+    ├── more/index.tsx     More tab — hub for everything below
+    ├── more/recurring.tsx   pushed — upcoming bills first, then all definitions
+    ├── more/categories.tsx  pushed — rename + delete
+    ├── more/alerts.tsx      pushed — read + dismiss; feeds the More tab badge
+    ├── more/chat.tsx        pushed — Ask AI
     ├── expense/[id].tsx   pushed — edit + delete
     ├── add-expense.tsx    pushed — manual entry
-    ├── quick-add.tsx      pushed — AI parse -> confirm -> save
-    └── settings.tsx       pushed from Home's header — account, API base URL, sign out
+    ├── quick-add.tsx      pushed — AI parse or receipt photo -> confirm -> save
+    └── settings.tsx       pushed from More — account, API base URL, sign out
 src/
 ├── api/{client,auth,expenses,budgets,goals,types}.ts   types.ts only aliases generated shapes
 ├── api/generated/                        never hand-edited

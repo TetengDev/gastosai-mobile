@@ -1484,6 +1484,17 @@ export interface components {
             /** Format: int64 */
             userId?: number;
         };
+        UpcomingBillResponse: {
+            amount?: number;
+            categoryName?: string;
+            currency?: string;
+            dueDate?: string;
+            /** @enum {string} */
+            frequency?: "MONTHLY" | "WEEKLY" | "YEARLY";
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+        };
         UpdateProfileResponse: {
             avatar?: string;
             avatarColor?: string;
@@ -3032,7 +3043,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["UpcomingBillResponse"][];
                 };
             };
         };

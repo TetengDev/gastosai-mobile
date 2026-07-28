@@ -1,0 +1,76 @@
+# Every hub destination reachable in two taps: More, then the row.
+#
+# That is the whole justification for spending the fifth tab slot on a door rather than a screen.
+# **There is not one scroll in this flow, and there must not be.** If a row ever needs scrolling to
+# reach, the hub has grown past what a hub is for and the grouping needs rethinking rather than the
+# flow needing a `scrollUntilVisible`.
+#
+# **Row labels are matched with `.*` on both sides, and that is not optional.** A `Pressable` with
+# `accessibilityRole="button"` collapses everything inside it into a single accessibility node, so
+# a row reads to UI automation as one string:
+#
+#     ", Recurring, Bills and subscriptions, "
+#
+# — icon glyph, label, sub-label, chevron. Maestro matches whole nodes, so a plain `"Recurring"`
+# fails against a screen that renders perfectly. The icons are private-use font glyphs, which is
+# why they appear as escapes rather than anything readable.
+#
+# Returning to the hub taps the **More tab**, not a header back link: the tab bar stays visible on
+# these pushed routes, "More" as plain text collides with the tab label, and tapping the tab is
+# what a person actually does. (`- back` is Android's hardware button and does nothing on iOS.)
+appId: host.exp.Exponent
+---
+- runFlow: launch.yaml
+
+- tapOn:
+    id: "tab-more"
+# extendedWaitUntil, not assertVisible: React Navigation mounts a tab lazily on first visit, so a
+# plain assertion here races the mount.
+- extendedWaitUntil:
+    visible: "(?i).*recurring.*bills and subscriptions.*"
+    timeout: 15000
+- assertVisible: "(?i).*categories.*rename or remove.*"
+- assertVisible: "(?i).*alerts.*budget and bill warnings.*"
+- assertVisible: "(?i).*ask ai.*questions about your spending.*"
+- assertVisible: "(?i).*settings.*"
+
+- tapOn:
+    id: "more-recurring"
+- extendedWaitUntil:
+    visible: "(?i).*due this month.*"
+    timeout: 15000
+- tapOn:
+    id: "tab-more"
+
+- tapOn:
+    id: "more-categories"
+# Seeded for the demo account, and stable — the capture flow's chips come from this same list.
+- extendedWaitUntil:
+    visible: "Meal Plan"
+    timeout: 15000
+- tapOn:
+    id: "tab-more"
+
+- tapOn:
+    id: "more-alerts"
+# Either state is correct; asserting on one of them would make the flow depend on whether the
+# backend happens to have raised an alert today.
+- extendedWaitUntil:
+    visible: "(?i)(nothing needs your attention|.*budget.*|.*due.*)"
+    timeout: 15000
+- tapOn:
+    id: "tab-more"
+
+- tapOn:
+    id: "more-chat"
+- extendedWaitUntil:
+    visible: "(?i).*ask about your spending.*"
+    timeout: 15000
+- tapOn:
+    id: "tab-more"
+
+- tapOn:
+    id: "more-settings"
+- extendedWaitUntil:
+    visible: "(?i).*signed in as.*"
+    timeout: 15000

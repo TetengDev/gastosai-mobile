@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import type { ComponentProps, ReactNode } from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import type { TextInputProps, TextProps, TextStyle, ViewStyle } from "react-native";
 import { useTheme } from "../theme/useTheme";
@@ -368,6 +369,97 @@ export function FloatingAddButton({
       </Text>
     </Pressable>
   );
+}
+
+/**
+ * A tappable row for hub screens: icon, label, optional trailing count, chevron.
+ *
+ * This is the standard iOS list-hub row, chosen because it is the pattern every phone user
+ * already knows — the whole point of the More tab is that nothing about reaching a secondary
+ * screen should need learning. Height is set by padding rather than a fixed value so it grows
+ * with the user's text size instead of clipping.
+ */
+export function ListRow({
+  icon,
+  label,
+  sub,
+  badge,
+  destructive,
+  onPress,
+  testID,
+}: {
+  icon: ComponentProps<typeof Ionicons>["name"];
+  label: string;
+  sub?: string;
+  badge?: number;
+  /** Sign out, and anything else that is not simply navigation. */
+  destructive?: boolean;
+  onPress: () => void;
+  testID?: string;
+}) {
+  const t = useTheme();
+  const fg = destructive ? t.colors.danger : t.colors.textHi;
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 14,
+        // 14 + 14 + a ~20pt line comfortably exceeds the 44pt minimum target.
+        paddingVertical: 14,
+        paddingHorizontal: 4,
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <Ionicons name={icon} size={21} color={destructive ? t.colors.danger : t.colors.text2} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: t.fonts.body, fontSize: 16, color: fg }}>{label}</Text>
+        {sub ? (
+          <Text
+            style={{ fontFamily: t.fonts.body, fontSize: 12.5, color: t.colors.text2, marginTop: 2 }}
+          >
+            {sub}
+          </Text>
+        ) : null}
+      </View>
+      {badge ? <Badge count={badge} /> : null}
+      {destructive ? null : (
+        <Ionicons name="chevron-forward" size={17} color={t.colors.text3} />
+      )}
+    </Pressable>
+  );
+}
+
+/** Unread count. Renders nothing at zero rather than an empty circle. */
+export function Badge({ count }: { count: number }) {
+  const t = useTheme();
+  if (count <= 0) return null;
+  return (
+    <View
+      style={{
+        minWidth: 20,
+        height: 20,
+        borderRadius: 999,
+        paddingHorizontal: 6,
+        backgroundColor: t.colors.danger,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Text style={{ color: "#ffffff", fontFamily: t.fonts.bodyMedium, fontSize: 11 }}>
+        {count > 99 ? "99+" : count}
+      </Text>
+    </View>
+  );
+}
+
+/** Hairline divider between list rows, matching web's `divide-y`. */
+export function Divider() {
+  const t = useTheme();
+  return <View style={{ height: 1, backgroundColor: t.colors.border3 }} />;
 }
 
 /** Card-shaped loading placeholder, matching web's `h-40 rounded-2xl bg-surface-2` skeletons. */

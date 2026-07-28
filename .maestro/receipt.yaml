@@ -1,0 +1,88 @@
+# Photograph a receipt and let the backend read it.
+#
+# This is the one capability that is better on a phone than on a laptop, so it is worth a flow of
+# its own even though it is the hardest thing here to automate.
+#
+# **Camera capture cannot be automated** — the simulator has no camera, and `launchCameraAsync`
+# opens a system UI Maestro cannot drive. This flow therefore exercises the *library* path, which
+# shares every line of code after the picker returns: same upload, same `/ai/vision` call, same
+# `ParsedExpenseResult`, same confirm-and-save screen. Taking an actual photo is a manual check.
+#
+# Preconditions:
+#
+#  1. The fixture is in the simulator's photo library:
+#         xcrun simctl addmedia booted receipt.png
+#
+#  2. **The backend's OpenAI key can actually call a model.** This flow reaches the provider, so
+#     an under-scoped key fails it at the parse assertion with the client working perfectly. A
+#     restricted service-account key without the `model.request` scope returns
+#     `401 missing_scope`, which the app surfaces as "Receipt reading is unavailable right now".
+#     Check with:
+#         curl https://api.openai.com/v1/chat/completions -H "Authorization: Bearer $OPENAI_API_KEY" ...
+#
+# The fixture reads TOTAL 195.00, and 195 is asserted because it is the one number on the receipt
+# that is not also a line item — a model that grabbed the first figure it saw would return 150.
+#
+# The saved expense is deleted at the end, matching on the row it created.
+appId: host.exp.Exponent
+---
+- runFlow: launch.yaml
+
+- tapOn:
+    id: "fab-add"
+- assertVisible: "What did you spend on?"
+
+- tapOn:
+    id: "choose-photo"
+
+# Expo Go asks for permission on the project's behalf before iOS does — "Experience needs
+# permissions … Allow @anonymous/gastosai-mobile to also use it?". That dialog is an artifact of
+# running inside the Expo Go host app and will not exist in a standalone build; it is handled here
+# only so this flow can run where the project currently runs.
+- runFlow:
+    when:
+      visible: "(?i).*experience needs permissions.*"
+    commands:
+      - tapOn: "Allow"
+
+# Then iOS's own sheet, which appears only the first time. Both are conditional so a second run
+# does not hang waiting on a dialog that is no longer shown.
+- runFlow:
+    when:
+      visible: "(?i).*(allow access|limited access|full access|select photos).*"
+    commands:
+      - tapOn: "(?i).*(allow full access|full access).*"
+
+- extendedWaitUntil:
+    visible: "(?i).*(photos|recents|all photos).*"
+    timeout: 20000
+# The fixture is the only image in a fresh simulator library.
+- tapOn:
+    point: "50%,35%"
+
+# Upload plus a vision model is slow — far slower than parsing a sentence — so this waits longer
+# than any other assertion in the suite.
+- extendedWaitUntil:
+    visible: "₱195.00"
+    timeout: 120000
+- assertVisible: "HIGH|MEDIUM|LOW"
+
+- tapOn: "Save this"
+- extendedWaitUntil:
+    visible: "(?i).*spent this month.*"
+    timeout: 20000
+- extendedWaitUntil:
+    visible: "₱195.00"
+    timeout: 20000
+
+# Clean up: this flow created the expense, so it removes it.
+- tapOn:
+    id: "recent-row-0"
+- assertVisible: "Edit expense"
+- assertVisible: "195"
+- tapOn: "Delete expense"
+- assertVisible: "Delete expense?"
+- tapOn: "Delete"
+- extendedWaitUntil:
+    notVisible: "₱195.00"
+    timeout: 20000

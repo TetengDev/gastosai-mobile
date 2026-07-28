@@ -1,13 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 import { Redirect, Tabs, usePathname, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { listAlerts, unreadCount } from "../../src/api/alerts";
 import { useAuth } from "../../src/context/AuthContext";
 import { FloatingAddButton } from "../../src/components/ui";
 import { useTheme } from "../../src/theme/useTheme";
 
 /**
- * Four persistent destinations, mirroring a subset of gastosai-web's nav (Dashboard, Expenses,
- * Budget, Goals) so the mental model carries between the two products.
+ * Five persistent destinations. Four mirror a subset of gastosai-web's nav (Dashboard, Expenses,
+ * Budget, Goals) so the mental model carries between the two products; the fifth is a hub for
+ * everything that is not a daily destination.
  *
  * This replaces a scrolling stack of buttons on the dashboard. That layout put every destination
  * below the fold — the Maestro flows needed `scrollUntilVisible` before every single navigation
@@ -24,12 +27,19 @@ export default function AppLayout() {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Same query key as the More screen, so the badge and the list share one fetch rather than
+  // racing each other. `enabled` keeps it from firing on the login screen.
+  const alerts = useQuery({ queryKey: ["alerts"], queryFn: listAlerts, enabled: !!user });
+  const unread = unreadCount(alerts.data);
+
   // Guard the whole authenticated group in one place rather than per screen.
   if (!ready) return null;
   if (!user) return <Redirect href="/login" />;
 
   // Quick-add is the fastest capture path and the reason this app is worth having on a phone;
   // manual entry stays reachable from inside it.
+  // More is excluded on purpose: it is a hub of settings-shaped rows, not a spending context,
+  // and a floating + would sit on top of its list.
   const isTabScreen = ["/", "/expenses", "/budgets", "/goals"].includes(pathname);
 
   return (
@@ -63,17 +73,8 @@ export default function AppLayout() {
             tabBarButtonTestID: "tab-home",
             title: "Home",
             tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" color={color} size={size} />,
-            headerRight: () => (
-              <Ionicons
-                testID="header-settings"
-                accessibilityLabel="Settings"
-                name="settings-outline"
-                size={22}
-                color={t.colors.text2}
-                style={{ marginRight: 16 }}
-                onPress={() => router.push("/(app)/settings")}
-              />
-            ),
+            // Settings used to hang off this header. It moved into More, so Home's chrome now
+            // carries nothing that isn't about spending.
           }}
         />
         <Tabs.Screen
@@ -107,11 +108,29 @@ export default function AppLayout() {
           }}
         />
 
+        <Tabs.Screen
+          name="more/index"
+          options={{
+            tabBarButtonTestID: "tab-more",
+            title: "More",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="ellipsis-horizontal" color={color} size={size} />
+            ),
+            // Surfaces an unread alert without the user having to open the hub to find it.
+            tabBarBadge: unread > 0 ? unread : undefined,
+            tabBarBadgeStyle: { backgroundColor: t.colors.danger, fontSize: 11 },
+          }}
+        />
+
         {/* Pushed over the tabs rather than being destinations of their own. */}
         <Tabs.Screen name="quick-add" options={{ href: null, title: "Quick add" }} />
         <Tabs.Screen name="add-expense" options={{ href: null, title: "Add expense" }} />
         <Tabs.Screen name="settings" options={{ href: null, title: "Settings" }} />
         <Tabs.Screen name="expense/[id]" options={{ href: null, title: "Edit expense" }} />
+        <Tabs.Screen name="more/recurring" options={{ href: null, title: "Recurring" }} />
+        <Tabs.Screen name="more/categories" options={{ href: null, title: "Categories" }} />
+        <Tabs.Screen name="more/alerts" options={{ href: null, title: "Alerts" }} />
+        <Tabs.Screen name="more/chat" options={{ href: null, title: "Ask AI" }} />
       </Tabs>
 
       {/* Only on the four tab destinations. On a pushed screen — add, quick-add, edit — a

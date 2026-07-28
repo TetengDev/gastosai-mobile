@@ -1,0 +1,67 @@
+# Create a goal, contribute to it, then delete it.
+#
+# **What this flow is really checking is that nothing is computed on the phone.** After the
+# contribution it asserts the *percentage*, which the client never calculates — `progressPercent`
+# comes from the backend. If someone ever "optimises" the screen by advancing the bar locally, the
+# figure here is what disagrees.
+#
+# ₱4,000 saved against a ₱10,000 target is 40%, and 40 is chosen because it cannot be reached by
+# rounding a different pair of numbers that a bug might produce.
+#
+# The goal is created and deleted by this flow, so cleanup is unambiguous — nothing matches on a
+# value that seeded data could also hold.
+appId: host.exp.Exponent
+---
+- runFlow: launch.yaml
+
+- tapOn:
+    id: "tab-goals"
+
+- tapOn:
+    id: "goal-create"
+- assertVisible: "(?i).*new goal.*"
+
+- tapOn:
+    id: "sheet-amount"
+- inputText: "10000"
+# The decimal keypad covers Save and has no return key of its own.
+- tapOn:
+    id: "sheet-amount-done"
+- tapOn:
+    id: "sheet-label"
+- inputText: "Maestro Test Goal"
+- hideKeyboard
+- tapOn:
+    id: "sheet-save"
+
+- extendedWaitUntil:
+    visible: "Maestro Test Goal"
+    timeout: 20000
+- assertVisible: "(?i).*₱0.00 of ₱10,000.00.*"
+
+# Contribute. The sheet opens pre-filled with the current saved amount, so this replaces it.
+- tapOn: "Add savings"
+- tapOn:
+    id: "sheet-amount"
+- eraseText
+- inputText: "4000"
+- tapOn:
+    id: "sheet-amount-done"
+- tapOn:
+    id: "sheet-save"
+
+# 40% is server-computed. This is the assertion that would fail if the client ever did the maths.
+- extendedWaitUntil:
+    visible: "(?i).*₱4,000.00 of ₱10,000.00 · 40%.*"
+    timeout: 20000
+
+# Clean up: the flow created this goal, so it deletes it. The new goal sorts to the top, so the
+# first "Delete" link is its own.
+- tapOn: "Delete"
+- assertVisible: "(?i).*delete .maestro test goal.*"
+# "Delete goal", not "Delete": every row carries a Delete link, so a bare match on the confirm
+# button hits a row behind the dialog and silently re-opens it instead of confirming.
+- tapOn: "Delete goal"
+- extendedWaitUntil:
+    notVisible: "Maestro Test Goal"
+    timeout: 20000

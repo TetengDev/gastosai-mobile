@@ -48,3 +48,36 @@ repo migrates only after that ships. See `gastosai-backend/KNOWN-GAPS.md`.
 CI runs typecheck, tests and the drift guard. There is no `eas.json`, no build profile and no
 store submission. Deliberate — a release pipeline before there is anything to release is
 premature, and EAS credentials are a separate setup.
+
+---
+
+## 5. Receipt scanning is unverified end-to-end locally
+
+`POST /ai/vision` is wired, the multipart upload reaches the backend and `VisionService` runs. The
+provider call then fails:
+
+```
+401 missing_scope — "Missing scopes: model.request"
+```
+
+The configured `OPENAI_API_KEY` is a **restricted service-account key without the `model.request`
+scope**. Reproduced with plain `curl` against `api.openai.com`, outside the app, so this is an
+OpenAI key-permission setting rather than anything in this repo.
+
+Everything up to the provider is verified: picker, upload, endpoint, and the graceful failure path
+the app shows when the provider is unavailable. `.maestro/receipt.yaml` will pass once the key can
+call a model. Camera capture itself is not automatable — the simulator has no camera — so that
+stays a manual check; the library path shares every line of code after the picker returns.
+
+## 6. Chat is a single live thread
+
+`more/chat.tsx` keeps one conversation in screen state. Web additionally offers a drawer of past
+conversations, which is a laptop affordance — and `GET /chat/conversations` publishes no response
+shape in the contract, so there is nothing typed to render a history from. Revisit if the backend
+types that response.
+
+## 7. Budget rules (50/30/20) are read-only on mobile
+
+`GET /budget-rules/summary` is rendered; editing bucket splits is not. That is a deliberate,
+infrequent, wide decision that belongs on a larger screen. Category `bucket` is likewise shown but
+not editable.

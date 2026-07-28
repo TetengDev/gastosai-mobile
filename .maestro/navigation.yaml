@@ -33,7 +33,16 @@ appId: host.exp.Exponent
     id: "tab-home"
 - assertVisible: "(?i).*spent this month.*"
 
-# Settings is a header action rather than a tab — infrequent, and a tab slot is scarce.
 - tapOn:
-    id: "header-settings"
+    id: "tab-more"
+# extendedWaitUntil, not assertVisible: React Navigation mounts a tab lazily on first visit, so a
+# plain assertion here races the mount and fails on a screen that renders correctly a moment later.
+- extendedWaitUntil:
+    visible: "(?i).*recurring.*bills and subscriptions.*"
+    timeout: 15000
+
+# Settings sits behind More rather than in the tab bar or on Home's header: it is infrequent, a
+# tab slot is scarce, and Home's chrome should carry nothing that is not about spending.
+- tapOn:
+    id: "more-settings"
 - assertVisible: "(?i).*signed in as.*"
