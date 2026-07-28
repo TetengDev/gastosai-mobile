@@ -37,6 +37,16 @@ development build. If it ever moves to a dev build, only `appId` changes.
     only one of them is pressable);
   - a button's title is also the screen title (`Sign in`, where the header wins the match);
   - React Navigation tab labels are not reliably exposed as text nodes at all.
+- **Wrap row labels in `.*`.** A `Pressable` with `accessibilityRole="button"` collapses
+  everything inside it into one accessibility node, so a hub row reads as
+  `", Recurring, Bills and subscriptions, "` — icon glyph, label, sub-label, chevron. A plain
+  match on `"Recurring"` fails against a screen that renders perfectly.
+- **Name destructive confirm buttons** after what they delete (`Delete goal`, not `Delete`). Every
+  row carries its own `Delete` link, so a bare match hits the row *behind* the dialog and silently
+  re-opens it rather than confirming. This is a UI rule as much as a test one — the dialog is
+  clearer for it.
+- **`extendedWaitUntil` after switching to a tab you have not visited.** React Navigation mounts
+  tabs lazily, so the first assertion after the first tap races the mount.
 - **Never** target a row by an amount the flow then deletes. Amounts collide with real data;
   matching loosely on a round `₱175.00` is how a seeded expense was destroyed during bring-up.
   Rows are addressed positionally (`recent-row-0`) and the amount is re-checked on the edit screen
