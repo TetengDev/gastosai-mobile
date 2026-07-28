@@ -1,0 +1,59 @@
+# The expense list, grouped by day.
+#
+# It used to be 77 undifferentiated rows for all time, newest first, with a plain substring filter.
+# Now it is one month at a time, sectioned by day, with each day's total in the header.
+#
+# **The day total is asserted because it is server-computed.** `/expenses/report/daily` supplies it;
+# summing the rows on the phone would be two lines and would break the invariant that a number the
+# user acts on comes from the backend (CLAUDE.md §1.2). If someone ever "simplifies" this by adding
+# the rows up locally, a mismatch here is what catches it.
+#
+# Read-only: creates nothing, cleans up nothing.
+appId: host.exp.Exponent
+---
+- runFlow: launch.yaml
+
+- tapOn:
+    id: "tab-expenses"
+
+# July is empty for this account, so step to a month that has data.
+- tapOn:
+    id: "month-prev"
+- extendedWaitUntil:
+    visible: "(?i).*june 2026.*"
+    timeout: 20000
+
+# A day section header, with the total the server computed for that day.
+- extendedWaitUntil:
+    visible: "(?i).*jun 26, 2026.*"
+    timeout: 20000
+
+# The row and its header must agree. Jun 26 holds one expense, recorded as ¥1,500 — the row used
+# to render "₱1,500.00" from the raw `amount` while the header read ₱577.50 from the converted
+# figure, two numbers for the same thing on the same screen. Both are ₱577.50 now.
+- assertVisible: "₱577.50"
+- assertNotVisible: "₱1,500.00"
+- assertVisible: "(?i).*1,500.00 jpy.*"
+
+# Search narrows within the month rather than across all time.
+- tapOn:
+    id: "expense-search"
+# Erase first: `inputText` appends, so a re-run against a field that still holds the previous
+# query types "CommuteCommute" and matches nothing — a failure that looks like a broken filter.
+- eraseText
+- inputText: "Commute"
+- hideKeyboard
+# `.*` on both sides: an expense row is a Pressable with accessibilityRole="button", so everything
+# inside it collapses into a single accessibility node — "Commute fare, Transportation, ₱90.00".
+# Maestro matches whole nodes, so a bare "Commute fare" fails against a screen showing six of them.
+- extendedWaitUntil:
+    visible: "(?i).*commute fare.*"
+    timeout: 15000
+# A description that exists in June but does not match the query must be gone.
+- assertNotVisible: "(?i).*jpy meal plan import.*"
+
+- tapOn:
+    id: "search-clear"
+- extendedWaitUntil:
+    visible: "(?i).*jpy meal plan import.*"
+    timeout: 15000

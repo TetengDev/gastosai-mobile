@@ -4,8 +4,51 @@ import { Redirect, Tabs, usePathname, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { listAlerts, unreadCount } from "../../src/api/alerts";
 import { useAuth } from "../../src/context/AuthContext";
+import { MonthProvider } from "../../src/context/MonthContext";
 import { FloatingAddButton } from "../../src/components/ui";
 import { useTheme } from "../../src/theme/useTheme";
+
+/**
+ * Every screen reachable only by pushing — the ones that need a back button.
+ *
+ * Kept as data rather than eight near-identical JSX blocks so that adding a screen cannot silently
+ * ship without a way out, which is exactly how the previous eight ended up without one.
+ */
+const pushedScreens = [
+  // `parent` is where back goes, declared rather than inferred.
+  //
+  // `router.back()` alone is wrong here: these screens are siblings of the tabs, not entries on a
+  // stack, so popping returns to the *initial tab* — leaving More, opening Recurring and pressing
+  // back landed on Home. A back button that goes somewhere you were not is worse than none, and it
+  // is the "I lose my place" complaint in miniature.
+  { name: "quick-add", title: "Quick add", parent: "/(app)" },
+  { name: "add-expense", title: "Add expense", parent: "/(app)" },
+  { name: "settings", title: "Settings", parent: "/(app)/more" },
+  { name: "expense/[id]", title: "Edit expense", parent: "/(app)" },
+  { name: "more/recurring", title: "Recurring", parent: "/(app)/more" },
+  { name: "more/categories", title: "Categories", parent: "/(app)/more" },
+  { name: "more/alerts", title: "Alerts", parent: "/(app)/more" },
+  { name: "more/chat", title: "Ask AI", parent: "/(app)/more" },
+] as const;
+
+/** The back control these screens would have had if they were stack routes. */
+function HeaderBack({ parent }: { parent: string }) {
+  const t = useTheme();
+  const router = useRouter();
+  return (
+    <Ionicons
+      testID="header-back"
+      accessibilityRole="button"
+      accessibilityLabel="Back"
+      name="chevron-back"
+      size={26}
+      color={t.colors.textHi}
+      style={{ marginLeft: 8, paddingRight: 8 }}
+      // `navigate`, not `push`: returning to a parent should not stack another copy of it.
+      onPress={() => router.navigate(parent as never)}
+    />
+  );
+}
 
 /**
  * Five persistent destinations. Four mirror a subset of gastosai-web's nav (Dashboard, Expenses,
@@ -43,7 +86,7 @@ export default function AppLayout() {
   const isTabScreen = ["/", "/expenses", "/budgets", "/goals"].includes(pathname);
 
   return (
-    <>
+    <MonthProvider>
       <Tabs
         screenOptions={{
           headerStyle: { backgroundColor: t.colors.page },
@@ -122,15 +165,22 @@ export default function AppLayout() {
           }}
         />
 
-        {/* Pushed over the tabs rather than being destinations of their own. */}
-        <Tabs.Screen name="quick-add" options={{ href: null, title: "Quick add" }} />
-        <Tabs.Screen name="add-expense" options={{ href: null, title: "Add expense" }} />
-        <Tabs.Screen name="settings" options={{ href: null, title: "Settings" }} />
-        <Tabs.Screen name="expense/[id]" options={{ href: null, title: "Edit expense" }} />
-        <Tabs.Screen name="more/recurring" options={{ href: null, title: "Recurring" }} />
-        <Tabs.Screen name="more/categories" options={{ href: null, title: "Categories" }} />
-        <Tabs.Screen name="more/alerts" options={{ href: null, title: "Alerts" }} />
-        <Tabs.Screen name="more/chat" options={{ href: null, title: "Ask AI" }} />
+        {/*
+          Pushed over the tabs rather than being destinations of their own.
+
+          Each one needs an explicit `headerLeft`. These are registered as tabs with a hidden
+          button (`href: null`), not as stack routes, so React Navigation has no previous screen to
+          derive a back control from and renders none — which left every one of these screens with
+          **no way out except tapping another tab**. `headerBackTitle` does not help for the same
+          reason: there is no stack entry to title.
+        */}
+        {pushedScreens.map(({ name, title, parent }) => (
+          <Tabs.Screen
+            key={name}
+            name={name}
+            options={{ href: null, title, headerLeft: () => <HeaderBack parent={parent} /> }}
+          />
+        ))}
       </Tabs>
 
       {/* Only on the four tab destinations. On a pushed screen — add, quick-add, edit — a
@@ -141,6 +191,6 @@ export default function AppLayout() {
           onPress={() => router.push("/(app)/quick-add")}
         />
       ) : null}
-    </>
+    </MonthProvider>
   );
 }

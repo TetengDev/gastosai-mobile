@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { Alert, RefreshControl, ScrollView, Text, View } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import {
   budgetSummary,
@@ -11,15 +11,18 @@ import {
 } from "../../src/api/budgets";
 import { listCategories } from "../../src/api/categories";
 import type { BudgetSummaryItem } from "../../src/api/types";
-import { currentMonth, formatCurrency, formatMonth } from "../../src/lib/formatters";
+import { formatCurrency, formatMonth } from "../../src/lib/formatters";
+import { useMonth } from "../../src/context/MonthContext";
 import BudgetSheet from "../../src/components/BudgetSheet";
 import {
   Body,
   Button,
   Card,
   ErrorText,
+  MonthStepper,
   Pill,
   ProgressBar,
+  RowMenu,
   Skeleton,
   StatTile,
 } from "../../src/components/ui";
@@ -48,7 +51,7 @@ function toneColor(status?: string): string {
 export default function Budgets() {
   const t = useTheme();
   const qc = useQueryClient();
-  const month = currentMonth();
+  const { month, shiftMonth, isCurrentMonth } = useMonth();
 
   const summary = useQuery({
     queryKey: ["budgets", "summary", month],
@@ -124,6 +127,13 @@ export default function Budgets() {
           />
         }
       >
+        <MonthStepper
+          label={formatMonth(month)}
+          onPrev={() => shiftMonth(-1)}
+          onNext={() => shiftMonth(1)}
+          canGoNext={!isCurrentMonth}
+        />
+
         {summary.isLoading && <Skeleton height={140} />}
 
         {summary.isError && (
@@ -179,6 +189,21 @@ export default function Budgets() {
                       label={`${Math.round(b.percentUsed ?? 0)}%`}
                       dotColor={toneColor(b.status)}
                     />
+                    {/* Secondary actions live here rather than as two text links under every
+                        card. With a budget per category that was ten small targets down the
+                        screen with nothing ranking them. */}
+                    <RowMenu
+                      testID={`budget-menu-${b.categoryId}`}
+                      title={b.categoryName ?? undefined}
+                      actions={[
+                        { label: "Edit limit", onPress: () => setEditing(b) },
+                        {
+                          label: "Remove budget…",
+                          destructive: true,
+                          onPress: () => confirmDelete(b),
+                        },
+                      ]}
+                    />
                   </View>
                   <ProgressBar percent={b.percentUsed ?? 0} color={toneColor(b.status)} />
                   <Body dim style={{ fontSize: 12.5 }}>
@@ -186,36 +211,7 @@ export default function Budgets() {
                     {formatCurrency(b.remaining ?? 0)} left
                   </Body>
 
-                  <View style={{ flexDirection: "row", gap: 18, marginTop: 4 }}>
-                    <Pressable
-                      testID={`budget-edit-${b.categoryId}`}
-                      accessibilityRole="button"
-                      hitSlop={8}
-                      onPress={() => setEditing(b)}
-                    >
-                      <Text
-                        style={{ fontFamily: t.fonts.bodyMedium, fontSize: 14, color: t.colors.link }}
-                      >
-                        Edit limit
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      testID={`budget-delete-${b.categoryId}`}
-                      accessibilityRole="button"
-                      hitSlop={8}
-                      onPress={() => confirmDelete(b)}
-                    >
-                      <Text
-                        style={{
-                          fontFamily: t.fonts.bodyMedium,
-                          fontSize: 14,
-                          color: t.colors.danger,
-                        }}
-                      >
-                        Remove
-                      </Text>
-                    </Pressable>
-                  </View>
+
                 </Card>
               ))
             )}

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, ScrollView, Text, View } from "react-native";
 import { errorMessage } from "../../../src/api/client";
 import {
   deleteRecurring,
@@ -10,7 +10,7 @@ import {
 } from "../../../src/api/recurring";
 import type { RecurringExpenseRequest, RecurringExpenseResponse } from "../../../src/api/types";
 import { currentMonth, formatCurrency, formatDateOnly } from "../../../src/lib/formatters";
-import { Body, Card, Divider, ErrorText, Pill, Skeleton } from "../../../src/components/ui";
+import { Body, Card, Divider, ErrorText, Pill, RowMenu, Skeleton } from "../../../src/components/ui";
 import { useTheme } from "../../../src/theme/useTheme";
 
 /**
@@ -84,7 +84,7 @@ export default function Recurring() {
       { text: "Cancel", style: "cancel" },
       {
         // Named, not a bare "Delete": each row carries its own Delete link.
-        text: "Delete bill",
+        text: "Delete",
         style: "destructive",
         onPress: () => {
           setBusyId(r.id ?? null);
@@ -167,37 +167,23 @@ export default function Recurring() {
               <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
                 {r.active ? null : <Pill label="Paused" />}
                 <View style={{ flex: 1 }} />
-                <Pressable
-                  testID={`recurring-toggle-${r.id}`}
-                  accessibilityRole="button"
-                  hitSlop={8}
+                <RowMenu
                   disabled={busyId === r.id}
-                  onPress={() => {
-                    const body = toRequest(r);
-                    if (!body || r.id == null) return;
-                    setBusyId(r.id);
-                    toggleActive.mutate({ id: r.id, body });
-                  }}
-                >
-                  <Text
-                    style={{ fontFamily: t.fonts.bodyMedium, fontSize: 14, color: t.colors.link }}
-                  >
-                    {r.active ? "Pause" : "Resume"}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  testID={`recurring-delete-${r.id}`}
-                  accessibilityRole="button"
-                  hitSlop={8}
-                  disabled={busyId === r.id}
-                  onPress={() => confirmDelete(r)}
-                >
-                  <Text
-                    style={{ fontFamily: t.fonts.bodyMedium, fontSize: 14, color: t.colors.danger }}
-                  >
-                    Delete
-                  </Text>
-                </Pressable>
+                  testID={`recurring-menu-${r.id}`}
+                  title={r.name ?? undefined}
+                  actions={[
+                    {
+                      label: r.active ? "Pause bill" : "Resume bill",
+                      onPress: () => {
+                        const body = toRequest(r);
+                        if (!body || r.id == null) return;
+                        setBusyId(r.id);
+                        toggleActive.mutate({ id: r.id, body });
+                      },
+                    },
+                    { label: "Delete bill…", destructive: true, onPress: () => confirmDelete(r) },
+                  ]}
+                />
               </View>
             </View>
           </View>

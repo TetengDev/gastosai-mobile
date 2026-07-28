@@ -15,9 +15,13 @@
 # fails against a screen that renders perfectly. The icons are private-use font glyphs, which is
 # why they appear as escapes rather than anything readable.
 #
-# Returning to the hub taps the **More tab**, not a header back link: the tab bar stays visible on
-# these pushed routes, "More" as plain text collides with the tab label, and tapping the tab is
-# what a person actually does. (`- back` is Android's hardware button and does nothing on iOS.)
+# Returning to the hub uses the **header back button**.
+#
+# An earlier version of this flow tapped the More *tab* to get back, because tapping the header
+# found nothing to tap. That was not a quirk of the test — these screens genuinely had no back
+# control at all, and the only escape was the tab bar. The flow encoded the bug as if it were the
+# design. Leaving via `header-back` is what a person reaches for, so it is what this asserts.
+# (`- back` is Android's hardware button and does nothing on iOS.)
 appId: host.exp.Exponent
 ---
 - runFlow: launch.yaml
@@ -40,7 +44,7 @@ appId: host.exp.Exponent
     visible: "(?i).*due this month.*"
     timeout: 15000
 - tapOn:
-    id: "tab-more"
+    id: "header-back"
 
 - tapOn:
     id: "more-categories"
@@ -49,7 +53,7 @@ appId: host.exp.Exponent
     visible: "Meal Plan"
     timeout: 15000
 - tapOn:
-    id: "tab-more"
+    id: "header-back"
 
 - tapOn:
     id: "more-alerts"
@@ -59,7 +63,7 @@ appId: host.exp.Exponent
     visible: "(?i)(nothing needs your attention|.*budget.*|.*due.*)"
     timeout: 15000
 - tapOn:
-    id: "tab-more"
+    id: "header-back"
 
 - tapOn:
     id: "more-chat"
@@ -67,10 +71,18 @@ appId: host.exp.Exponent
     visible: "(?i).*ask about your spending.*"
     timeout: 15000
 - tapOn:
-    id: "tab-more"
+    id: "header-back"
 
 - tapOn:
     id: "more-settings"
 - extendedWaitUntil:
     visible: "(?i).*signed in as.*"
+    timeout: 15000
+
+# Settings is the last screen, so assert the way out exists here too — a screen you can enter and
+# not leave is the defect this flow is guarding against.
+- tapOn:
+    id: "header-back"
+- extendedWaitUntil:
+    visible: "(?i).*recurring.*bills and subscriptions.*"
     timeout: 15000

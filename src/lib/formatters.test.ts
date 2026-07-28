@@ -1,12 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
-import {
-  currentMonth,
-  formatCurrency,
-  formatDate,
-  formatDateOnly,
-  formatDayMonth,
-  nowForApi,
-} from "./formatters";
+import { currentMonth, expenseAmounts, formatCurrency, formatDate, formatDateOnly, formatDayMonth, monthRange, nowForApi } from "./formatters";
 
 describe("formatCurrency", () => {
   it("formats with the peso sign and two decimals", () => {
@@ -71,5 +64,59 @@ describe("timezone pinning", () => {
       timeZone: "Asia/Manila",
     }).format(new Date());
     expect(currentMonth()).toBe(manila.slice(0, 7));
+  });
+});
+
+/**
+ * `monthRange` feeds `GET /expenses?from=&to=`, so an off-by-one silently drops the first or last
+ * day of every month from the list. The whole test run is pinned to `TZ=America/New_York` by
+ * `jest.globalSetup.js`, which is what makes the UTC construction load-bearing rather than
+ * decorative.
+ */
+describe("monthRange", () => {
+  it("covers 31-, 30- and 28-day months", () => {
+    expect(monthRange("2026-07")).toEqual({ from: "2026-07-01", to: "2026-07-31" });
+    expect(monthRange("2026-06")).toEqual({ from: "2026-06-01", to: "2026-06-30" });
+    expect(monthRange("2026-02")).toEqual({ from: "2026-02-01", to: "2026-02-28" });
+  });
+
+  it("handles a leap February", () => {
+    expect(monthRange("2028-02")).toEqual({ from: "2028-02-01", to: "2028-02-29" });
+  });
+
+  it("handles December without rolling into the next year", () => {
+    expect(monthRange("2026-12")).toEqual({ from: "2026-12-01", to: "2026-12-31" });
+  });
+});
+
+/**
+ * A ¥1,500 expense rendered as "₱1,500.00" while its server-computed day total read ₱577.50 —
+ * two figures for the same row, on the same screen, disagreeing. The conversion is the backend's;
+ * this only picks the field that already holds it.
+ */
+describe("expenseAmounts", () => {
+  it("uses the converted figure for a foreign-currency expense", () => {
+    const { base, original } = expenseAmounts({
+      amount: 1500,
+      amountInBaseCurrency: 577.5,
+      currency: "JPY",
+    });
+    expect(base).toBe(577.5);
+    expect(original).toBe("1,500.00 JPY");
+  });
+
+  it("shows no original for a peso expense", () => {
+    const { base, original } = expenseAmounts({
+      amount: 140,
+      amountInBaseCurrency: 140,
+      currency: "PHP",
+    });
+    expect(base).toBe(140);
+    expect(original).toBeNull();
+  });
+
+  it("falls back to amount when the API omits a base figure", () => {
+    expect(expenseAmounts({ amount: 90 }).base).toBe(90);
+    expect(expenseAmounts({}).base).toBe(0);
   });
 });

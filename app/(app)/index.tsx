@@ -4,16 +4,28 @@ import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native"
 import { errorMessage } from "../../src/api/client";
 import { budgetSummary } from "../../src/api/budgets";
 import { listExpenses, monthlyReport } from "../../src/api/expenses";
-import { currentMonth, formatCurrency, formatDayMonth, formatMonth } from "../../src/lib/formatters";
-import { Body, Card, ErrorText, Skeleton, StatTile } from "../../src/components/ui";
+import {
+  expenseAmounts,
+  formatCurrency,
+  formatDayMonth,
+  formatMonth,
+  monthRange,
+} from "../../src/lib/formatters";
+import { useMonth } from "../../src/context/MonthContext";
+import { Body, Button, Card, ErrorText, MonthStepper, Skeleton, StatTile } from "../../src/components/ui";
 import { useTheme } from "../../src/theme/useTheme";
 
 export default function Dashboard() {
   const router = useRouter();
   const t = useTheme();
-  const month = currentMonth();
+  const { month, shiftMonth, setMonth, isCurrentMonth } = useMonth();
+  const range = monthRange(month);
+
   const report = useQuery({ queryKey: ["report", "monthly"], queryFn: monthlyReport });
-  const expenses = useQuery({ queryKey: ["expenses"], queryFn: listExpenses });
+  const expenses = useQuery({
+    queryKey: ["expenses", month],
+    queryFn: () => listExpenses(range),
+  });
   const budgets = useQuery({
     queryKey: ["budgets", "summary", month],
     queryFn: () => budgetSummary(month),
@@ -21,6 +33,23 @@ export default function Dashboard() {
 
   // The report is keyed by "YYYY-MM"; find this month's row rather than assuming ordering.
   const thisMonth = report.data?.find((r) => r.month === month);
+
+  /**
+   * The most recent month that actually has spending.
+   *
+   * A month with no expenses used to render ₱0.00 and nothing else, which is indistinguishable
+   * from an empty account — and with the app opening on the current month, that is what you saw
+   * even with six months of history behind it. Offering the nearest month with data turns a dead
+   * end into one tap. Read off the report already fetched; nothing new is computed.
+   */
+  const latestMonthWithData = (report.data ?? [])
+    .filter((r) => (r.total ?? 0) > 0 && r.month)
+    .map((r) => r.month as string)
+    .sort()
+    .pop();
+
+  const monthIsEmpty =
+    !report.isLoading && !report.isError && (thisMonth?.total ?? 0) === 0 && !expenses.isLoading;
   // Four, not five: Home is a quick check-in rather than a report. The full list is one tap away
   // on Expenses, so a fifth row here buys nothing and pushes the card further under the floating
   // + button. (`paddingBottom` below keeps the last row scrollable clear of that button.)
@@ -41,6 +70,15 @@ export default function Dashboard() {
         <RefreshControl refreshing={refreshing} onRefresh={refreshAll} tintColor={t.colors.text2} />
       }
     >
+      {/* The control that makes every other month reachable. Above the figures, because it
+          changes what all of them mean. */}
+      <MonthStepper
+        label={formatMonth(month)}
+        onPrev={() => shiftMonth(-1)}
+        onNext={() => shiftMonth(1)}
+        canGoNext={!isCurrentMonth}
+      />
+
       <Card>
         {report.isLoading ? (
           <Skeleton height={72} />
@@ -48,10 +86,25 @@ export default function Dashboard() {
           <StatTile
             label={formatMonth(month)}
             value={formatCurrency(thisMonth?.total ?? 0)}
-            sub="spent this month"
+            sub={isCurrentMonth ? "spent this month" : "spent"}
           />
         )}
         <ErrorText>{report.isError ? errorMessage(report.error) : null}</ErrorText>
+
+        {monthIsEmpty && latestMonthWithData && latestMonthWithData !== month ? (
+          <>
+            <Body dim style={{ fontSize: 12.5 }}>
+              Nothing recorded in {formatMonth(month)}.
+            </Body>
+            <Button
+              testID="jump-to-latest"
+              size="sm"
+              variant="secondary"
+              title={`Show ${formatMonth(latestMonthWithData)}`}
+              onPress={() => setMonth(latestMonthWithData)}
+            />
+          </>
+        ) : null}
       </Card>
 
       {/* Safe-to-spend is the number most worth seeing on a phone. Server-computed — rendered,
@@ -94,12 +147,18 @@ export default function Dashboard() {
               </Body>
             </View>
             <Text style={{ fontFamily: t.fonts.display, fontSize: 15, color: t.colors.textHi }}>
-              {formatCurrency(e.amount ?? 0)}
+              {formatCurrency(expenseAmounts(e).base)}
             </Text>
           </Pressable>
         ))}
         {!expenses.isLoading && !expenses.isError && recent.length === 0 && (
-          <Body dim>No expenses yet — tap + to add your first one.</Body>
+          // Month-aware: "No expenses yet" on a month that merely happens to be empty reads as
+          // "your account is empty", which is exactly the false impression this release removes.
+          <Body dim>
+            {latestMonthWithData
+              ? `Nothing in ${formatMonth(month)}.`
+              : "No expenses yet — tap + to add your first one."}
+          </Body>
         )}
       </Card>
     </ScrollView>

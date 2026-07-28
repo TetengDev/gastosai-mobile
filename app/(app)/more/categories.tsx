@@ -1,9 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, ScrollView, Text, View } from "react-native";
 import { errorMessage } from "../../../src/api/client";
 import { deleteCategory, listCategories, renameCategory } from "../../../src/api/categories";
-import { Body, Button, Card, Divider, ErrorText, Field, Skeleton } from "../../../src/components/ui";
+import {
+  Body,
+  Button,
+  Card,
+  Divider,
+  ErrorText,
+  Field,
+  RowMenu,
+  Skeleton,
+} from "../../../src/components/ui";
 import { useTheme } from "../../../src/theme/useTheme";
 
 /**
@@ -49,7 +58,7 @@ export default function Categories() {
       [
         { text: "Cancel", style: "cancel" },
         // Named, not a bare "Delete": each row carries its own Delete link.
-        { text: "Delete category", style: "destructive", onPress: () => remove.mutate(id) },
+        { text: "Delete", style: "destructive", onPress: () => remove.mutate(id) },
       ],
     );
 
@@ -121,31 +130,24 @@ export default function Categories() {
                     </Text>
                   ) : null}
                 </View>
-                <Pressable
-                  testID={`category-rename-${c.id}`}
-                  accessibilityRole="button"
-                  hitSlop={8}
-                  onPress={() => {
-                    setEditingId(c.id ?? null);
-                    setDraft(c.name ?? "");
-                  }}
-                >
-                  <Text style={{ fontFamily: t.fonts.bodyMedium, fontSize: 14, color: t.colors.link }}>
-                    Rename
-                  </Text>
-                </Pressable>
-                <Pressable
-                  testID={`category-delete-${c.id}`}
-                  accessibilityRole="button"
-                  hitSlop={8}
-                  onPress={() => (c.id != null ? confirmDelete(c.id, c.name ?? "") : undefined)}
-                >
-                  <Text
-                    style={{ fontFamily: t.fonts.bodyMedium, fontSize: 14, color: t.colors.danger }}
-                  >
-                    Delete
-                  </Text>
-                </Pressable>
+                <RowMenu
+                  testID={`category-menu-${c.id}`}
+                  title={c.name ?? undefined}
+                  actions={[
+                    {
+                      label: "Rename",
+                      onPress: () => {
+                        setEditingId(c.id ?? null);
+                        setDraft(c.name ?? "");
+                      },
+                    },
+                    {
+                      label: "Delete category…",
+                      destructive: true,
+                      onPress: () => (c.id != null ? confirmDelete(c.id, c.name ?? "") : undefined),
+                    },
+                  ]}
+                />
               </View>
             )}
           </View>

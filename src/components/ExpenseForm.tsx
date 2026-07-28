@@ -63,7 +63,10 @@ export default function ExpenseForm({
 }: Props) {
   const t = useTheme();
   const categories = useQuery({ queryKey: ["categories"], queryFn: listCategories });
-  const recent = useQuery({ queryKey: ["expenses"], queryFn: listExpenses });
+  // Wrapped, not passed bare: TanStack calls queryFn with its own context object, which
+  // `listExpenses` would take as a date range and forward as nonsense query params.
+  // Deliberately unscoped by month — chip ordering wants the whole history, not one month.
+  const recent = useQuery({ queryKey: ["expenses", "all"], queryFn: () => listExpenses() });
 
   const [amount, setAmount] = useState(initial?.amount ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");

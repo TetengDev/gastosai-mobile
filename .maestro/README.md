@@ -45,6 +45,12 @@ development build. If it ever moves to a dev build, only `appId` changes.
   row carries its own `Delete` link, so a bare match hits the row *behind* the dialog and silently
   re-opens it rather than confirming. This is a UI rule as much as a test one — the dialog is
   clearer for it.
+- **Never assert on a string that is also the control you just tapped.** `goals.yaml` asserted
+  `"New goal"` after tapping the *button* labelled "New goal" — it passed whether or not the sheet
+  opened, and the real failure surfaced a step later as a confusing missing test id. Assert on
+  something only the new screen renders.
+- **`eraseText` before `inputText` in a field a re-run may have left populated** — `inputText`
+  appends, so the second run searches for "CommuteCommute" and matches nothing.
 - **`extendedWaitUntil` after switching to a tab you have not visited.** React Navigation mounts
   tabs lazily, so the first assertion after the first tap races the mount.
 - **Never** target a row by an amount the flow then deletes. Amounts collide with real data;
