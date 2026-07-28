@@ -1,12 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { Alert, RefreshControl, ScrollView, Text, View } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import { createGoal, deleteGoal, listGoals, updateGoal } from "../../src/api/goals";
 import type { GoalRequest, GoalResponse } from "../../src/api/types";
 import { formatCurrency, formatDateOnly } from "../../src/lib/formatters";
 import AmountSheet from "../../src/components/AmountSheet";
-import { Body, Button, Card, ErrorText, Pill, ProgressBar, Skeleton } from "../../src/components/ui";
+import {
+  Body,
+  Button,
+  Card,
+  ErrorText,
+  Pill,
+  ProgressBar,
+  RowMenu,
+  Skeleton,
+} from "../../src/components/ui";
 import { useTheme } from "../../src/theme/useTheme";
 
 type SheetMode =
@@ -92,7 +101,7 @@ export default function Goals() {
         // Names what it deletes rather than saying a bare "Delete": every goal row also has a
         // Delete link, so an unqualified label is ambiguous both to a reader skimming the dialog
         // and to UI automation, which cannot tell the confirm button from the row behind it.
-        text: "Delete goal",
+        text: "Delete",
         style: "destructive",
         onPress: () => (g.id != null ? remove.mutate(g.id) : undefined),
       },
@@ -174,7 +183,7 @@ export default function Goals() {
           </Card>
         )}
 
-        {goals.map((g) => (
+        {goals.map((g, i) => (
           <Card key={g.id}>
             <View
               style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
@@ -205,28 +214,18 @@ export default function Goals() {
                   onPress={() => setSheet({ kind: "contribute", goal: g })}
                 />
               </View>
-              <Pressable
-                testID={`goal-edit-${g.id}`}
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={() => setSheet({ kind: "edit", goal: g })}
-              >
-                <Text style={{ fontFamily: t.fonts.bodyMedium, fontSize: 14, color: t.colors.link }}>
-                  Edit
-                </Text>
-              </Pressable>
-              <Pressable
-                testID={`goal-delete-${g.id}`}
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={() => confirmDelete(g)}
-              >
-                <Text
-                  style={{ fontFamily: t.fonts.bodyMedium, fontSize: 14, color: t.colors.danger }}
-                >
-                  Delete
-                </Text>
-              </Pressable>
+              {/* Contributing is the frequent action and stays on the row; editing and deleting a
+                  goal are rare and move behind the menu. */}
+              <RowMenu
+                // Positional: this flow creates the goal it then deletes, so its id is not knowable
+                // in advance. Same reasoning as `recent-row-N` on Home.
+                testID={`goal-menu-${i}`}
+                title={g.name ?? undefined}
+                actions={[
+                  { label: "Edit goal", onPress: () => setSheet({ kind: "edit", goal: g }) },
+                  { label: "Delete goal…", destructive: true, onPress: () => confirmDelete(g) },
+                ]}
+              />
             </View>
           </Card>
         ))}

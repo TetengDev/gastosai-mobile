@@ -19,7 +19,13 @@ appId: host.exp.Exponent
 
 - tapOn:
     id: "goal-create"
-- assertVisible: "(?i).*new goal.*"
+# Assert on the sheet's own Cancel, not on "New goal": that string is also the label of the button
+# just tapped, so matching it passes whether or not the sheet actually opened — the assertion would
+# be decorative, and a sheet that failed to present would be caught a step later with a confusing
+# "sheet-amount not found".
+- extendedWaitUntil:
+    visible: "Cancel"
+    timeout: 15000
 
 - tapOn:
     id: "sheet-amount"
@@ -55,13 +61,16 @@ appId: host.exp.Exponent
     visible: "(?i).*₱4,000.00 of ₱10,000.00 · 40%.*"
     timeout: 20000
 
-# Clean up: the flow created this goal, so it deletes it. The new goal sorts to the top, so the
-# first "Delete" link is its own.
-- tapOn: "Delete"
+# Clean up: the flow created this goal, so it deletes it. Secondary actions moved behind the row's
+# `⋯` menu in v0.6, and the menu is addressed positionally — the new goal sorts to the top, and its
+# id is not knowable in advance because this flow just created it.
+- tapOn:
+    id: "goal-menu-0"
+# The menu item ends in an ellipsis, iOS shorthand for "a confirmation follows". That also keeps it
+# distinct from the alert's own button, which a bare "Delete" on both would not.
+- tapOn: "Delete goal…"
 - assertVisible: "(?i).*delete .maestro test goal.*"
-# "Delete goal", not "Delete": every row carries a Delete link, so a bare match on the confirm
-# button hits a row behind the dialog and silently re-opens it instead of confirming.
-- tapOn: "Delete goal"
+- tapOn: "Delete"
 - extendedWaitUntil:
     notVisible: "Maestro Test Goal"
     timeout: 20000

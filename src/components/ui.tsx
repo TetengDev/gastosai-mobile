@@ -1,6 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ComponentProps, ReactNode } from "react";
-import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
+import {
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import type { TextInputProps, TextProps, TextStyle, ViewStyle } from "react-native";
 import { useTheme } from "../theme/useTheme";
 
@@ -460,6 +469,218 @@ export function Badge({ count }: { count: number }) {
 export function Divider() {
   const t = useTheme();
   return <View style={{ height: 1, backgroundColor: t.colors.border3 }} />;
+}
+
+/**
+ * `‹  July 2026  ›` — the control that makes the rest of the data reachable.
+ *
+ * Before this existed every screen hard-coded the current month, so on a month with no spending
+ * the app showed ₱0.00 and there was no way to look at any other month. Six months of data were
+ * present and unreachable.
+ *
+ * Forward is disabled on the current month rather than hidden: a control that vanishes is more
+ * confusing than one that greys out, and there is nothing to see in the future.
+ */
+export function MonthStepper({
+  label,
+  onPrev,
+  onNext,
+  canGoNext,
+}: {
+  label: string;
+  onPrev: () => void;
+  onNext: () => void;
+  canGoNext: boolean;
+}) {
+  const t = useTheme();
+  const arrow = (dir: "back" | "forward", onPress: () => void, enabled: boolean) => (
+    <Pressable
+      testID={dir === "back" ? "month-prev" : "month-next"}
+      accessibilityRole="button"
+      accessibilityLabel={dir === "back" ? "Previous month" : "Next month"}
+      accessibilityState={{ disabled: !enabled }}
+      disabled={!enabled}
+      onPress={onPress}
+      hitSlop={10}
+      style={({ pressed }) => ({
+        width: 40,
+        height: 40,
+        borderRadius: 999,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: !enabled ? 0.3 : pressed ? 0.6 : 1,
+      })}
+    >
+      <Ionicons
+        name={dir === "back" ? "chevron-back" : "chevron-forward"}
+        size={20}
+        color={t.colors.textHi}
+      />
+    </Pressable>
+  );
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
+      {arrow("back", onPrev, true)}
+      <Text
+        testID="month-label"
+        style={{
+          flex: 1,
+          textAlign: "center",
+          fontFamily: t.fonts.display,
+          fontSize: 16,
+          color: t.colors.textHi,
+        }}
+      >
+        {label}
+      </Text>
+      {arrow("forward", onNext, canGoNext)}
+    </View>
+  );
+}
+
+/** Search input with a clear button, for narrowing a list that is already on screen. */
+export function SearchField({
+  value,
+  onChangeText,
+  placeholder,
+  testID,
+}: {
+  value: string;
+  onChangeText: (v: string) => void;
+  placeholder: string;
+  testID?: string;
+}) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        backgroundColor: t.colors.inputBg,
+        borderColor: t.colors.borderInput,
+        borderWidth: 1,
+        borderRadius: t.radii.input,
+        paddingHorizontal: 12,
+      }}
+    >
+      <Ionicons name="search" size={16} color={t.colors.text3} />
+      <TextInput
+        testID={testID}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={t.colors.text3}
+        autoCapitalize="none"
+        autoCorrect={false}
+        style={{
+          flex: 1,
+          color: t.colors.textHi,
+          fontFamily: t.fonts.body,
+          fontSize: 15,
+          paddingVertical: 10,
+        }}
+      />
+      {value ? (
+        <Pressable
+          testID="search-clear"
+          accessibilityRole="button"
+          accessibilityLabel="Clear search"
+          onPress={() => onChangeText("")}
+          hitSlop={10}
+        >
+          <Ionicons name="close-circle" size={17} color={t.colors.text3} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+export interface RowAction {
+  label: string;
+  onPress: () => void;
+  destructive?: boolean;
+}
+
+/**
+ * The `⋯` that holds a row's secondary actions.
+ *
+ * Every list row used to carry two or three inline text links — *Edit limit / Remove*,
+ * *Pause / Delete*, *Rename / Delete*. On Budgets that put about ten small targets down the screen
+ * with nothing ranking them, which is hard to scan and easy to mis-tap. The frequent action stays
+ * visible on the row; everything else moves in here.
+ *
+ * `ActionSheetIOS` is the native presentation and costs no dependency. Android falls back to an
+ * `Alert`, which is not as elegant but is the same list of choices — and this app is iOS-first
+ * today. `destructiveButtonIndex` gets iOS to colour the dangerous item for us rather than us
+ * approximating it.
+ */
+export function RowMenu({
+  actions,
+  title,
+  testID,
+  disabled,
+}: {
+  actions: RowAction[];
+  /** Names the thing being acted on, so the sheet is unambiguous with several rows on screen. */
+  title?: string;
+  testID?: string;
+  /** Set while this row has a request in flight, so a delete cannot be fired twice. */
+  disabled?: boolean;
+}) {
+  const t = useTheme();
+
+  const open = () => {
+    const labels = actions.map((a) => a.label);
+    const destructiveButtonIndex = actions.findIndex((a) => a.destructive);
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title,
+          options: [...labels, "Cancel"],
+          cancelButtonIndex: labels.length,
+          destructiveButtonIndex: destructiveButtonIndex >= 0 ? destructiveButtonIndex : undefined,
+          userInterfaceStyle: t.scheme,
+        },
+        (index) => {
+          if (index < labels.length) actions[index].onPress();
+        },
+      );
+      return;
+    }
+
+    Alert.alert(title ?? "Actions", undefined, [
+      ...actions.map((a) => ({
+        text: a.label,
+        style: a.destructive ? ("destructive" as const) : ("default" as const),
+        onPress: a.onPress,
+      })),
+      { text: "Cancel", style: "cancel" as const },
+    ]);
+  };
+
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={title ? `Actions for ${title}` : "Actions"}
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
+      onPress={open}
+      hitSlop={10}
+      style={({ pressed }) => ({
+        width: 36,
+        height: 36,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: disabled ? 0.3 : pressed ? 0.5 : 1,
+      })}
+    >
+      <Ionicons name="ellipsis-horizontal" size={19} color={t.colors.text2} />
+    </Pressable>
+  );
 }
 
 /** Card-shaped loading placeholder, matching web's `h-40 rounded-2xl bg-surface-2` skeletons. */

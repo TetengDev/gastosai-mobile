@@ -3,6 +3,7 @@ import type {
   CategoryResponse,
   ExpenseRequest,
   ExpenseResponse,
+  DailyReportItem,
   MonthlyReportItem,
   ParseExpenseRequest,
   ParsedExpenseResult,
@@ -16,8 +17,30 @@ import type {
  * distinction is documented in the contract and easy to get wrong from memory.
  */
 
-export const listExpenses = () =>
-  api.get<ExpenseResponse[]>("/expenses").then((r) => r.data);
+/**
+ * `from`/`to` are inclusive `YYYY-MM-DD` bounds the API already accepted — this client simply
+ * never sent them, and so always pulled every expense ever recorded. Scoping to the selected month
+ * is what turns a 77-row wall into the ~10-27 rows of one month.
+ *
+ * Omitting both still returns everything, which is what the AI capture flow wants for ordering
+ * category chips by frequency.
+ */
+export const listExpenses = (range?: { from: string; to: string }) =>
+  api
+    .get<ExpenseResponse[]>("/expenses", range ? { params: range } : undefined)
+    .then((r) => r.data);
+
+/**
+ * Per-day totals for a month, server-computed.
+ *
+ * The expense list groups by day and shows a total per day. Summing the rows on the phone would be
+ * easy and wrong — a day total is a number the user acts on, and CLAUDE.md §1.2 keeps those on the
+ * backend. This endpoint exists precisely so the section headers can be honest.
+ */
+export const dailyReport = (month: string) =>
+  api
+    .get<DailyReportItem[]>("/expenses/report/daily", { params: { month } })
+    .then((r) => r.data);
 
 export const getExpense = (id: number) =>
   api.get<ExpenseResponse>(`/expenses/${id}`).then((r) => r.data);

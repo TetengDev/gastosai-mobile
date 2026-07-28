@@ -4,7 +4,7 @@ Expo (SDK 54) + React Native + TypeScript. A capture surface over the gastosai b
 consuming the **same published contract** as web. Read `CONTRACT.md` first, then
 `KNOWN-GAPS.md`.
 
-**Status: v0.5.** The contract loop, auth, the full capture loop (add / edit / delete), AI
+**Status: v0.6.** The contract loop, auth, the full capture loop (add / edit / delete), AI
 quick-add and **receipt scanning** exist, plus **writable** budgets and goals, recurring bills,
 alerts, categories and AI chat. Navigation is a five-tab bar with a floating add button; the web
 design system is mirrored in `src/theme/`. Scope is deliberately the thing a phone is better at
@@ -15,6 +15,23 @@ receipt. Pricing, billing and admin stay web-only.
 bar; capture is a floating action button above it. Mixing an action into a tab bar is the most
 consistently warned-against tab-bar mistake. **The tab bar is now full** — three to five is the
 guidance and this is five, so a new screen belongs behind `more/`, not beside the existing tabs.
+
+**Every month is reachable, and the month is shared.** `MonthContext` holds the selected
+`YYYY-MM`; Home, Expenses and Budgets all read it, so changing month on one changes it everywhere.
+Before this, every screen hard-coded `currentMonth()` and six months of data had no route to the
+screen at all. `/budgets/summary` and `/budgets` take `month`; `/expenses` takes `from`/`to` — the
+API always supported this and only the client ignored it.
+
+**Pushed screens need an explicit `headerLeft` and a declared `parent`.** The screens under
+`href: null` are tabs with hidden buttons, not stack routes: React Navigation renders no back
+control for them, and `router.back()` pops to the *initial tab* rather than where you came from.
+`pushedScreens` in `app/(app)/_layout.tsx` declares each screen's parent for that reason. Add a
+screen there and it gets a working way out; add one elsewhere and it will not have one.
+
+**Amounts render from `amountInBaseCurrency`, not `amount`.** `amount` is in the expense's own
+currency, so a ¥1,500 row displayed as "₱1,500.00" while its server-computed day total read
+₱577.50. `expenseAmounts()` in `src/lib/formatters.ts` picks the right field; use it anywhere an
+expense figure is shown.
 
 **Writable screens still compute nothing.** Budgets, goals and recurring all mutate now, and the
 temptation is to advance a progress bar locally so the UI feels quick. Don't: `percentUsed`,

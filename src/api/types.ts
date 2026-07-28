@@ -18,6 +18,7 @@ export type ExpenseRequest = Schemas["ExpenseRequest"];
 export type ExpenseResponse = Schemas["ExpenseResponse"];
 export type CategoryResponse = Schemas["CategoryResponse"];
 export type MonthlyReportItem = Schemas["MonthlyReportItem"];
+export type DailyReportItem = Schemas["DailyReportItem"];
 export type CategoryReportItem = Schemas["CategoryReportItem"];
 export type ParseExpenseRequest = Schemas["ParseExpenseRequest"];
 export type ParsedExpenseResult = Schemas["ParsedExpenseResult"];
