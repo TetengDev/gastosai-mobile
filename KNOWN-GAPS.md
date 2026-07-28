@@ -60,14 +60,41 @@ provider call then fails:
 401 missing_scope — "Missing scopes: model.request"
 ```
 
-The configured `OPENAI_API_KEY` is a **restricted service-account key without the `model.request`
-scope**. Reproduced with plain `curl` against `api.openai.com`, outside the app, so this is an
-OpenAI key-permission setting rather than anything in this repo.
+**The key is restricted to text input.** This is narrower than it first appears, and the two curls
+below differ only by the image block:
 
-Everything up to the provider is verified: picker, upload, endpoint, and the graceful failure path
-the app shows when the provider is unavailable. `.maestro/receipt.yaml` will pass once the key can
-call a model. Camera capture itself is not automatable — the simulator has no camera — so that
-stays a manual check; the library path shares every line of code after the picker returns.
+```bash
+# 200 — text-only
+curl https://api.openai.com/v1/chat/completions -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -d '{"model":"gpt-5.5","max_completion_tokens":16,
+       "messages":[{"role":"user","content":"say ok"}]}'
+
+# 401 missing_scope — identical, plus an image_url block
+curl https://api.openai.com/v1/chat/completions -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -d '{"model":"gpt-5.5","max_completion_tokens":64,
+       "messages":[{"role":"user","content":[
+         {"type":"image_url","image_url":{"url":"data:image/png;base64,..."}},
+         {"type":"text","text":"What is the total?"}]}]}'
+```
+
+So it is an **OpenAI key permission, reproducible entirely outside this repo** — nothing here is
+wrong. It also explains why typed quick-add works while scanning does not: they use the same key
+and model, and only the image input is refused.
+
+Everything up to the provider is verified: picker, multipart upload, endpoint, and the graceful
+failure path — the app shows "Receipt reading is unavailable right now. You can still add the
+expense manually." and offers the manual form, rather than surfacing the backend's unhelpful
+"An unexpected error occurred".
+
+`.maestro/receipt.yaml` will pass once the key can send images. Camera capture itself is not
+automatable — the simulator has no camera — so that stays a manual check; the library path the
+flow drives shares every line of code after the picker returns.
+
+**Separately worth knowing:** `/ai/**` runs through `AiKeyContextInterceptor`, which is a
+bring-your-own-key design — it prefers the *user's* stored key and, with
+`AI_ALLOW_SHARED_KEY=false` (the default), is meant to reject with 402 rather than fall back to the
+server key. `/expenses/parse` is not under `/ai/**` and skips it entirely. Any future work on AI
+features on mobile should expect that asymmetry.
 
 ## 6. Chat is a single live thread
 
