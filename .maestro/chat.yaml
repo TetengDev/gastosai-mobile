@@ -1,0 +1,84 @@
+# Ask AI reachable in one tap from every tab, and back returning to where you started.
+#
+# Web mounts its chat widget at the app root, so it floats on every page. On mobile it used to be
+# three taps down inside More. The header icon is the equivalent — but only if it is on *every*
+# tab, which is what this asserts rather than assumes.
+#
+# The back assertion is the subtle half. Chat declares `parent: "/(app)/more"` for the case where
+# you open it from the hub; opened from Budgets it carries `from`, and back must honour that. A
+# chat you can reach from anywhere but which always dumps you on More is the "lose my place"
+# complaint again, one level down.
+#
+# Read-only: sends no messages, so nothing to clean up.
+appId: host.exp.Exponent
+---
+- runFlow: launch.yaml
+
+# From Home.
+- tapOn:
+    id: "tab-home"
+- tapOn:
+    id: "header-chat"
+- extendedWaitUntil:
+    visible: "(?i).*ask about your spending.*"
+    timeout: 20000
+- tapOn:
+    id: "header-back"
+- extendedWaitUntil:
+    visible: "(?i).*spent this month.*"
+    timeout: 20000
+
+# From Expenses — and back must land on Expenses, not on More or Home.
+- tapOn:
+    id: "tab-expenses"
+- tapOn:
+    id: "header-chat"
+- extendedWaitUntil:
+    visible: "(?i).*ask about your spending.*"
+    timeout: 20000
+- tapOn:
+    id: "header-back"
+- extendedWaitUntil:
+    visible: "Search this month"
+    timeout: 20000
+
+# From Budgets.
+- tapOn:
+    id: "tab-budgets"
+- tapOn:
+    id: "header-chat"
+- extendedWaitUntil:
+    visible: "(?i).*ask about your spending.*"
+    timeout: 20000
+- tapOn:
+    id: "header-back"
+- extendedWaitUntil:
+    visible: "(?i).*safe to spend.*"
+    timeout: 20000
+
+# From Goals.
+- tapOn:
+    id: "tab-goals"
+- tapOn:
+    id: "header-chat"
+- extendedWaitUntil:
+    visible: "(?i).*ask about your spending.*"
+    timeout: 20000
+- tapOn:
+    id: "header-back"
+- assertVisible:
+    id: "goals-screen"
+
+# From More, where the hub row also still works.
+- tapOn:
+    id: "tab-more"
+- tapOn:
+    id: "header-chat"
+- extendedWaitUntil:
+    visible: "(?i).*ask about your spending.*"
+    timeout: 20000
+- tapOn:
+    id: "header-back"
+- extendedWaitUntil:
+    visible: "(?i).*recurring.*bills and subscriptions.*"
+    timeout: 20000

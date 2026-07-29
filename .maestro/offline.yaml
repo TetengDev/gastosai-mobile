@@ -1,0 +1,44 @@
+# How Home behaves when the backend is unreachable.
+#
+# **Precondition: the backend must be STOPPED.** This flow is therefore excluded from the normal
+# suite run — every other flow requires it up. Run it deliberately:
+#
+#     lsof -ti :8080 | xargs kill -9
+#     maestro test .maestro/offline.yaml
+#
+# It exists because this is a state a real user hits — a dropped connection, a server restart — and
+# because the dashboard multiplied the risk: nine independent queries could have produced nine
+# stacked error boxes on the one screen meant to be scannable.
+#
+# Two things are asserted. Home offers a way to recover, which it did not before v0.7 — it showed
+# the message alone and left pull-to-refresh as the undiscoverable way out. And the dashboard cards
+# render *nothing* rather than each reporting its own failure.
+appId: host.exp.Exponent
+---
+- launchApp:
+    clearState: false
+- runFlow:
+    when:
+      notVisible: "Home"
+    commands:
+      - tapOn: "gastosai-mobile"
+
+- tapOn:
+    id: "tab-home"
+
+# The client's own wording for "no response at all", from `errorMessage` in src/api/client.ts —
+# a network failure has no response body to quote, so this string is the app's, not the server's.
+- extendedWaitUntil:
+    visible: "(?i).*cannot reach the server.*"
+    timeout: 40000
+- assertVisible:
+    id: "home-retry"
+
+# Silence from the cards is the point: no insight box, no empty chart, no "0 bills due" implying
+# there are none.
+- assertNotVisible:
+    id: "card-upcoming"
+- assertNotVisible:
+    id: "card-top"
+- assertNotVisible:
+    id: "card-categories"

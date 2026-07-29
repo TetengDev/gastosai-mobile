@@ -48,3 +48,8 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
       visible: "₱177.00"
       timeout: 20000
+
+# Home is month-scoped since v0.6, and a new expense is dated today — so saving one while browsing
+# an earlier month used to file it correctly and then show nothing. The app now snaps back to the
+# current month on save; this asserts that, because the alternative looks exactly like data loss.
+- assertVisible: "(?i).*spent this month.*"

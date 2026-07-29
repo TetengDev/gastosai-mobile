@@ -1,0 +1,52 @@
+# Home as a dashboard, not just a check-in.
+#
+# **Every assertion here is a figure the client cannot invent.** 38.71% comes from
+# `/expenses/report/monthly-comparison`, "Meal Plan" from `/ai/insights/top-category`, ₱1,900.00
+# from `/expenses/report/top`. A card that rendered but computed its own numbers would still show
+# *something*; it would not show these.
+#
+# Read-only: creates nothing, cleans up nothing.
+appId: host.exp.Exponent
+---
+- runFlow: launch.yaml
+
+- tapOn:
+    id: "tab-home"
+- tapOn:
+    id: "month-prev"
+- extendedWaitUntil:
+    visible: "(?i).*june 2026.*"
+    timeout: 25000
+
+# The insight sentence, generated server-side. Asserting the percentage rather than the prose keeps
+# this from breaking when the wording is reworded.
+- extendedWaitUntil:
+    visible: "(?i).*38.71% lower.*"
+    timeout: 30000
+- assertVisible: "(?i).*biggest category: meal plan.*"
+
+# The trend card's comparison against last month.
+- assertVisible:
+    id: "trend-change"
+
+# The list cards. Each is scrolled to rather than assumed on screen — this is a dashboard you read
+# by scrolling, which is the deliberate trade for keeping the glance intact at the top.
+- scrollUntilVisible:
+    element:
+      id: "card-top"
+    direction: DOWN
+# ₱1,900.00 is June's largest expense, ranked by the backend.
+- assertVisible: "₱1,900.00"
+
+- scrollUntilVisible:
+    element:
+      id: "card-goals"
+    direction: DOWN
+
+- scrollUntilVisible:
+    element:
+      id: "card-categories"
+    direction: DOWN
+# Labelled all-time on purpose: /expenses/report/category takes no month, so this card cannot
+# follow the stepper and says so rather than implying June-only figures.
+- assertVisible: "(?i).*by category · all time.*"

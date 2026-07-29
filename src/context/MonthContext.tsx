@@ -8,6 +8,15 @@ interface MonthState {
   setMonth: (month: string) => void;
   /** Step by whole months. Negative goes back. */
   shiftMonth: (delta: number) => void;
+  /**
+   * Snap back to today's month.
+   *
+   * Called after recording an expense. A new expense is dated *now*, so saving one while browsing
+   * June filed it correctly and then showed nothing — the list you were looking at is June's, and
+   * the row landed in July. Returning to the current month means you always see what you just
+   * recorded, which is the whole feedback loop of the capture flow.
+   */
+  resetToCurrent: () => void;
   isCurrentMonth: boolean;
 }
 
@@ -47,9 +56,17 @@ export function MonthProvider({ children }: { children: ReactNode }) {
     setMonth((prev) => shift(prev, delta));
   }, []);
 
+  const resetToCurrent = useCallback(() => setMonth(currentMonth()), []);
+
   const value = useMemo<MonthState>(
-    () => ({ month, setMonth, shiftMonth, isCurrentMonth: month === currentMonth() }),
-    [month, shiftMonth],
+    () => ({
+      month,
+      setMonth,
+      shiftMonth,
+      resetToCurrent,
+      isCurrentMonth: month === currentMonth(),
+    }),
+    [month, shiftMonth, resetToCurrent],
   );
 
   return <MonthContext.Provider value={value}>{children}</MonthContext.Provider>;

@@ -99,6 +99,9 @@ export default function Expenses() {
       }));
   }, [expenses.data, daily.data, filter]);
 
+  // The most recent expense in view — what a flow that just created one needs to reach.
+  const newestId = sections[0]?.data[0]?.id;
+
   const hasAny = (expenses.data ?? []).length > 0;
 
   const emptyMessage = () => {
@@ -189,6 +192,13 @@ export default function Expenses() {
           const { base, original } = expenseAmounts(item);
           return (
           <Pressable
+            // Addressable by id, plus a stable handle on the newest row.
+            //
+            // Text is not usable here: a row collapses to one accessibility node
+            // ("Lunch, Meal Plan, ₱177.00") and its *day header* shows the same amount whenever
+            // that expense is the day's only one — so matching the amount hits the header, which
+            // is not pressable, and the tap silently does nothing.
+            testID={item.id === newestId ? "expense-row-first" : `expense-row-${item.id}`}
             accessibilityRole="button"
             onPress={() => router.push(`/(app)/expense/${item.id}`)}
             style={({ pressed }) => [

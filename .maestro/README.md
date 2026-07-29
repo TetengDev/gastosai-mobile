@@ -45,6 +45,13 @@ development build. If it ever moves to a dev build, only `appId` changes.
   row carries its own `Delete` link, so a bare match hits the row *behind* the dialog and silently
   re-opens it rather than confirming. This is a UI rule as much as a test one — the dialog is
   clearer for it.
+- **An amount can appear twice on one screen.** Home shows the month total *and* a matching Recent
+  row; Expenses shows a day-header total *and* its only row. The duplicate is never pressable, so
+  tapping the text silently does nothing and the flow dies a step later. Target rows by test id
+  (`expense-row-first`, `recent-row-N`, `goal-menu-N`).
+- **Assert on a screen you did not just leave.** After v0.7 the Recent card sits below seven
+  dashboard cards, so flows that need a single expense should enter from the Expenses tab instead
+  of scrolling Home.
 - **Never assert on a string that is also the control you just tapped.** `goals.yaml` asserted
   `"New goal"` after tapping the *button* labelled "New goal" — it passed whether or not the sheet
   opened, and the real failure surfaced a step later as a confusing missing test id. Assert on
