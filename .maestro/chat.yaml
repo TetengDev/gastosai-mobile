@@ -82,3 +82,44 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     visible: "(?i).*recurring.*bills and subscriptions.*"
     timeout: 20000
+
+# ── What the reply actually contains ────────────────────────────────────────────────────────────
+#
+# These are the assertions that would have caught the bug you reported. The old screen rendered
+# `message` only, so a "did a reply appear" check passed while the data was dropped on the floor.
+# Asserting a *figure from the result* is what distinguishes the two.
+#
+# June, not the current month: this account's data ends in June, and asking about an empty month
+# returns an empty result — correct, but it proves nothing about rendering.
+- tapOn:
+    id: "tab-home"
+- tapOn:
+    id: "header-chat"
+
+- tapOn:
+    id: "chat-input"
+- inputText: "How much did I spend on food in June 2026?"
+- hideKeyboard
+- tapOn:
+    id: "chat-send"
+# The model has to run a tool, so this waits far longer than a normal UI assertion.
+- extendedWaitUntil:
+    visible:
+      id: "chat-result"
+    timeout: 90000
+- assertVisible: "(?i).*meal plan.*"
+# The figure itself. ₱3,347.50 is June's Meal Plan total, computed server-side — the client cannot
+# invent it, and rendering only the caption cannot produce it.
+- assertVisible: "₱3,347.50"
+
+# An empty result is a real answer and must say so, rather than showing a caption over nothing —
+# which is exactly what "Category totals for 2026-07." looked like.
+- tapOn:
+    id: "chat-input"
+- inputText: "How much did I spend on food in July 2026?"
+- hideKeyboard
+- tapOn:
+    id: "chat-send"
+- extendedWaitUntil:
+    visible: "No results found."
+    timeout: 90000

@@ -1,0 +1,75 @@
+# Demo: chat answers with data, and confirms before it writes.
+#
+# **A demo, not a test.** It exists to be watched — the assertions here only keep it on the right
+# screen and pace it so the recording is followable. The real assertions live in
+# `.maestro/chat.yaml`, which is what actually guards the behaviour.
+#
+# Kept to roughly a minute: `scripts/record-demo.sh` sends the result to Telegram, which rejects
+# bot uploads over 50 MB, and a clip nobody watches to the end proves nothing anyway.
+#
+# It asks about **June** because the demo account's data ends there — asking about the current
+# month returns an empty result, which is correct but makes for a confusing demo.
+#
+# Creates one expense through the confirm card and deletes it, so the account is left as found.
+appId: host.exp.Exponent
+---
+- runFlow: ../launch.yaml
+
+# 1. Chat is one tap from anywhere — the v0.7 change.
+- tapOn:
+    id: "header-chat"
+- extendedWaitUntil:
+    visible: "(?i).*ask about your spending.*"
+    timeout: 20000
+
+# 2. A question that returns data. Before v0.8 this showed only the caption.
+- tapOn:
+    id: "chat-input"
+- inputText: "How much did I spend on food in June 2026?"
+- hideKeyboard
+- tapOn:
+    id: "chat-send"
+- extendedWaitUntil:
+    visible:
+      id: "chat-result"
+    timeout: 60000
+# Let the reply sit on screen long enough to read in the recording.
+- extendedWaitUntil:
+    visible: "(?i).*meal plan.*"
+    timeout: 20000
+
+# 3. A request that writes. The assistant proposes; the app asks first.
+- tapOn:
+    id: "chat-input"
+- inputText: "add lunch 150 at Jollibee"
+- hideKeyboard
+- tapOn:
+    id: "chat-send"
+- extendedWaitUntil:
+    visible:
+      id: "chat-preview"
+    timeout: 60000
+- tapOn:
+    id: "chat-confirm"
+- extendedWaitUntil:
+    visible: "(?i).*done.*"
+    timeout: 60000
+
+# 4. It really landed — the expense list shows it.
+- tapOn:
+    id: "tab-expenses"
+- extendedWaitUntil:
+    visible: "(?i).*₱150.00.*"
+    timeout: 20000
+
+# 5. Clean up, so the demo can be re-run and the account is left as it was found.
+- tapOn:
+    id: "expense-row-first"
+- assertVisible: "Edit expense"
+- assertVisible: "150"
+- tapOn: "Delete expense"
+- assertVisible: "Delete expense?"
+- tapOn: "Delete"
+- extendedWaitUntil:
+    notVisible: "(?i).*₱150.00.*"
+    timeout: 20000

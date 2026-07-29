@@ -97,6 +97,30 @@ Minimum: **≥ 90% of touched paths exercised at runtime.**
 **Blocker:** application code changed with no runtime evidence. State in the PR body what you ran
 and what you observed.
 
+### 6b. Send a demo recording
+
+**When a feature is added or changed, record it and send it before the PR opens.**
+
+```bash
+./scripts/record-demo.sh <flow> "v0.x.y — what changed and what to look at"
+```
+
+The script records the simulator while a short flow in `.maestro/demo/` runs, then sends the video
+to Telegram. Written evidence is a claim; a clip is something the reviewer can check without
+setting up a simulator, which is the whole point.
+
+- **A demo flow is not a test.** It walks the new thing in 30–60 seconds. The assertions that
+  actually guard the behaviour live in `.maestro/*.yaml`; a demo that doubles as a test tends to be
+  too long to watch and too shallow to trust.
+- The caption should say **what to look at**, not just what shipped.
+- Telegram rejects bot uploads over 50 MB. A minute of simulator video is a few MB; the full suite
+  is not — that is why demos are short and single-purpose.
+- **The recording shows real account data and goes to a chat that keeps it.** Deliberate, never
+  automatic: nothing sends without someone running the script.
+- Link or mention the recording in the PR body, so the written evidence and the clip agree.
+
+**Blocker:** a user-visible feature added or changed with no recording sent.
+
 ### Known limitation — be explicit about it
 
 Programmatic tapping and typing requires Accessibility permission for the controlling terminal;

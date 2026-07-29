@@ -4,7 +4,7 @@ Expo (SDK 54) + React Native + TypeScript. A capture surface over the gastosai b
 consuming the **same published contract** as web. Read `CONTRACT.md` first, then
 `KNOWN-GAPS.md`.
 
-**Status: v0.7.** The contract loop, auth, the full capture loop (add / edit / delete), AI
+**Status: v0.8.** The contract loop, auth, the full capture loop (add / edit / delete), AI
 quick-add and **receipt scanning** exist, plus **writable** budgets and goals, recurring bills,
 alerts, categories and AI chat. Navigation is a five-tab bar with a floating add button; the web
 design system is mirrored in `src/theme/`. Scope is deliberately the thing a phone is better at
@@ -27,6 +27,11 @@ API always supported this and only the client ignored it.
 control for them, and `router.back()` pops to the *initial tab* rather than where you came from.
 `pushedScreens` in `app/(app)/_layout.tsx` declares each screen's parent for that reason. Add a
 screen there and it gets a working way out; add one elsewhere and it will not have one.
+
+**A chat reply is not just its `message`.** The backend returns `type` and `result`; `message` is
+often only a caption ("Category totals for 2026-07.") and the data is in `result`. `type: "preview"`
+means it is *proposing* a write and waiting — rendering that as text means the write never happens.
+See `src/components/chat/`.
 
 **A pushed screen must never call `router.back()`.** These screens are tab siblings, so popping
 returns to the *initial* tab — saving an edit opened from Expenses dropped the user on Home. Use
@@ -174,6 +179,11 @@ Run the gate in `ai/skills/shared/pre-pr-checklist.md`, or the `pre-pr` agent
 The item that is not automatable and is skipped most often: **runtime execution.** A green test
 suite is not evidence that the code was run. State in the PR body what you executed and what you
 observed.
+
+**A changed feature also ships a recording.** `./scripts/record-demo.sh <flow> "caption"` records a
+short demo flow on the simulator and sends it to Telegram, so the behaviour can be checked without
+a simulator to hand. Demo flows live in `.maestro/demo/` and are deliberately not tests — the
+assertions that guard behaviour stay in `.maestro/*.yaml`.
 
 ---
 
