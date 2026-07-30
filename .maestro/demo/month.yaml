@@ -1,0 +1,70 @@
+# Demo: every month is reachable, and the whole app follows the one you pick.
+#
+# **This flow is filmed.** Same rules as `chat.yaml`: no housekeeping on camera, close on a full
+# screen, and let the empty current month be part of the story rather than something to hide — the
+# point of this feature is that an empty month is no longer a dead end.
+#
+# Read-only, so there is no cleanup flow for it.
+#
+# Narration lives in `label:` lines beginning `>> `. What guards this behaviour is
+# `.maestro/month.yaml`.
+#
+# @watch An empty month is not a dead end
+# @watch One month, shared by every tab
+# @watch Exact totals, straight from the API
+appId: host.exp.Exponent
+---
+- runFlow: ../launch.yaml
+
+- tapOn:
+    id: "tab-home"
+- extendedWaitUntil:
+    visible: "(?i).*july 2026.*"
+    timeout: 25000
+    label: ">> This month, nothing recorded yet"
+
+- tapOn:
+    id: "month-prev"
+    label: ">> Step back a month"
+- extendedWaitUntil:
+    visible: "(?i).*june 2026.*"
+    timeout: 20000
+- extendedWaitUntil:
+    visible: "₱9,049.50"
+    timeout: 20000
+    label: ">> June, with everything in it"
+
+# Both directions, and the empty month offers a way out rather than dead-ending on nothing.
+- tapOn:
+    id: "month-next"
+    label: ">> Forward again"
+- extendedWaitUntil:
+    visible: "(?i).*nothing recorded in july 2026.*"
+    timeout: 20000
+- tapOn:
+    id: "jump-to-latest"
+    label: ">> An empty month offers the nearest one with data"
+- extendedWaitUntil:
+    visible: "₱9,049.50"
+    timeout: 20000
+
+# The month is shared context, not per-screen state — the tabs are already on June.
+- tapOn:
+    id: "tab-expenses"
+    label: ">> Expenses is already on June"
+- extendedWaitUntil:
+    visible: "(?i).*june 2026.*"
+    timeout: 20000
+- tapOn:
+    id: "tab-budgets"
+    label: ">> So is Budgets, without being told"
+- extendedWaitUntil:
+    visible: "(?i).*june 2026.*"
+    timeout: 20000
+
+- tapOn:
+    id: "tab-home"
+    label: ">> Back where we started"
+- extendedWaitUntil:
+    visible: "₱9,049.50"
+    timeout: 20000

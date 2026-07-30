@@ -371,8 +371,11 @@ PY
     echo "  ⚠️ narration failed — sending the raw recording" >&2
   fi
 
-  NEW_MB=$(( $(stat -f%z "$SEND") / 1024 / 1024 ))
-  echo "▶ narrated: ${NEW_MB}MB"
+  # Reported in KB below a megabyte: re-encoding routinely lands these under 1 MB, and integer
+  # division rendered that as "0MB", which reads like something went wrong.
+  NEW_KB=$(( $(stat -f%z "$SEND") / 1024 ))
+  NEW_MB=$(( NEW_KB / 1024 ))
+  if (( NEW_MB >= 1 )); then echo "▶ narrated: ${NEW_MB}MB"; else echo "▶ narrated: ${NEW_KB}KB"; fi
   if (( NEW_MB >= 50 )); then
     echo "narrated clip is ${NEW_MB}MB; Telegram rejects bot uploads over 50MB." >&2
     echo "  falling back to the raw recording (${SIZE_MB}MB)" >&2

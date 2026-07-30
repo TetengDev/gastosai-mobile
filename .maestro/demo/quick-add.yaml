@@ -1,0 +1,70 @@
+# Demo: recording spend at the moment it happens, by typing it the way you would say it.
+#
+# **This flow is filmed.** This is the one that justifies the app being on a phone at all, so it is
+# the demo most worth having. Same rules as `chat.yaml`: no housekeeping on camera — the expense this
+# creates is removed by `.maestro/demo/cleanup/quick-add.yaml` after the recording stops — and it
+# opens on June, where there is something to see.
+#
+# It closes on the *current* month rather than June, and deliberately so: an expense is dated now, so
+# saving one snaps the app back to today. That behaviour is the subject of a bug that shipped once
+# (`docs/lessons.md`), and showing it is more honest than hiding it behind a month switch.
+#
+# Assertions avoid the description on purpose. The model *rewrites* it — "lunch 177 at Jollibee"
+# comes back as something like "Jollibee" — so matching the text typed in fails on correct
+# behaviour. The amount is the stable identifier, and 177 is unlikely to collide with seeded data.
+#
+# Narration lives in `label:` lines beginning `>> `. What guards this behaviour is
+# `.maestro/quick-add.yaml`.
+#
+# @watch Type it the way you would say it
+# @watch The amount and merchant are read out
+# @watch The month follows the expense
+appId: host.exp.Exponent
+---
+- runFlow: ../launch.yaml
+
+- tapOn:
+    id: "tab-home"
+- tapOn:
+    id: "month-prev"
+- extendedWaitUntil:
+    visible: "(?i).*june 2026.*"
+    timeout: 25000
+
+# The capture action floats in thumb reach on every tab.
+- tapOn:
+    id: "fab-add"
+    label: ">> Recording spend the moment it happens"
+- extendedWaitUntil:
+    visible: "What did you spend on?"
+    timeout: 20000
+
+- tapOn:
+    id: "quick-add-input"
+- inputText: "lunch 177 at Jollibee"
+- tapOn:
+    text: "Read it"
+    label: ">> Type it the way you would say it"
+
+# The model is asked for structure, so this waits on what it must produce.
+- extendedWaitUntil:
+    visible: "₱177.00"
+    timeout: 60000
+    label: ">> It reads the amount and the merchant"
+- assertVisible: "HIGH|MEDIUM|LOW"
+
+- tapOn:
+    text: "Save this"
+    label: ">> Saved"
+
+# Saving pops back to Home, which snaps to the current month because that is when the expense is
+# dated. `extendedWaitUntil`, not `assertVisible`: saving invalidates the expense and report queries,
+# so Home is mid-refetch here and a plain assertion races the spinner.
+- extendedWaitUntil:
+    visible: "(?i).*spent this month.*"
+    timeout: 25000
+    label: ">> And the month follows the expense"
+- extendedWaitUntil:
+    visible: "₱177.00"
+    timeout: 25000
+    label: ">> There it is, under Recent"

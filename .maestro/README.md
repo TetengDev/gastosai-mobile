@@ -78,9 +78,12 @@ A demo flow is filmed and sent to people with no context, so it carries its own 
   beats you want, not every step.
 - **`# @watch <line>` in the flow's header** becomes a "watch for" bullet on the title card. It
   lives with the flow so it is neither retyped nor forgotten on each invocation.
-- **Plain ASCII only.** Captions are drawn by ffmpeg's `drawtext`, and the font has no glyph for `₱`
-  or for arrows — a missing glyph renders as an empty box, on camera, in front of a client. This is
-  why the marker is `>>` and not `▸`.
+- **Plain ASCII, and no `%`.** Captions are drawn by ffmpeg's `drawtext`, whose font has no glyph for
+  `₱` or for arrows — a missing glyph renders as an empty box, on camera, in front of a client, which
+  is why the marker is `>>` and not `▸`. `%` is worth avoiding separately: `drawtext` expands
+  `%{…}` sequences in the text it is given. Write "40 percent".
+- Punctuation is otherwise safe. The caption text reaches ffmpeg through `textfile=`, never as a
+  filtergraph argument, so `:` and `'` need no escaping — the file is the escaping.
 - **The last caption holds to the end of the clip**, so give the closing beat its own label rather
   than letting the previous one sit over an unrelated screen.
 
