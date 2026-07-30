@@ -1,77 +1,28 @@
 # CLAUDE.md — gastosai-mobile
 
-Expo (SDK 54) + React Native + TypeScript. A capture surface over the gastosai backend,
-consuming the **same published contract** as web. Read `CONTRACT.md` first, then
-`KNOWN-GAPS.md`.
+Expo (SDK 54) + React Native + TypeScript. A capture surface over the gastosai backend, consuming
+the **same published contract** as web.
 
-**Status: v0.8.** The contract loop, auth, the full capture loop (add / edit / delete), AI
-quick-add and **receipt scanning** exist, plus **writable** budgets and goals, recurring bills,
-alerts, categories and AI chat. Navigation is a five-tab bar with a floating add button; the web
-design system is mirrored in `src/theme/`. Scope is deliberately the thing a phone is better at
-than a laptop — recording spend at the moment it happens, now including photographing the
-receipt. Pricing, billing and admin stay web-only.
+**Read first:** `CONTRACT.md`, then `KNOWN-GAPS.md`.
+**Before changing navigation, month handling, chat, or how an amount is displayed:**
+`docs/lessons.md` — each entry there is a bug that shipped or nearly did.
 
-**Navigation is tabs, and the add button is not one of them.** Five destinations sit in the tab
-bar; capture is a floating action button above it. Mixing an action into a tab bar is the most
-consistently warned-against tab-bar mistake. **The tab bar is now full** — three to five is the
-guidance and this is five, so a new screen belongs behind `more/`, not beside the existing tabs.
-
-**Every month is reachable, and the month is shared.** `MonthContext` holds the selected
-`YYYY-MM`; Home, Expenses and Budgets all read it, so changing month on one changes it everywhere.
-Before this, every screen hard-coded `currentMonth()` and six months of data had no route to the
-screen at all. `/budgets/summary` and `/budgets` take `month`; `/expenses` takes `from`/`to` — the
-API always supported this and only the client ignored it.
-
-**Pushed screens need an explicit `headerLeft` and a declared `parent`.** The screens under
-`href: null` are tabs with hidden buttons, not stack routes: React Navigation renders no back
-control for them, and `router.back()` pops to the *initial tab* rather than where you came from.
-`pushedScreens` in `app/(app)/_layout.tsx` declares each screen's parent for that reason. Add a
-screen there and it gets a working way out; add one elsewhere and it will not have one.
-
-**A chat reply is not just its `message`.** The backend returns `type` and `result`; `message` is
-often only a caption ("Category totals for 2026-07.") and the data is in `result`. `type: "preview"`
-means it is *proposing* a write and waiting — rendering that as text means the write never happens.
-See `src/components/chat/`.
-
-**A pushed screen must never call `router.back()`.** These screens are tab siblings, so popping
-returns to the *initial* tab — saving an edit opened from Expenses dropped the user on Home. Use
-`useNavOrigin()` (`src/context/NavOriginContext.tsx`), which the layout keeps pointed at the tab you
-came from. The same reasoning gives chat, reachable from all five tabs, a back button that returns
-to the right one.
-
-**Recording an expense snaps the month back to today.** A new expense is dated now, so saving one
-while browsing June filed it correctly and showed nothing. `resetToCurrent()` on the month context
-is called from both capture paths.
-
-**Amounts render from `amountInBaseCurrency`, not `amount`.** `amount` is in the expense's own
-currency, so a ¥1,500 row displayed as "₱1,500.00" while its server-computed day total read
-₱577.50. `expenseAmounts()` in `src/lib/formatters.ts` picks the right field; use it anywhere an
-expense figure is shown.
-
-**Writable screens still compute nothing.** Budgets, goals and recurring all mutate now, and the
-temptation is to advance a progress bar locally so the UI feels quick. Don't: `percentUsed`,
-`progressPercent`, `safeToSpend` and every due date are server-computed. Mutate, invalidate, render
-what comes back. `.maestro/goals.yaml` asserts a server-returned percentage precisely to catch
-this.
-
-**SDK 54, not the latest.** Pinned to match the Expo Go build on the target device. The simulator
-installs a matching Expo Go per SDK and is unaffected; a development build would remove the
-coupling entirely (`KNOWN-GAPS.md`).
+Scope is deliberately what a phone is better at than a laptop: recording spend at the moment it
+happens, including photographing the receipt. Pricing, billing and admin stay web-only.
 
 ---
 
 ## 1. Invariants
 
-1. **API types come from the pinned contract** (`@tetengdev/gastosai-api-contract`) generated
-   into `src/api/generated/` — never hand-edited. `src/api/types.ts` only aliases those
-   generated shapes; it declares none of its own.
+1. **API types come from the pinned contract** (`@tetengdev/gastosai-api-contract`) generated into
+   `src/api/generated/` — never hand-edited. `src/api/types.ts` only aliases those generated
+   shapes; it declares none of its own.
 2. **No business logic on-device.** Render and send; never compute totals, budgets or
-   categorisation. Filtering an already-fetched list is fine — anything that changes a number
-   is the backend's.
-3. **Money is never floating point.** The API serves decimal amounts at full precision. Format
-   only at the display edge, via `src/lib/formatters.ts`.
-4. **Times render in `Asia/Manila`, always pinned explicitly.** A phone's timezone is arbitrary
-   — see §3.
+   categorisation. Filtering or sorting an already-fetched list is fine — anything that changes a
+   number is the backend's.
+3. **Money is never floating point.** The API serves decimal amounts at full precision. Format only
+   at the display edge, via `src/lib/formatters.ts`.
+4. **Times render in `Asia/Manila`, always pinned explicitly** — see §3.
 5. **Mobile is the contract's pacing constraint.** Installed apps run old versions for months;
    never rely on a backend change that removing a `/api/v1` endpoint would break.
 6. **No secrets in the bundle.** A shipped binary is fully inspectable. The only credential
@@ -85,8 +36,8 @@ coupling entirely (`KNOWN-GAPS.md`).
 - `expo-router` for navigation (file-based, `app/`).
 - TanStack Query over the generated client for server state.
 - `expo-secure-store` for the JWT. **Never `AsyncStorage`.**
-- `@tetengdev/gastosai-api-contract` — exact pinned version from GitHub Packages via
-  `.npmrc` with `${PACKAGE_TOKEN}`.
+- `@tetengdev/gastosai-api-contract` — exact pinned version from GitHub Packages via `.npmrc`
+  with `${PACKAGE_TOKEN}`.
 
 ---
 
@@ -100,100 +51,66 @@ The backend serves timestamps with `+08:00` and rolls days and months up in `Asi
 | `Asia/Manila` | **Jun 26** |
 | `America/New_York` | **Jun 25** |
 
-On web this is latent because users are in PH. On a phone it is real the first time someone
-travels — the expense lands in the wrong day and the wrong monthly total, silently.
+On web this is latent because users are in PH. On a phone it is real the first time someone travels
+— the expense lands in the wrong day and the wrong monthly total, silently.
 
 Every helper in `src/lib/formatters.ts` pins `APP_TIME_ZONE`. `nowForApi()` exists for the same
 reason on the way out: it emits Manila wall-clock, because sending the device's raw ISO string
-would record the wrong local time. `jest.globalSetup.js` forces `TZ=America/New_York` for the
-whole test run so these guards are exercised rather than passing by accident on a PHT machine.
+would record the wrong local time. `jest.globalSetup.js` forces `TZ=America/New_York` for the whole
+test run so these guards are exercised rather than passing by accident on a PHT machine.
 
 ---
 
 ## 4. Token storage
 
-`src/lib/tokenStore.ts` wraps `expo-secure-store` (iOS Keychain / Android Keystore). The web
-app keeps its JWT in `localStorage`; the naive port is `AsyncStorage`, which is **plaintext in
-the app sandbox** and readable on a rooted or jailbroken device and in backups.
+`src/lib/tokenStore.ts` wraps `expo-secure-store` (iOS Keychain / Android Keystore). The web app
+keeps its JWT in `localStorage`; the naive port is `AsyncStorage`, which is **plaintext in the app
+sandbox** and readable on a rooted or jailbroken device and in backups.
 
 This is the single most important thing not to copy verbatim from
 `gastosai-web/src/context/AuthContext.tsx`.
 
-Reading it is **async**, unlike web's synchronous `localStorage` — hence `ready` in
-`AuthContext`. Redirecting before that resolves flashes the login screen at a signed-in user on
-every cold start.
+Reading it is **async**, unlike web's synchronous `localStorage` — hence `ready` in `AuthContext`.
+Redirecting before that resolves flashes the login screen at a signed-in user on every cold start.
 
 ---
 
 ## 5. The contract loop
 
-- `npm run gen:api` reads `node_modules/@tetengdev/gastosai-api-contract/openapi.json` and
-  writes `src/api/generated/schema.d.ts`. Generated — never hand-edited.
-- `src/api/client.ts` is the only hand-written transport: base URL, auth header, error
-  surfacing. It declares no request/response types.
-- CI regenerates and fails if `src/api/generated/` is stale, using `git status --porcelain`
-  (a never-committed generated dir is untracked, which `git diff` ignores).
-- Upgrading the contract is deliberate: bump the pin, `gen:api`, fix the type errors, migrate.
-  The app-store cadence means this pin may lag web's — that is expected and fine.
+- `npm run gen:api` reads `node_modules/@tetengdev/gastosai-api-contract/openapi.json` and writes
+  `src/api/generated/schema.d.ts`. Generated — never hand-edited.
+- `src/api/client.ts` is the only hand-written transport: base URL, auth header, error surfacing.
+  It declares no request/response types.
+- CI regenerates and fails if `src/api/generated/` is stale, using `git status --porcelain` (a
+  never-committed generated dir is untracked, which `git diff` ignores).
+- Upgrading the contract is deliberate: bump the pin, `gen:api`, fix the type errors, migrate. The
+  app-store cadence means this pin may lag web's — expected and fine.
 
 ---
 
 ## 6. Layout
 
-```
-app/                       expo-router routes
-├── _layout.tsx            QueryClient + AuthProvider + Stack
-├── index.tsx              session gate -> (app) | login
-├── login.tsx              email/password (sign in + sign up)
-└── (app)/                 authenticated group, guarded in _layout
-    ├── _layout.tsx        <Tabs> + auth guard + floating add button
-    │                        4 tabs; everything else is href: null and pushed over them
-    ├── index.tsx          Home tab — month total, safe-to-spend, 4 recent
-    ├── expenses.tsx       Expenses tab — list + filter + pull-to-refresh
-    ├── budgets.tsx        Budgets tab — server-computed summary, set/edit/remove limits
-    ├── goals.tsx          Goals tab — server-computed progress, create/contribute/delete
-    ├── more/index.tsx     More tab — hub for everything below
-    ├── more/recurring.tsx   pushed — upcoming bills first, then all definitions
-    ├── more/categories.tsx  pushed — rename + delete
-    ├── more/alerts.tsx      pushed — read + dismiss; feeds the More tab badge
-    ├── more/chat.tsx        pushed — Ask AI
-    ├── expense/[id].tsx   pushed — edit + delete
-    ├── add-expense.tsx    pushed — manual entry
-    ├── quick-add.tsx      pushed — AI parse or receipt photo -> confirm -> save
-    └── settings.tsx       pushed from More — account, API base URL, sign out
-src/
-├── api/{client,auth,expenses,budgets,goals,types}.ts   types.ts only aliases generated shapes
-├── api/generated/                        never hand-edited
-├── context/AuthContext.tsx
-├── lib/{formatters,tokenStore}.ts
-└── components/{ui,ExpenseForm}.tsx
-```
+`app/` is expo-router file-based routing: `login.tsx`, then an authenticated `(app)/` group whose
+`_layout.tsx` holds the tab bar, the auth guard and the floating add button. Five tabs — Home,
+Expenses, Budgets, Goals, More — and everything else is `href: null`, pushed over them.
+
+`src/` is `api/` (transport + generated types), `context/`, `lib/`, `components/`, `theme/`.
+
+Run `tree app src -L 2` for the current shape rather than trusting a copy here — the previous
+hand-maintained tree drifted out of date within one release.
 
 ---
 
-## Before opening a PR
+## 7. Before opening a PR
 
 Run the gate in `ai/skills/shared/pre-pr-checklist.md`, or the `pre-pr` agent
-(`.claude/agents/pre-pr.md`) which executes it and reports a table.
+(`.claude/agents/pre-pr.md`) which executes it and reports a table. The checklist is authoritative;
+it is not summarised here.
 
-The item that is not automatable and is skipped most often: **runtime execution.** A green test
-suite is not evidence that the code was run. State in the PR body what you executed and what you
-observed.
-
-**A changed feature also ships a recording.** `./scripts/record-demo.sh <flow> "caption"` records a
-short demo flow on the simulator and sends it to Telegram, so the behaviour can be checked without
-a simulator to hand. Demo flows live in `.maestro/demo/` and are deliberately not tests — the
-assertions that guard behaviour stay in `.maestro/*.yaml`.
-
----
-
-## 7. Definition of done
-
-1. `npm run typecheck`, `npm run test:run` pass.
-2. Generated client matches the pinned contract (CI regen clean).
-3. No hand-written API types outside `generated/`.
-4. No float money, no unpinned date rendering, no on-device business logic, no shipped secret,
-   JWT in SecureStore.
+Two items are skipped most often, so they are worth naming: **runtime execution** (a green suite is
+not evidence the code was run) and **the demo recording** —
+`./scripts/record-demo.sh <flow> "caption"` records a short flow and sends it to Telegram, and
+sends nothing if anything is red.
 
 ---
 
@@ -205,9 +122,9 @@ pinned contract version.
 **Ask first:** bumping the pinned contract across a breaking change, adding a native dependency,
 raising the minimum supported app version, moving backend computation on-device.
 
-**Never do:** hand-edit `generated/`, compute business values on-device, float math on money,
-store the JWT insecurely, ship any non-public key, render a date without pinning the timezone,
-or drop support for an API version installed apps still call.
+**Never do:** hand-edit `generated/`, compute business values on-device, float math on money, store
+the JWT insecurely, ship any non-public key, render a date without pinning the timezone, or drop
+support for an API version installed apps still call.
 
 ---
 
@@ -221,6 +138,6 @@ npm run typecheck
 npm run test:run
 ```
 
-`EXPO_PUBLIC_API_URL` points at the backend. `localhost` does not resolve from a device or
-Android emulator — `src/api/client.ts` falls back to the Expo host's LAN IP so `npm start`
-works on a real phone without editing env files.
+`EXPO_PUBLIC_API_URL` points at the backend. `localhost` does not resolve from a device or Android
+emulator — `src/api/client.ts` falls back to the Expo host's LAN IP so `npm start` works on a real
+phone without editing env files.
