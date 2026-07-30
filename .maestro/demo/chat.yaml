@@ -14,6 +14,22 @@
 #
 # The assertions here are for pacing and safety, not coverage. What actually guards this behaviour
 # is `.maestro/chat.yaml`.
+#
+# ── Narration ───────────────────────────────────────────────────────────────────────────────────
+#
+# The `label:` on a step whose text starts `>> ` is a **caption burned into the video** over the
+# duration of that step. `record-demo.sh` reads the timings out of the Maestro run log afterwards,
+# so they cannot drift the way hand-written offsets would — a chat turn takes anywhere from eight
+# to sixty seconds, and fixed timings would desynchronise on the second run.
+#
+# Keep them short and plain ASCII. A caption is drawn with ffmpeg's `drawtext`, whose font has no
+# glyph for the peso sign or for arrows — those come out as an empty box, on camera, for a client.
+#
+# `@watch` lines below are the "what to look for" bullets on the title card.
+#
+# @watch The answer is a table, not a sentence
+# @watch It asks before it writes anything
+# @watch The expense lands in the list
 appId: host.exp.Exponent
 ---
 - runFlow: ../launch.yaml
@@ -23,6 +39,7 @@ appId: host.exp.Exponent
     id: "tab-home"
 - tapOn:
     id: "month-prev"
+    label: ">> A month with something to show"
 - extendedWaitUntil:
     visible: "(?i).*june 2026.*"
     timeout: 25000
@@ -36,6 +53,7 @@ appId: host.exp.Exponent
     element:
       id: "card-top"
     direction: DOWN
+    label: ">> Where the money actually went"
 - scrollUntilVisible:
     element:
       id: "month-label"
@@ -44,6 +62,7 @@ appId: host.exp.Exponent
 # ── Ask a question in plain English ─────────────────────────────────────────────────────────────
 - tapOn:
     id: "header-chat"
+    label: ">> Ask about your spending, from any tab"
 - extendedWaitUntil:
     visible: "(?i).*ask about your spending.*"
     timeout: 20000
@@ -54,6 +73,7 @@ appId: host.exp.Exponent
 - hideKeyboard
 - tapOn:
     id: "chat-send"
+    label: ">> Asking in plain English"
 # The reply is a table, not a sentence — this is the part worth filming.
 #
 # 120s, not 90s: `src/api/chat.ts` gives the request 90s of its own. A wait of exactly 90s expires
@@ -64,6 +84,7 @@ appId: host.exp.Exponent
     visible:
       id: "chat-result"
     timeout: 120000
+    label: ">> The answer is a table, not a sentence"
 - extendedWaitUntil:
     visible: "₱3,347.50"
     timeout: 20000
@@ -71,6 +92,7 @@ appId: host.exp.Exponent
 # ── Ask it to record an expense, and approve what it proposes ───────────────────────────────────
 - tapOn:
     id: "chat-input"
+    label: ">> Now ask it to record an expense"
 - inputText: "add lunch 150 at Jollibee"
 - hideKeyboard
 - tapOn:
@@ -80,8 +102,10 @@ appId: host.exp.Exponent
     visible:
       id: "chat-preview"
     timeout: 120000
+    label: ">> It asks first - nothing is written yet"
 - tapOn:
     id: "chat-confirm"
+    label: ">> Approved"
 # Confirming is a second chat call, with the same 90s client timeout — so the same 120s applies.
 - extendedWaitUntil:
     visible: "(?i).*done.*"
@@ -90,13 +114,18 @@ appId: host.exp.Exponent
 # ── It really landed ────────────────────────────────────────────────────────────────────────────
 - tapOn:
     id: "tab-expenses"
+    label: ">> And it really landed"
 - extendedWaitUntil:
     visible: "(?i).*₱150.00.*"
     timeout: 20000
 
 # ── Close on the dashboard, the way it opened ───────────────────────────────────────────────────
+#
+# Captioned so the clip does not end holding "And it really landed" over an unrelated screen: the
+# last caption stays up until the video ends, so the final beat needs its own.
 - tapOn:
     id: "tab-home"
+    label: ">> Back where we started"
 - extendedWaitUntil:
     visible: "(?i).*spent.*"
     timeout: 20000

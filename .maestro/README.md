@@ -67,6 +67,23 @@ development build. If it ever moves to a dev build, only `appId` changes.
 - Each flow cleans up what it creates, so runs are repeatable against a shared dev database.
 - Keep flows short and single-purpose; a long flow that fails in the middle tells you little.
 
+### Narration, in `demo/` flows only
+
+A demo flow is filmed and sent to people with no context, so it carries its own captions:
+
+- **`label: ">> …"` on a step becomes a caption** burned over the video for that step's duration.
+  `record-demo.sh` reads the timings out of the Maestro run log afterwards, which is the only way
+  they stay in sync — a chat turn takes anywhere from eight to sixty seconds, so any hand-written
+  offset desynchronises on the next run. A caption holds until the *next* one starts, so label the
+  beats you want, not every step.
+- **`# @watch <line>` in the flow's header** becomes a "watch for" bullet on the title card. It
+  lives with the flow so it is neither retyped nor forgotten on each invocation.
+- **Plain ASCII only.** Captions are drawn by ffmpeg's `drawtext`, and the font has no glyph for `₱`
+  or for arrows — a missing glyph renders as an empty box, on camera, in front of a client. This is
+  why the marker is `>>` and not `▸`.
+- **The last caption holds to the end of the clip**, so give the closing beat its own label rather
+  than letting the previous one sit over an unrelated screen.
+
 ## iOS specifics that cost time to learn
 
 - `- back` is Android's hardware button and is a no-op here.

@@ -117,7 +117,17 @@ setting up a simulator, which is the whole point.
 - **A demo flow is not a test.** It walks the new thing in 30–60 seconds. The assertions that
   actually guard the behaviour live in `.maestro/*.yaml`; a demo that doubles as a test tends to be
   too long to watch and too shallow to trust.
-- The caption should say **what to look at**, not just what shipped.
+- **The clip must narrate itself.** A raw recording is a person tapping a phone: nobody watching
+  knows which feature is on trial or what they were meant to notice, and the Telegram message
+  caption does not travel with the file once it is forwarded or screenshotted. So a demo flow
+  carries narration — a `label:` starting `>> ` on each step it wants captioned, plus `# @watch`
+  lines in its header for the title card. See `.maestro/README.md`.
+- **Narration needs `brew install ffmpeg-full`, not `ffmpeg`.** Homebrew's plain formula is built
+  without libfreetype and so has no `drawtext` filter at all. The script treats titling as cosmetic
+  and falls through silently, which is exactly how every clip up to v0.8.0 shipped bare — it warns
+  loudly now, but check the output says `narrating` rather than trusting that a clip arrived.
+- The caption should say **what to look at**, not just what shipped. It becomes the title card's
+  headline, so keep it to a short phrase rather than a sentence.
 - Telegram rejects bot uploads over 50 MB. A minute of simulator video is a few MB; the full suite
   is not — that is why demos are short and single-purpose.
 - **The recording shows real account data and goes to a chat that keeps it.** Deliberate, never
