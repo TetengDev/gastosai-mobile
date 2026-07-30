@@ -108,3 +108,23 @@ types that response.
 `GET /budget-rules/summary` is rendered; editing bucket splits is not. That is a deliberate,
 infrequent, wide decision that belongs on a larger screen. Category `bucket` is likewise shown but
 not editable.
+
+## 8. Confirming an assistant action re-sends English, not structure
+
+`POST /ai/chat` can answer `type: "preview"` — "I am about to create this expense, confirm?" —
+carrying the tool name and params it proposes. There is no structured way to say yes. Both clients
+rebuild a **natural-language sentence** from those params and post it back with `mode: "execute"`
+for the backend to parse again:
+
+```
+create a budget for ${categoryName} ₱${amountLimit} month ${month}
+```
+
+So `buildConfirmMessage` is duplicated in `gastosai-web/src/components/chat/chatActions.ts` and
+`gastosai-mobile/src/components/chat/chatActions.ts`, and the two must phrase things identically.
+If they drift, one client silently fails to confirm — the user taps Confirm and nothing happens,
+with no error, because the sentence simply did not parse into the intended tool call.
+
+The fix is backend-owned: accept the `toolName` and `params` the server itself just proposed,
+rather than a rephrasing of them. Until then, changing the phrasing in one client is a breaking
+change to the other.

@@ -14,4 +14,12 @@ import type { ChatRequest, ChatResponse } from "./types";
  * instance) rather than only answering. Render what comes back; never re-interpret it.
  */
 export const sendChat = (body: ChatRequest) =>
-  api.post<ChatResponse>("/ai/chat", body).then((r) => r.data);
+  api
+    .post<ChatResponse>("/ai/chat", body, {
+      // The shared 20s default is sized for CRUD. A chat turn is a model call plus, often, a tool
+      // execution against the database — 20s is routinely not enough, and axios reports the abort
+      // with no response, which `errorMessage` then renders as "Cannot reach the server. Check your
+      // connection." The server was fine; the client gave up. Same reasoning as `/ai/vision`.
+      timeout: 90_000,
+    })
+    .then((r) => r.data);

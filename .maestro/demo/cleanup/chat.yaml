@@ -1,0 +1,40 @@
+# Undoes what the filmed demo created. Runs *after* the recording stops.
+#
+# A demo has to leave the account as it found it or the second run shows two lunches and the third
+# shows three. But tidying up is not part of the product, so it does not belong on camera —
+# `record-demo.sh` stops the recorder, then runs this if a file of the same name exists here.
+#
+# Deliberately tolerant: if the demo failed before creating anything, there is nothing to remove
+# and this should not turn a clean failure into a confusing second one. Hence the `runFlow when`.
+appId: host.exp.Exponent
+---
+- launchApp:
+    clearState: false
+- runFlow:
+    when:
+      notVisible: "(?i).*spent.*"
+    commands:
+      - tapOn: "gastosai-mobile"
+      - extendedWaitUntil:
+          visible: "(?i).*spent.*"
+          timeout: 60000
+
+- tapOn:
+    id: "tab-expenses"
+
+- runFlow:
+    when:
+      visible: "(?i).*₱150.00.*"
+    commands:
+      - tapOn:
+          id: "expense-row-first"
+      - assertVisible: "Edit expense"
+      # Checked before deleting: the demo created a ₱150 expense, and anything else on this row
+      # is not ours to remove.
+      - assertVisible: "150"
+      - tapOn: "Delete expense"
+      - assertVisible: "Delete expense?"
+      - tapOn: "Delete"
+      - extendedWaitUntil:
+          notVisible: "(?i).*₱150.00.*"
+          timeout: 20000
