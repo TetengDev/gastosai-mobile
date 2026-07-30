@@ -2,11 +2,12 @@
   "expo": {
     "name": "GastosAI",
     "slug": "gastosai-mobile",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.tetengdev.gastosai",
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "GastosAI uses the camera to photograph a receipt and read the amount, so you can record a purchase without typing it in.",
@@ -14,13 +15,15 @@
       }
     },
     "android": {
+      "package": "com.tetengdev.gastosai",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#003c33",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": []
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -30,7 +33,12 @@
       "expo-router",
       "expo-secure-store",
       "expo-font",
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          "microphonePermission": false
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -38,7 +46,9 @@
           "imageWidth": 180,
           "resizeMode": "contain",
           "backgroundColor": "#1f8a5b",
-          "dark": { "backgroundColor": "#003c33" }
+          "dark": {
+            "backgroundColor": "#003c33"
+          }
         }
       ]
     ]
