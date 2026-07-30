@@ -102,11 +102,14 @@ appId: host.exp.Exponent
 - hideKeyboard
 - tapOn:
     id: "chat-send"
-# The model has to run a tool, so this waits far longer than a normal UI assertion.
+# The model has to run a tool, so this waits far longer than a normal UI assertion — and longer
+# than the request's own 90s timeout in `src/api/chat.ts`. Matching the two exactly means the wait
+# dies in the same instant the client aborts, so a slow reply that *would* have rendered reports as
+# a missing element instead. This passed at 90s only because this query happens to be quick.
 - extendedWaitUntil:
     visible:
       id: "chat-result"
-    timeout: 90000
+    timeout: 120000
 - assertVisible: "(?i).*meal plan.*"
 # The figure itself. ₱3,347.50 is June's Meal Plan total, computed server-side — the client cannot
 # invent it, and rendering only the caption cannot produce it.
@@ -122,4 +125,4 @@ appId: host.exp.Exponent
     id: "chat-send"
 - extendedWaitUntil:
     visible: "No results found."
-    timeout: 90000
+    timeout: 120000

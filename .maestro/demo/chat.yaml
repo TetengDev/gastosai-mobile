@@ -1,75 +1,102 @@
-# Demo: chat answers with data, and confirms before it writes.
+# Demo: asking GastosAI about your spending, and letting it record one for you.
 #
-# **A demo, not a test.** It exists to be watched — the assertions here only keep it on the right
-# screen and pace it so the recording is followable. The real assertions live in
-# `.maestro/chat.yaml`, which is what actually guards the behaviour.
+# **This flow is filmed.** It is written to be watched by someone who has never seen the app — a
+# client, not a reviewer — so it shows the product working and nothing else. Three rules follow
+# from that:
 #
-# Kept to roughly a minute: `scripts/record-demo.sh` sends the result to Telegram, which rejects
-# bot uploads over 50 MB, and a clip nobody watches to the end proves nothing anyway.
+#   1. **No housekeeping on camera.** The expense this creates is removed by
+#      `.maestro/demo/cleanup/chat.yaml`, which `record-demo.sh` runs *after* the recording stops.
+#      Watching someone tidy up is not a demo.
+#   2. **It opens and closes on the dashboard** — a full, attractive screen rather than whatever
+#      the previous run happened to leave behind.
+#   3. **June, not the current month.** The demo account's data ends in June; opening on an empty
+#      month would be honest and useless.
 #
-# It asks about **June** because the demo account's data ends there — asking about the current
-# month returns an empty result, which is correct but makes for a confusing demo.
-#
-# Creates one expense through the confirm card and deletes it, so the account is left as found.
+# The assertions here are for pacing and safety, not coverage. What actually guards this behaviour
+# is `.maestro/chat.yaml`.
 appId: host.exp.Exponent
 ---
 - runFlow: ../launch.yaml
 
-# 1. Chat is one tap from anywhere — the v0.7 change.
+# ── Open on the dashboard, on a month with something to show ────────────────────────────────────
+- tapOn:
+    id: "tab-home"
+- tapOn:
+    id: "month-prev"
+- extendedWaitUntil:
+    visible: "(?i).*june 2026.*"
+    timeout: 25000
+# Let the cards settle and be seen: the insight sentence is the first thing worth reading.
+- extendedWaitUntil:
+    visible: "(?i).*38.71% lower.*"
+    timeout: 30000
+
+# Scroll the dashboard so the viewer sees there is substance here, then return to the top.
+- scrollUntilVisible:
+    element:
+      id: "card-top"
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      id: "month-label"
+    direction: UP
+
+# ── Ask a question in plain English ─────────────────────────────────────────────────────────────
 - tapOn:
     id: "header-chat"
 - extendedWaitUntil:
     visible: "(?i).*ask about your spending.*"
     timeout: 20000
 
-# 2. A question that returns data. Before v0.8 this showed only the caption.
 - tapOn:
     id: "chat-input"
 - inputText: "How much did I spend on food in June 2026?"
 - hideKeyboard
 - tapOn:
     id: "chat-send"
+# The reply is a table, not a sentence — this is the part worth filming.
+#
+# 120s, not 90s: `src/api/chat.ts` gives the request 90s of its own. A wait of exactly 90s expires
+# in the same instant the client aborts, so a slow-but-successful reply can never be seen and every
+# slow turn reports as "the element never rendered" — which is what it looked like, for an hour.
+# The UI wait has to outlast the request it is waiting on.
 - extendedWaitUntil:
     visible:
       id: "chat-result"
-    timeout: 60000
-# Let the reply sit on screen long enough to read in the recording.
+    timeout: 120000
 - extendedWaitUntil:
-    visible: "(?i).*meal plan.*"
+    visible: "₱3,347.50"
     timeout: 20000
 
-# 3. A request that writes. The assistant proposes; the app asks first.
+# ── Ask it to record an expense, and approve what it proposes ───────────────────────────────────
 - tapOn:
     id: "chat-input"
 - inputText: "add lunch 150 at Jollibee"
 - hideKeyboard
 - tapOn:
     id: "chat-send"
+# It asks first. Nothing is written until the user agrees — the point of the card.
 - extendedWaitUntil:
     visible:
       id: "chat-preview"
-    timeout: 60000
+    timeout: 120000
 - tapOn:
     id: "chat-confirm"
+# Confirming is a second chat call, with the same 90s client timeout — so the same 120s applies.
 - extendedWaitUntil:
     visible: "(?i).*done.*"
-    timeout: 60000
+    timeout: 120000
 
-# 4. It really landed — the expense list shows it.
+# ── It really landed ────────────────────────────────────────────────────────────────────────────
 - tapOn:
     id: "tab-expenses"
 - extendedWaitUntil:
     visible: "(?i).*₱150.00.*"
     timeout: 20000
 
-# 5. Clean up, so the demo can be re-run and the account is left as it was found.
+# ── Close on the dashboard, the way it opened ───────────────────────────────────────────────────
 - tapOn:
-    id: "expense-row-first"
-- assertVisible: "Edit expense"
-- assertVisible: "150"
-- tapOn: "Delete expense"
-- assertVisible: "Delete expense?"
-- tapOn: "Delete"
+    id: "tab-home"
 - extendedWaitUntil:
-    notVisible: "(?i).*₱150.00.*"
+    visible: "(?i).*spent.*"
     timeout: 20000

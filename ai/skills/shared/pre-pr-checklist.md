@@ -109,6 +109,11 @@ The script records the simulator while a short flow in `.maestro/demo/` runs, th
 to Telegram. Written evidence is a claim; a clip is something the reviewer can check without
 setting up a simulator, which is the whole point.
 
+- **Nothing is sent unless everything is green.** The script runs typecheck, lint and the unit
+  tests before it records, and refuses to send if the demo flow itself fails — the recording is
+  kept locally for debugging instead. A clip arriving in Telegram therefore *means* the change
+  works, which is the only thing that makes the channel worth watching. A clip of a failure, even
+  a clearly labelled one, teaches people to skim.
 - **A demo flow is not a test.** It walks the new thing in 30–60 seconds. The assertions that
   actually guard the behaviour live in `.maestro/*.yaml`; a demo that doubles as a test tends to be
   too long to watch and too shallow to trust.

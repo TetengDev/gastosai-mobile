@@ -4,10 +4,16 @@
 # Tapping the entry under "Recently opened" needs no URL, so nothing here is machine-specific
 # (the dev-server address moves with DHCP).
 #
-# The readiness check asserts on "spent this month", NOT on "Home". Expo Go's own shell has a tab
-# labelled "Home", so asserting on that passed while the flow was still sitting on Expo Go's
-# launcher — a false pass that made every later step fail for the wrong reason. Assert on
-# something only this app renders.
+# Readiness is the **tab bar**, by test id — not any particular screen's text.
+#
+# It used to assert "spent this month". That is Home's sub-label *in the current month only*, so
+# the probe silently depended on which tab the previous run happened to leave the app on, and on
+# which month was selected. A demo-cleanup flow that ended on Expenses was enough to break every
+# flow at launch.
+#
+# `tab-home` is an id this app sets, present on every authenticated screen and independent of month
+# and tab. Matching Expo Go's own "Home" *text* was the original trap this comment warned about;
+# an id cannot collide with it.
 #
 # Sign-in is conditional because the JWT in the Keychain expires. Every flow used to assume a
 # session that some earlier manual run happened to leave behind; the day it lapsed, all four flows
@@ -27,15 +33,33 @@ env:
 - launchApp:
     clearState: false
 
+# Expo Go remembers a failed load and resumes straight back onto it, so restarting Metro leaves
+# every later run stuck on "There was a problem running the requested app" — `launchApp` alone does
+# not clear it, and the failure surfaces as a confusing assertion error further down. "Go Home"
+# returns to the launcher, where the normal path below picks the project up again.
 - runFlow:
     when:
-      notVisible: "(?i).*spent this month.*"
+      visible: "(?i).*problem running the requested app.*"
+    commands:
+      - tapOn: "Go Home"
+
+- runFlow:
+    when:
+      notVisible:
+        id: "tab-home"
     commands:
       - tapOn: "gastosai-mobile"
-      # The JS bundle has to download and evaluate before anything is assertable. Either screen
-      # settles this wait — which one arrives decides whether the next block runs.
+      # The JS bundle has to download and evaluate before anything is assertable. Either the tab
+      # bar or the sign-in screen settles this wait — which one arrives decides whether the next
+      # block runs.
+      #
+      # Both alternatives are wrapped in `.*` because **Maestro matches a text regex against the
+      # whole element, not a substring**. The subtitle renders as "Sign in to track your spending."
+      # *with the full stop*, so a bare `sign in to track your spending` matches nothing — and
+      # neither does `.*spent.*`, since the word on screen is "spending". This waited the full 90s
+      # on a screen that was sitting there, correctly rendered, the entire time.
       - extendedWaitUntil:
-          visible: "(?i)(sign in|.*spent this month.*)"
+          visible: "(?i)(.*sign in to track your spending.*|.*spent.*)"
           timeout: 90000
 
 # Matched on the subtitle rather than "Sign in": that string is both the header title and the
@@ -57,7 +81,8 @@ env:
       - tapOn:
           id: "login-submit"
       - extendedWaitUntil:
-          visible: "(?i).*spent this month.*"
+          visible:
+            id: "tab-home"
           timeout: 30000
       # iOS offers to save the password to the Keychain. It is a system sheet drawn over the app,
       # so it swallows the next tap and the flow fails one step later on an assertion that has

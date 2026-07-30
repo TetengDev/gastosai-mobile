@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -17,7 +18,22 @@ import type { ActionPreview } from "../../../src/components/chat/PreviewCard";
 import ResultView from "../../../src/components/chat/ResultView";
 import { affectedQueryKeys, buildConfirmMessage } from "../../../src/components/chat/chatActions";
 import { Body, ErrorText } from "../../../src/components/ui";
+import { useMonth } from "../../../src/context/MonthContext";
 import { useTheme } from "../../../src/theme/useTheme";
+
+/**
+ * A timeout is not a connectivity problem, and saying so sends people to check their wifi.
+ *
+ * axios aborts with no `response`, which `errorMessage` reasonably reads as "unreachable" — right
+ * for a CRUD call, wrong for a chat turn that is simply slow.
+ */
+function chatError(error: unknown): string | null {
+  if (!error) return null;
+  if (axios.isAxiosError(error) && error.code === "ECONNABORTED") {
+    return "That took too long to answer. Try asking again.";
+  }
+  return errorMessage(error);
+}
 
 interface Turn {
   role: "user" | "assistant";
@@ -51,6 +67,16 @@ export default function Chat() {
   const t = useTheme();
   const qc = useQueryClient();
   const scroller = useRef<ScrollView>(null);
+  const { resetToCurrent } = useMonth();
+
+  /**
+   * Which tool the in-flight confirmation is about to execute.
+   *
+   * The execute reply comes back as `type: "action"`, which carries no `toolName` — so once
+   * `onSuccess` runs, the only thing that still knows what the user approved is the card they
+   * tapped. Held in a ref rather than state because nothing renders from it.
+   */
+  const confirmingTool = useRef<string | undefined>(undefined);
 
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
@@ -108,6 +134,16 @@ export default function Chat() {
       });
       appendReply(res);
       invalidateFor(undefined);
+
+      // A new expense is dated *now*. Approving one while browsing June left the user looking at a
+      // June-scoped list that could not contain it — filed correctly, apparently lost. `quick-add`
+      // and `add-expense` already guard this; the chat write path was the third way in and missed
+      // it. Only an expense moves the month: a budget or a goal is not dated today.
+      if (confirmingTool.current === "create_expense") resetToCurrent();
+      confirmingTool.current = undefined;
+    },
+    onError: () => {
+      confirmingTool.current = undefined;
     },
   });
 
@@ -133,6 +169,7 @@ export default function Chat() {
       ]);
       return;
     }
+    confirmingTool.current = preview.toolName;
     confirm.mutate({ conversationId, message, mode: "execute" });
   };
 
@@ -234,13 +271,7 @@ export default function Chat() {
             Thinking…
           </Body>
         ) : null}
-        <ErrorText>
-          {ask.isError
-            ? errorMessage(ask.error)
-            : confirm.isError
-              ? errorMessage(confirm.error)
-              : null}
-        </ErrorText>
+        <ErrorText>{chatError(ask.error ?? confirm.error)}</ErrorText>
       </ScrollView>
 
       <View
