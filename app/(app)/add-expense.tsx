@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { errorMessage } from "../../src/api/client";
+import { useMonth } from "../../src/context/MonthContext";
+import { useNavOrigin } from "../../src/context/NavOriginContext";
 import { createExpense } from "../../src/api/expenses";
 import ExpenseForm from "../../src/components/ExpenseForm";
 
@@ -19,13 +21,19 @@ export default function AddExpense() {
     date?: string;
   }>();
 
+  const { resetToCurrent } = useMonth();
+  const origin = useNavOrigin();
+
   const mutation = useMutation({
     mutationFn: createExpense,
     onSuccess: async () => {
       // Both the list and the month total are now stale.
       await queryClient.invalidateQueries({ queryKey: ["expenses"] });
       await queryClient.invalidateQueries({ queryKey: ["report", "monthly"] });
-      router.back();
+      // Same reason as quick-add: a new expense is dated today, so a user who was browsing an
+      // earlier month would save successfully and see nothing.
+      resetToCurrent();
+      router.navigate(origin as never);
     },
     onError: (e) => setError(errorMessage(e, "Could not save the expense.")),
   });

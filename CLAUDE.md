@@ -4,7 +4,7 @@ Expo (SDK 54) + React Native + TypeScript. A capture surface over the gastosai b
 consuming the **same published contract** as web. Read `CONTRACT.md` first, then
 `KNOWN-GAPS.md`.
 
-**Status: v0.6.** The contract loop, auth, the full capture loop (add / edit / delete), AI
+**Status: v0.7.** The contract loop, auth, the full capture loop (add / edit / delete), AI
 quick-add and **receipt scanning** exist, plus **writable** budgets and goals, recurring bills,
 alerts, categories and AI chat. Navigation is a five-tab bar with a floating add button; the web
 design system is mirrored in `src/theme/`. Scope is deliberately the thing a phone is better at
@@ -27,6 +27,16 @@ API always supported this and only the client ignored it.
 control for them, and `router.back()` pops to the *initial tab* rather than where you came from.
 `pushedScreens` in `app/(app)/_layout.tsx` declares each screen's parent for that reason. Add a
 screen there and it gets a working way out; add one elsewhere and it will not have one.
+
+**A pushed screen must never call `router.back()`.** These screens are tab siblings, so popping
+returns to the *initial* tab — saving an edit opened from Expenses dropped the user on Home. Use
+`useNavOrigin()` (`src/context/NavOriginContext.tsx`), which the layout keeps pointed at the tab you
+came from. The same reasoning gives chat, reachable from all five tabs, a back button that returns
+to the right one.
+
+**Recording an expense snaps the month back to today.** A new expense is dated now, so saving one
+while browsing June filed it correctly and showed nothing. `resetToCurrent()` on the month context
+is called from both capture paths.
 
 **Amounts render from `amountInBaseCurrency`, not `amount`.** `amount` is in the expense's own
 currency, so a ¥1,500 row displayed as "₱1,500.00" while its server-computed day total read

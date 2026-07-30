@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import { useRef } from "react";
 import { Redirect, Tabs, usePathname, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { listAlerts, unreadCount } from "../../src/api/alerts";
 import { useAuth } from "../../src/context/AuthContext";
 import { MonthProvider } from "../../src/context/MonthContext";
+import { NavOriginProvider } from "../../src/context/NavOriginContext";
 import { FloatingAddButton } from "../../src/components/ui";
 import { useTheme } from "../../src/theme/useTheme";
 
@@ -31,7 +33,16 @@ const pushedScreens = [
   { name: "more/chat", title: "Ask AI", parent: "/(app)/more" },
 ] as const;
 
-/** The back control these screens would have had if they were stack routes. */
+/**
+ * The back control these screens would have had if they were stack routes.
+ *
+ * `parent` is where back goes. For most screens it is the fixed value declared in `pushedScreens`;
+ * for chat, which is openable from all five tabs, the layout passes the tab you came from.
+ *
+ * An earlier attempt carried the origin as a `from` route param. It does not survive: these
+ * screens are tab siblings, and a push between siblings does not attach params the way a stack
+ * push does — back silently fell through to the declared parent and always landed on More.
+ */
 function HeaderBack({ parent }: { parent: string }) {
   const t = useTheme();
   const router = useRouter();
@@ -46,6 +57,31 @@ function HeaderBack({ parent }: { parent: string }) {
       style={{ marginLeft: 8, paddingRight: 8 }}
       // `navigate`, not `push`: returning to a parent should not stack another copy of it.
       onPress={() => router.navigate(parent as never)}
+    />
+  );
+}
+
+/**
+ * Ask-AI, reachable from every tab.
+ *
+ * Web mounts its chat widget at the app root so it floats on every page; on mobile it was three
+ * taps down inside More. The bottom-right corner is already the capture button and must stay that
+ * way, so this takes the header instead — one tap from anywhere, which is what the floating widget
+ * actually buys.
+ */
+function HeaderChat() {
+  const t = useTheme();
+  const router = useRouter();
+  return (
+    <Ionicons
+      testID="header-chat"
+      accessibilityRole="button"
+      accessibilityLabel="Ask AI"
+      name="sparkles-outline"
+      size={21}
+      color={t.colors.text2}
+      style={{ marginRight: 16, paddingLeft: 8 }}
+      onPress={() => router.push("/(app)/more/chat")}
     />
   );
 }
@@ -70,6 +106,10 @@ export default function AppLayout() {
   const router = useRouter();
   const pathname = usePathname();
 
+  // The tab chat should return to. A ref rather than state: it must not itself trigger a render,
+  // and it is only ever read at the moment the back button is pressed.
+  const lastTab = useRef("/(app)");
+
   // Same query key as the More screen, so the badge and the list share one fetch rather than
   // racing each other. `enabled` keeps it from firing on the login screen.
   const alerts = useQuery({ queryKey: ["alerts"], queryFn: listAlerts, enabled: !!user });
@@ -85,8 +125,20 @@ export default function AppLayout() {
   // and a floating + would sit on top of its list.
   const isTabScreen = ["/", "/expenses", "/budgets", "/goals"].includes(pathname);
 
+  // Where chat should return to. Chat is reachable from every tab, so a fixed parent would send
+  // you to More no matter where you opened it — the "lose my place" complaint one level down.
+  const tabPaths: Record<string, string> = {
+    "/": "/(app)",
+    "/expenses": "/(app)/expenses",
+    "/budgets": "/(app)/budgets",
+    "/goals": "/(app)/goals",
+    "/more": "/(app)/more",
+  };
+  if (tabPaths[pathname]) lastTab.current = tabPaths[pathname];
+
   return (
-    <MonthProvider>
+    <NavOriginProvider value={lastTab.current}>
+      <MonthProvider>
       <Tabs
         screenOptions={{
           headerStyle: { backgroundColor: t.colors.page },
@@ -116,6 +168,7 @@ export default function AppLayout() {
             tabBarButtonTestID: "tab-home",
             title: "Home",
             tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" color={color} size={size} />,
+            headerRight: () => <HeaderChat />,
             // Settings used to hang off this header. It moved into More, so Home's chrome now
             // carries nothing that isn't about spending.
           }}
@@ -128,6 +181,7 @@ export default function AppLayout() {
             tabBarButtonTestID: "tab-expenses",
             title: "Expenses",
             tabBarIcon: ({ color, size }) => <Ionicons name="list-outline" color={color} size={size} />,
+            headerRight: () => <HeaderChat />,
           }}
         />
         <Tabs.Screen
@@ -138,6 +192,7 @@ export default function AppLayout() {
             tabBarButtonTestID: "tab-budgets",
             title: "Budgets",
             tabBarIcon: ({ color, size }) => <Ionicons name="pie-chart-outline" color={color} size={size} />,
+            headerRight: () => <HeaderChat />,
           }}
         />
         <Tabs.Screen
@@ -148,6 +203,7 @@ export default function AppLayout() {
             tabBarButtonTestID: "tab-goals",
             title: "Goals",
             tabBarIcon: ({ color, size }) => <Ionicons name="flag-outline" color={color} size={size} />,
+            headerRight: () => <HeaderChat />,
           }}
         />
 
@@ -159,6 +215,7 @@ export default function AppLayout() {
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="ellipsis-horizontal" color={color} size={size} />
             ),
+            headerRight: () => <HeaderChat />,
             // Surfaces an unread alert without the user having to open the hub to find it.
             tabBarBadge: unread > 0 ? unread : undefined,
             tabBarBadgeStyle: { backgroundColor: t.colors.danger, fontSize: 11 },
@@ -178,7 +235,13 @@ export default function AppLayout() {
           <Tabs.Screen
             key={name}
             name={name}
-            options={{ href: null, title, headerLeft: () => <HeaderBack parent={parent} /> }}
+            options={{
+              href: null,
+              title,
+              headerLeft: () => (
+                <HeaderBack parent={name === "more/chat" ? lastTab.current : parent} />
+              ),
+            }}
           />
         ))}
       </Tabs>
@@ -191,6 +254,7 @@ export default function AppLayout() {
           onPress={() => router.push("/(app)/quick-add")}
         />
       ) : null}
-    </MonthProvider>
+      </MonthProvider>
+    </NavOriginProvider>
   );
 }

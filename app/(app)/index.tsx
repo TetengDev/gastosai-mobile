@@ -13,6 +13,15 @@ import {
 } from "../../src/lib/formatters";
 import { useMonth } from "../../src/context/MonthContext";
 import { Body, Button, Card, ErrorText, MonthStepper, Skeleton, StatTile } from "../../src/components/ui";
+import InsightCard from "../../src/components/dashboard/InsightCard";
+import TrendCard from "../../src/components/dashboard/TrendCard";
+import {
+  BudgetOverviewCard,
+  CategoryBreakdownCard,
+  GoalProgressCard,
+  TopExpensesCard,
+  UpcomingBillsCard,
+} from "../../src/components/dashboard/cards";
 import { useTheme } from "../../src/theme/useTheme";
 
 export default function Dashboard() {
@@ -89,7 +98,14 @@ export default function Dashboard() {
             sub={isCurrentMonth ? "spent this month" : "spent"}
           />
         )}
-        <ErrorText>{report.isError ? errorMessage(report.error) : null}</ErrorText>
+        {report.isError ? (
+          <>
+            <ErrorText>{errorMessage(report.error, "Could not reach the server.")}</ErrorText>
+            {/* Every other screen offered "Try again"; Home only showed the message, leaving
+                pull-to-refresh as the undiscoverable way out. */}
+            <Button testID="home-retry" size="sm" variant="secondary" title="Try again" onPress={refreshAll} />
+          </>
+        ) : null}
 
         {monthIsEmpty && latestMonthWithData && latestMonthWithData !== month ? (
           <>
@@ -118,6 +134,16 @@ export default function Dashboard() {
           />
         </Card>
       ) : null}
+
+      {/* Below the fold by design: the two cards above answer "what have I spent" at a glance, and
+          everything from here down is the report you scroll to read. */}
+      <InsightCard month={month} />
+      <TrendCard month={month} />
+      <UpcomingBillsCard month={month} />
+      <BudgetOverviewCard month={month} />
+      <TopExpensesCard month={month} />
+      <GoalProgressCard />
+      <CategoryBreakdownCard />
 
       <Card>
         <Text style={{ fontFamily: t.fonts.bodySemi, fontSize: 15, color: t.colors.textHi }}>

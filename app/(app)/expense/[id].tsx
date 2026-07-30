@@ -3,6 +3,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, View } from "react-native";
 import { errorMessage } from "../../../src/api/client";
+import { useNavOrigin } from "../../../src/context/NavOriginContext";
 import { deleteExpense, getExpense, updateExpense } from "../../../src/api/expenses";
 import ExpenseForm from "../../../src/components/ExpenseForm";
 import { Button, ErrorText } from "../../../src/components/ui";
@@ -12,6 +13,7 @@ export default function EditExpense() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const expenseId = Number(id);
   const router = useRouter();
+  const origin = useNavOrigin();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const t = useTheme();
@@ -36,7 +38,7 @@ export default function EditExpense() {
     mutationFn: (body: Parameters<typeof updateExpense>[1]) => updateExpense(expenseId, body),
     onSuccess: async () => {
       await invalidateAll();
-      router.back();
+      router.navigate(origin as never);
     },
     onError: (e) => setError(errorMessage(e, "Could not save the changes.")),
   });
@@ -45,7 +47,7 @@ export default function EditExpense() {
     mutationFn: () => deleteExpense(expenseId),
     onSuccess: async () => {
       await invalidateAll();
-      router.back();
+      router.navigate(origin as never);
     },
     onError: (e) => setError(errorMessage(e, "Could not delete the expense.")),
   });

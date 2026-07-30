@@ -10,6 +10,8 @@ import { createExpense, parseExpense } from "../../src/api/expenses";
 import type { ParsedExpenseResult } from "../../src/api/types";
 import { formatCurrency, formatDate } from "../../src/lib/formatters";
 import { Body, Button, Card, ErrorText, Field, Pill } from "../../src/components/ui";
+import { useMonth } from "../../src/context/MonthContext";
+import { useNavOrigin } from "../../src/context/NavOriginContext";
 import { useTheme } from "../../src/theme/useTheme";
 import { accents } from "../../src/theme";
 
@@ -29,6 +31,8 @@ export default function QuickAdd() {
   const [quotaReached, setQuotaReached] = useState(false);
   const [permissionBlocked, setPermissionBlocked] = useState(false);
   const t = useTheme();
+  const { resetToCurrent } = useMonth();
+  const origin = useNavOrigin();
 
   const parse = useMutation({
     mutationFn: parseExpense,
@@ -51,7 +55,10 @@ export default function QuickAdd() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["expenses"] });
       await queryClient.invalidateQueries({ queryKey: ["report", "monthly"] });
-      router.back();
+      // A new expense is dated today. If the user was browsing an earlier month, stay there and
+      // the row they just saved is invisible — filed correctly, but apparently lost.
+      resetToCurrent();
+      router.navigate(origin as never);
     },
     onError: (e) => setError(errorMessage(e, "Could not save the expense.")),
   });

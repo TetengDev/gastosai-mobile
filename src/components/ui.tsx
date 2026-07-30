@@ -44,15 +44,18 @@ export function Card({
   children,
   tone = "default",
   style,
+  testID,
 }: {
   children: ReactNode;
   tone?: "default" | "panel";
   style?: ViewStyle;
+  testID?: string;
 }) {
   const t = useTheme();
   const panel = tone === "panel";
   return (
     <View
+      testID={testID}
       style={[
         {
           backgroundColor: panel ? t.colors.surface3 : t.colors.surface,
@@ -680,6 +683,48 @@ export function RowMenu({
     >
       <Ionicons name="ellipsis-horizontal" size={19} color={t.colors.text2} />
     </Pressable>
+  );
+}
+
+/**
+ * A bar per day, drawn with plain views.
+ *
+ * Deliberately not a charting library: `react-native-svg` is a native dependency (CLAUDE.md §8 puts
+ * those behind an ask) and this is a strip of rectangles. Heights are a proportion of the largest
+ * value, which is presentation of numbers the server already computed — no total is derived here.
+ *
+ * A zero-value day still gets a hairline so the month reads as continuous rather than gappy.
+ */
+export function MiniBars({
+  values,
+  height = 56,
+  highlightLast,
+}: {
+  values: number[];
+  height?: number;
+  /** Marks today in the current month, where the last bar is a partial day. */
+  highlightLast?: boolean;
+}) {
+  const t = useTheme();
+  const max = Math.max(...values, 0);
+  return (
+    <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 2, height }}>
+      {values.map((v, i) => {
+        const ratio = max > 0 ? v / max : 0;
+        const isLast = highlightLast && i === values.length - 1;
+        return (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              height: Math.max(2, ratio * height),
+              borderRadius: 2,
+              backgroundColor: isLast ? t.colors.brand : v > 0 ? t.colors.text3 : t.colors.track,
+            }}
+          />
+        );
+      })}
+    </View>
   );
 }
 
