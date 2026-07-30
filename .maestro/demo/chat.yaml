@@ -22,8 +22,9 @@
 # so they cannot drift the way hand-written offsets would — a chat turn takes anywhere from eight
 # to sixty seconds, and fixed timings would desynchronise on the second run.
 #
-# Keep them short and plain ASCII. A caption is drawn with ffmpeg's `drawtext`, whose font has no
-# glyph for the peso sign or for arrows — those come out as an empty box, on camera, for a client.
+# Keep them short and plain ASCII, and avoid `%`. A caption is drawn with ffmpeg's `drawtext`, whose
+# font has no glyph for the peso sign or for arrows — those come out as an empty box, on camera, for
+# a client — and which expands `%{…}` in the text it is handed.
 #
 # `@watch` lines below are the "what to look for" bullets on the title card.
 #
@@ -44,8 +45,11 @@ appId: host.exp.Exponent
     visible: "(?i).*june 2026.*"
     timeout: 25000
 # Let the cards settle and be seen: the insight sentence is the first thing worth reading.
+#
+# The percentage only. The sentence around it is written by a model and its wording moves between
+# runs — "38.71% lower" one day, "down 38.71% from" the next. See `.maestro/dashboard.yaml`.
 - extendedWaitUntil:
-    visible: "(?i).*38.71% lower.*"
+    visible: "(?i).*38.71%.*"
     timeout: 30000
 
 # Scroll the dashboard so the viewer sees there is substance here, then return to the top.

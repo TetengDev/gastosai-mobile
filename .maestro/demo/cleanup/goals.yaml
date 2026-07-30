@@ -1,0 +1,43 @@
+# Undoes what the filmed goals demo created. Runs *after* the recording stops.
+#
+# Without this, the second run adds a second "Japan trip" and the demo account slowly fills with
+# props. Tidying up is not part of the product and does not belong on camera, so `record-demo.sh`
+# stops the recorder and then runs this.
+#
+# Deliberately tolerant: if the demo failed before the goal was created there is nothing to remove.
+appId: host.exp.Exponent
+---
+- launchApp:
+    clearState: false
+- runFlow:
+    when:
+      notVisible:
+        id: "tab-home"
+    commands:
+      - tapOn: "gastosai-mobile"
+      - extendedWaitUntil:
+          visible:
+            id: "tab-home"
+          timeout: 60000
+
+- tapOn:
+    id: "tab-goals"
+
+# The row is reached positionally — a goal this flow did not create has no knowable id — but the
+# *name* is confirmed before anything is deleted. The new goal does sort to the top, and "it happens
+# to sort first" is not a safe thing to delete on: the account holds three real goals, and the
+# confirmation dialog naming the wrong one is the last chance to notice.
+- runFlow:
+    when:
+      visible: "Japan trip"
+    commands:
+      - tapOn:
+          id: "goal-menu-0"
+      # The menu item ends in an ellipsis, iOS shorthand for "a confirmation follows". That also
+      # keeps it distinct from the alert's own button.
+      - tapOn: "Delete goal…"
+      - assertVisible: "(?i).*delete .japan trip.*"
+      - tapOn: "Delete"
+      - extendedWaitUntil:
+          notVisible: "Japan trip"
+          timeout: 20000
