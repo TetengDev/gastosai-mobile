@@ -21,7 +21,7 @@ appId: host.exp.Exponent
     when:
       notVisible: "Home"
     commands:
-      - tapOn: "gastosai-mobile"
+      - tapOn: "(?i).*gastosai.*"
 
 - tapOn:
     id: "tab-home"

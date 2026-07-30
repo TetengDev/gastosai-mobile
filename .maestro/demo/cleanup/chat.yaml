@@ -14,7 +14,7 @@ appId: host.exp.Exponent
     when:
       notVisible: "(?i).*spent.*"
     commands:
-      - tapOn: "gastosai-mobile"
+      - tapOn: "(?i).*gastosai.*"
       - extendedWaitUntil:
           visible: "(?i).*spent.*"
           timeout: 60000
