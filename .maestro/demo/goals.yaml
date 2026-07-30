@@ -1,0 +1,73 @@
+# Demo: setting a savings goal and putting something towards it.
+#
+# **This flow is filmed.** Same rules as `chat.yaml`: no housekeeping on camera — the goal this
+# creates is removed by `.maestro/demo/cleanup/goals.yaml` after the recording stops.
+#
+# The closing figure is the point. 40 percent of a ₱10,000 target is `progressPercent`, computed by
+# the backend — the phone never does the arithmetic. 40 is chosen because it cannot be arrived at by
+# rounding a different pair of numbers that a bug might produce.
+#
+# Narration lives in `label:` lines beginning `>> `. What guards this behaviour is
+# `.maestro/goals.yaml`.
+#
+# @watch A goal in three taps
+# @watch Progress computed by the server
+# @watch Nothing calculated on the phone
+appId: host.exp.Exponent
+---
+- runFlow: ../launch.yaml
+
+- tapOn:
+    id: "tab-goals"
+    label: ">> Savings goals"
+- extendedWaitUntil:
+    visible:
+      id: "goals-screen"
+    timeout: 20000
+
+- tapOn:
+    id: "goal-create"
+    label: ">> Start a new one"
+# Assert on the sheet's own Cancel, not on "New goal": that string is also the button just tapped, so
+# matching it would pass whether or not the sheet actually presented.
+- extendedWaitUntil:
+    visible: "Cancel"
+    timeout: 15000
+
+- tapOn:
+    id: "sheet-amount"
+- inputText: "10000"
+# The decimal keypad covers Save and has no return key of its own.
+- tapOn:
+    id: "sheet-amount-done"
+- tapOn:
+    id: "sheet-label"
+- inputText: "Japan trip"
+- hideKeyboard
+- tapOn:
+    id: "sheet-save"
+    label: ">> A target of ten thousand"
+
+- extendedWaitUntil:
+    visible: "Japan trip"
+    timeout: 20000
+    label: ">> Created, and starting from zero"
+- assertVisible: "(?i).*₱0.00 of ₱10,000.00.*"
+
+# The sheet opens pre-filled with the current saved amount, so this replaces it rather than adding.
+- tapOn:
+    text: "Add savings"
+    label: ">> Put something towards it"
+- tapOn:
+    id: "sheet-amount"
+- eraseText
+- inputText: "4000"
+- tapOn:
+    id: "sheet-amount-done"
+- tapOn:
+    id: "sheet-save"
+
+- extendedWaitUntil:
+    visible: "(?i).*₱4,000.00 of ₱10,000.00 · 40%.*"
+    timeout: 20000
+    label: ">> 40 percent - the server did that maths"

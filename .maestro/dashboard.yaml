@@ -18,10 +18,16 @@ appId: host.exp.Exponent
     visible: "(?i).*june 2026.*"
     timeout: 25000
 
-# The insight sentence, generated server-side. Asserting the percentage rather than the prose keeps
-# this from breaking when the wording is reworded.
+# The insight sentence, generated server-side.
+#
+# **The percentage only — never a word of the prose.** This asserted `38.71% lower` and passed for
+# weeks on wording the model happened to keep choosing; the run that broke it said "down 38.71%
+# from" instead. The figure is computed by
+# `/expenses/report/monthly-comparison` and is stable; every word around it is a model's phrasing and
+# will change again. `Biggest category:` below is app-rendered, so it *is* safe to match, and it is
+# what actually proves the insight card resolved rather than a spinner.
 - extendedWaitUntil:
-    visible: "(?i).*38.71% lower.*"
+    visible: "(?i).*38.71%.*"
     timeout: 30000
 - assertVisible: "(?i).*biggest category: meal plan.*"
 

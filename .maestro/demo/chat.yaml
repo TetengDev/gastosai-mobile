@@ -1,0 +1,135 @@
+# Demo: asking GastosAI about your spending, and letting it record one for you.
+#
+# **This flow is filmed.** It is written to be watched by someone who has never seen the app — a
+# client, not a reviewer — so it shows the product working and nothing else. Three rules follow
+# from that:
+#
+#   1. **No housekeeping on camera.** The expense this creates is removed by
+#      `.maestro/demo/cleanup/chat.yaml`, which `record-demo.sh` runs *after* the recording stops.
+#      Watching someone tidy up is not a demo.
+#   2. **It opens and closes on the dashboard** — a full, attractive screen rather than whatever
+#      the previous run happened to leave behind.
+#   3. **June, not the current month.** The demo account's data ends in June; opening on an empty
+#      month would be honest and useless.
+#
+# The assertions here are for pacing and safety, not coverage. What actually guards this behaviour
+# is `.maestro/chat.yaml`.
+#
+# ── Narration ───────────────────────────────────────────────────────────────────────────────────
+#
+# The `label:` on a step whose text starts `>> ` is a **caption burned into the video** over the
+# duration of that step. `record-demo.sh` reads the timings out of the Maestro run log afterwards,
+# so they cannot drift the way hand-written offsets would — a chat turn takes anywhere from eight
+# to sixty seconds, and fixed timings would desynchronise on the second run.
+#
+# Keep them short and plain ASCII, and avoid `%`. A caption is drawn with ffmpeg's `drawtext`, whose
+# font has no glyph for the peso sign or for arrows — those come out as an empty box, on camera, for
+# a client — and which expands `%{…}` in the text it is handed.
+#
+# `@watch` lines below are the "what to look for" bullets on the title card.
+#
+# @watch The answer is a table, not a sentence
+# @watch It asks before it writes anything
+# @watch The expense lands in the list
+appId: host.exp.Exponent
+---
+- runFlow: ../launch.yaml
+
+# ── Open on the dashboard, on a month with something to show ────────────────────────────────────
+- tapOn:
+    id: "tab-home"
+- tapOn:
+    id: "month-prev"
+    label: ">> A month with something to show"
+- extendedWaitUntil:
+    visible: "(?i).*june 2026.*"
+    timeout: 25000
+# Let the cards settle and be seen: the insight sentence is the first thing worth reading.
+#
+# The percentage only. The sentence around it is written by a model and its wording moves between
+# runs — "38.71% lower" one day, "down 38.71% from" the next. See `.maestro/dashboard.yaml`.
+- extendedWaitUntil:
+    visible: "(?i).*38.71%.*"
+    timeout: 30000
+
+# Scroll the dashboard so the viewer sees there is substance here, then return to the top.
+- scrollUntilVisible:
+    element:
+      id: "card-top"
+    direction: DOWN
+    label: ">> Where the money actually went"
+- scrollUntilVisible:
+    element:
+      id: "month-label"
+    direction: UP
+
+# ── Ask a question in plain English ─────────────────────────────────────────────────────────────
+- tapOn:
+    id: "header-chat"
+    label: ">> Ask about your spending, from any tab"
+- extendedWaitUntil:
+    visible: "(?i).*ask about your spending.*"
+    timeout: 20000
+
+- tapOn:
+    id: "chat-input"
+- inputText: "How much did I spend on food in June 2026?"
+- hideKeyboard
+- tapOn:
+    id: "chat-send"
+    label: ">> Asking in plain English"
+# The reply is a table, not a sentence — this is the part worth filming.
+#
+# 120s, not 90s: `src/api/chat.ts` gives the request 90s of its own. A wait of exactly 90s expires
+# in the same instant the client aborts, so a slow-but-successful reply can never be seen and every
+# slow turn reports as "the element never rendered" — which is what it looked like, for an hour.
+# The UI wait has to outlast the request it is waiting on.
+- extendedWaitUntil:
+    visible:
+      id: "chat-result"
+    timeout: 120000
+    label: ">> The answer is a table, not a sentence"
+- extendedWaitUntil:
+    visible: "₱3,347.50"
+    timeout: 20000
+
+# ── Ask it to record an expense, and approve what it proposes ───────────────────────────────────
+- tapOn:
+    id: "chat-input"
+    label: ">> Now ask it to record an expense"
+- inputText: "add lunch 150 at Jollibee"
+- hideKeyboard
+- tapOn:
+    id: "chat-send"
+# It asks first. Nothing is written until the user agrees — the point of the card.
+- extendedWaitUntil:
+    visible:
+      id: "chat-preview"
+    timeout: 120000
+    label: ">> It asks first - nothing is written yet"
+- tapOn:
+    id: "chat-confirm"
+    label: ">> Approved"
+# Confirming is a second chat call, with the same 90s client timeout — so the same 120s applies.
+- extendedWaitUntil:
+    visible: "(?i).*done.*"
+    timeout: 120000
+
+# ── It really landed ────────────────────────────────────────────────────────────────────────────
+- tapOn:
+    id: "tab-expenses"
+    label: ">> And it really landed"
+- extendedWaitUntil:
+    visible: "(?i).*₱150.00.*"
+    timeout: 20000
+
+# ── Close on the dashboard, the way it opened ───────────────────────────────────────────────────
+#
+# Captioned so the clip does not end holding "And it really landed" over an unrelated screen: the
+# last caption stays up until the video ends, so the final beat needs its own.
+- tapOn:
+    id: "tab-home"
+    label: ">> Back where we started"
+- extendedWaitUntil:
+    visible: "(?i).*spent.*"
+    timeout: 20000

@@ -97,6 +97,45 @@ Minimum: **≥ 90% of touched paths exercised at runtime.**
 **Blocker:** application code changed with no runtime evidence. State in the PR body what you ran
 and what you observed.
 
+### 6b. Send a demo recording
+
+**When a feature is added or changed, record it and send it before the PR opens.**
+
+```bash
+./scripts/record-demo.sh <flow> "v0.x.y — what changed and what to look at"
+```
+
+The script records the simulator while a short flow in `.maestro/demo/` runs, then sends the video
+to Telegram. Written evidence is a claim; a clip is something the reviewer can check without
+setting up a simulator, which is the whole point.
+
+- **Nothing is sent unless everything is green.** The script runs typecheck, lint and the unit
+  tests before it records, and refuses to send if the demo flow itself fails — the recording is
+  kept locally for debugging instead. A clip arriving in Telegram therefore *means* the change
+  works, which is the only thing that makes the channel worth watching. A clip of a failure, even
+  a clearly labelled one, teaches people to skim.
+- **A demo flow is not a test.** It walks the new thing in 30–60 seconds. The assertions that
+  actually guard the behaviour live in `.maestro/*.yaml`; a demo that doubles as a test tends to be
+  too long to watch and too shallow to trust.
+- **The clip must narrate itself.** A raw recording is a person tapping a phone: nobody watching
+  knows which feature is on trial or what they were meant to notice, and the Telegram message
+  caption does not travel with the file once it is forwarded or screenshotted. So a demo flow
+  carries narration — a `label:` starting `>> ` on each step it wants captioned, plus `# @watch`
+  lines in its header for the title card. See `.maestro/README.md`.
+- **Narration needs `brew install ffmpeg-full`, not `ffmpeg`.** Homebrew's plain formula is built
+  without libfreetype and so has no `drawtext` filter at all. The script treats titling as cosmetic
+  and falls through silently, which is exactly how every clip up to v0.8.0 shipped bare — it warns
+  loudly now, but check the output says `narrating` rather than trusting that a clip arrived.
+- The caption should say **what to look at**, not just what shipped. It becomes the title card's
+  headline, so keep it to a short phrase rather than a sentence.
+- Telegram rejects bot uploads over 50 MB. A minute of simulator video is a few MB; the full suite
+  is not — that is why demos are short and single-purpose.
+- **The recording shows real account data and goes to a chat that keeps it.** Deliberate, never
+  automatic: nothing sends without someone running the script.
+- Link or mention the recording in the PR body, so the written evidence and the clip agree.
+
+**Blocker:** a user-visible feature added or changed with no recording sent.
+
 ### Known limitation — be explicit about it
 
 Programmatic tapping and typing requires Accessibility permission for the controlling terminal;

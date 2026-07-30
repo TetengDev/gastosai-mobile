@@ -1,0 +1,69 @@
+# Demo: Home as a dashboard you can read, not a screen you check in on.
+#
+# **This flow is filmed.** Written for someone who has never seen the app — a client, not a
+# reviewer. The rules are the same as `chat.yaml`: no housekeeping on camera, open and close on a
+# full screen, and use June rather than the current month, because the demo account's data ends
+# there and an empty month is honest but useless.
+#
+# Read-only. It creates nothing, so there is no cleanup flow for it.
+#
+# Narration lives in `label:` lines beginning `>> ` — see `chat.yaml`'s header and
+# `.maestro/README.md`. What actually guards this behaviour is `.maestro/dashboard.yaml`.
+#
+# @watch Every figure is computed by the server
+# @watch The glance stays intact at the top
+# @watch Scroll down for where it went
+appId: host.exp.Exponent
+---
+- runFlow: ../launch.yaml
+
+- tapOn:
+    id: "tab-home"
+- tapOn:
+    id: "month-prev"
+    label: ">> A month with something to show"
+- extendedWaitUntil:
+    visible: "(?i).*june 2026.*"
+    timeout: 25000
+- extendedWaitUntil:
+    visible: "₱9,049.50"
+    timeout: 25000
+    label: ">> What June actually cost"
+
+# The insight sentence: the figure the client cannot invent.
+#
+# The percentage only, never the prose around it — that is a model's wording and it moves between
+# runs. `Biggest category:` is app-rendered, so it is the safe way to prove the card resolved rather
+# than still showing a spinner. See `.maestro/dashboard.yaml`.
+- extendedWaitUntil:
+    visible: "(?i).*38.71%.*"
+    timeout: 30000
+    label: ">> Written by the server, not the phone"
+- assertVisible: "(?i).*biggest category: meal plan.*"
+
+# A dashboard you read by scrolling — the deliberate trade for keeping the glance intact up top.
+- scrollUntilVisible:
+    element:
+      id: "card-top"
+    direction: DOWN
+    label: ">> The biggest expenses, ranked"
+- scrollUntilVisible:
+    element:
+      id: "card-goals"
+    direction: DOWN
+    label: ">> Savings goals in the same glance"
+- scrollUntilVisible:
+    element:
+      id: "card-categories"
+    direction: DOWN
+    label: ">> And where the money went"
+
+# Close on the glance, the way it opened.
+- scrollUntilVisible:
+    element:
+      id: "month-label"
+    direction: UP
+    label: ">> Back to the top"
+- extendedWaitUntil:
+    visible: "₱9,049.50"
+    timeout: 20000
