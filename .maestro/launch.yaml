@@ -48,7 +48,12 @@ env:
       notVisible:
         id: "tab-home"
     commands:
-      - tapOn: "gastosai-mobile"
+      # Matched loosely because Expo Go labels this entry with the manifest's `name`, and that
+      # changed from the dev slug "gastosai-mobile" to "GastosAI" when the app got a real display
+      # name. A literal match would have broken every flow at launch the moment app.json changed,
+      # and Expo Go's cached entry can still show the old label until the manifest is re-fetched —
+      # so this has to match both, not just the new one.
+      - tapOn: "(?i).*gastosai.*"
       # The JS bundle has to download and evaluate before anything is assertable. Either the tab
       # bar or the sign-in screen settles this wait — which one arrives decides whether the next
       # block runs.

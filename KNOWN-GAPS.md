@@ -19,15 +19,20 @@ That is a cross-repo change, so it was left out rather than half-built.
 
 ---
 
-## 2. Scope: capture loop only
+## 2. Scope: everything the phone is better at
 
-Present: auth, dashboard (month total + recent), expense list with filter, add expense,
-settings.
+Present as of v0.8.0: auth, a real dashboard (month total, safe-to-spend, server-written insight,
+trend, top expenses, goals and categories cards), month switching shared across tabs, expense list
+with filter, add / edit / delete, quick-add by free text, receipt capture, budgets, goals, recurring
+bills, alerts, AI chat reachable from every tab, categories, settings.
 
-Absent on purpose: budgets, goals, recurring expenses, alerts, AI chat, admin, pricing, legal.
-Admin observability and chat audit make little sense on a phone; the rest are the obvious v2.
+Absent on purpose: admin observability, chat audit, pricing and legal pages. Those are laptop
+surfaces and stay web-only.
 
-Editing and deleting expenses have API wrappers in `src/api/expenses.ts` but no screens yet.
+> This section described a v1 "capture loop only" scaffold until 2026-07-30. Budgets, goals,
+> recurring, alerts and chat all shipped across v0.5–v0.8 while it still said they were absent.
+> It is corrected here because it is the file a newcomer — or an agent drafting store copy — reads
+> to learn what the product does, and it was describing an app that no longer exists.
 
 ---
 

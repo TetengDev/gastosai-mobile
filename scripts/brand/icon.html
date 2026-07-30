@@ -1,0 +1,68 @@
+<!--
+  GastosAI app mark. Rendered by scratchpad/make-icons.sh via headless Chrome.
+
+  Variants are driven by the `?v=` query string so every asset comes from one source of truth:
+    (default)   full-bleed green tile      -> assets/icon.png, favicon
+    v=fg        glyph only, transparent    -> Android adaptive foreground, splash
+    v=bg        gradient only              -> Android adaptive background
+    v=mono      flat white glyph           -> Android monochrome (themed icons)
+
+  Design constraints, in order of authority:
+    1. It has to read at 60px. That killed the first draft, where the peso's stem fused with the
+       tallest bar into one unreadable shape.
+    2. Green, per the brand decision — the previous mark in docs/brand/ is blue and disagrees with
+       the app's own accent (#1f8a5b in src/theme/index.ts).
+    3. Peso and rising chart, carried over from that mark so the identity stays recognisable.
+-->
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  .canvas { width: 1024px; height: 1024px; position: relative; overflow: hidden; }
+  .bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(145deg, #24a06a 0%, #1f8a5b 46%, #003c33 100%);
+  }
+  .mark {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 70px;
+  }
+  .peso {
+    font: 700 486px/0.78 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+    /* Optically centred, not metrically. The glyph carries more right side bearing than left, so
+       centring its advance box leaves the visible shape sitting left of the tile's midline. */
+    transform: translateX(14px);
+    text-shadow: 0 12px 38px rgba(0, 30, 22, .30);
+  }
+  .bars { display: flex; align-items: flex-end; gap: 42px; }
+  .bar { width: 110px; border-radius: 26px; background: #ffffff; }
+  /* Opacity climbs with height, so the rise still reads once the bars are too small to compare. */
+  .b1 { height: 110px; opacity: .42; }
+  .b2 { height: 178px; opacity: .66; }
+  .b3 { height: 246px; opacity: 1; }
+
+  /* Android adaptive foreground: the launcher masks and can zoom, so the glyph is pulled into the
+     safe zone (the middle ~66%) or the mask will clip the bars off. */
+  body.fg .bg { display: none; }
+  body.fg .mark { transform: scale(0.66); }
+  body.bg .mark { display: none; }
+  body.mono .bg { display: none; }
+  body.mono .mark { transform: scale(0.66); }
+  body.mono .bar { opacity: 1; }
+  body.mono .peso { text-shadow: none; }
+  /* Splash: same glyph, no tile — the splash background colour comes from app.json. */
+  body.splash .bg { display: none; }
+  body.splash .peso { text-shadow: none; }
+</style>
+<div class="canvas">
+  <div class="bg"></div>
+  <div class="mark">
+    <div class="peso">&#8369;</div>
+    <div class="bars"><i class="bar b1"></i><i class="bar b2"></i><i class="bar b3"></i></div>
+  </div>
+</div>
+<script>
+  const v = new URLSearchParams(location.search).get("v");
+  if (v) document.body.className = v;
+</script>
