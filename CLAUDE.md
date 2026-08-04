@@ -109,8 +109,11 @@ it is not summarised here.
 
 Two items are skipped most often, so they are worth naming: **runtime execution** (a green suite is
 not evidence the code was run) and **the demo recording** —
-`./scripts/record-demo.sh <flow> "caption"` records a short flow and sends it to Telegram, and
-sends nothing if anything is red.
+`./scripts/record-demo.sh <flow> "caption" <LINEAR-ISSUE>` records a short flow and attaches it to
+the Linear issue, and attaches nothing if anything is red.
+
+Then run `/ship`, which gates, opens the PR, and puts it through an independent review pass before
+a human sees it. See `../gastosai-app/docs/ship-loop.md`.
 
 ---
 
@@ -125,6 +128,31 @@ raising the minimum supported app version, moving backend computation on-device.
 **Never do:** hand-edit `generated/`, compute business values on-device, float math on money, store
 the JWT insecurely, ship any non-public key, render a date without pinning the timezone, or drop
 support for an API version installed apps still call.
+
+### Tracking
+
+Work is tracked as Linear issues in the **GastosAI** project (team `TEN`). The backlog and the
+cross-repo roadmap live in the `gastosai-app` workspace beside this repo — see its
+`docs/ROADMAP.md` and `docs/ownership.toml`.
+
+- Assign the issue to its human owner and move it to `In Progress` when you start.
+- **Only write the files your issue's `Owns` block lists.** They are also in `ownership.toml`.
+- Attach the PR to its issue before review; `In Review` when the PR opens, `Done` only after merge.
+- A finding too large to fix in the PR becomes a new Linear issue, related to the current one and
+  mentioned in a PR comment.
+- **Finish with `/ship <ISSUE>`.** It runs `pre-pr`, opens the PR, links it to the issue, then puts
+  the diff through an independent `pr-reviewer` → `pr-review-auditor` pass, iterating on findings
+  until the verdict is `APPROVE` or three passes have gone by. Rules:
+  `../gastosai-app/docs/ship-loop.md`. Never merge — a human does that.
+- Evidence goes on the Linear issue via `../gastosai-app/scripts/attach_evidence.py`. GitHub
+  carries the conversation, Linear carries the artifacts; there is no third channel.
+- **Deployment is deferred.** Verify locally — Expo against the LAN address via
+  `EXPO_PUBLIC_API_URL_LOCAL`. EAS builds and store submission are milestone `M5` and are parked.
+
+### Generated, do not hand-edit
+
+`.agentic-team/` and the agent and command files under `.claude/` come from the `agentic-team`
+CLI. Regenerate through it; never edit them in place.
 
 ---
 

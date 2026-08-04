@@ -1,40 +1,41 @@
 #!/usr/bin/env bash
 #
-# Record a demo flow on the iOS simulator and send the video to Telegram.
+# Record a demo flow on the iOS simulator and attach the video to its Linear issue.
 #
 # The pre-PR gate already demands that a change be *executed*, not just tested. This makes the
-# evidence watchable: a short clip of the thing that changed, sent to the phone, so a human can
-# verify it without setting up a simulator.
+# evidence watchable: a short clip of the thing that changed, sitting on the work item, so a
+# reviewer can verify it without setting up a simulator.
 #
-#   ./scripts/record-demo.sh chat "v0.8.0 — chat now renders results and confirms writes"
+#   ./scripts/record-demo.sh chat "chat renders results and confirms writes" TEN-168
 #
-# Reads TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID from the environment. Since the polyrepo split they
-# live in `../gastosai-backend/.env` — this repo's own `.env` does not have them, and there is no
-# root `.env` any more. Take just those two lines rather than sourcing the file, which holds
-# unquoted values with spaces that the shell tries to run:
-#
-#   export $(grep -E '^TELEGRAM_' ../gastosai-backend/.env | xargs)
+# Uploading is delegated to `../gastosai-app/scripts/attach_evidence.py`, which reads
+# LINEAR_API_KEY from the workspace `.env`. Nothing here needs a token of its own. Set PR_NUMBER
+# in the environment to also link the PR to the issue; without it the clip is attached alone,
+# which is the common case since the demo is usually recorded before the PR exists.
 #
 # Notes worth knowing before running this:
 #
-#   * **Nothing is sent unless everything is green.** Typecheck, lint and the unit tests run
-#     first; the demo flow itself must pass. A clip that lands in Telegram therefore means "this
-#     works" — which is the only thing that makes the channel worth watching. A failure keeps the
-#     recording locally and tells you where it is.
-#   * **The video shows the demo account's real financial data.** It goes to a Telegram chat and
-#     Telegram keeps it. That is the point of the exercise, but it is a deliberate act, not a
-#     side effect — nothing here runs automatically.
-#   * Telegram caps bot uploads at 50 MB. A 60-second simulator recording is a few MB; recording
-#     the whole Maestro suite is not, which is why demo flows are short and single-purpose.
+#   * **Nothing is attached unless everything is green.** Typecheck, lint and the unit tests run
+#     first; the demo flow itself must pass. A clip on the issue therefore means "this works" —
+#     which is the only thing that makes it worth opening. A failure keeps the recording locally
+#     and tells you where it is.
+#   * **The video shows the demo account's real financial data.** It goes to Linear and Linear
+#     keeps it. That is the point of the exercise, but it is a deliberate act, not a side effect —
+#     nothing here runs automatically.
+#   * Linear rejects uploads at or over 50 MB. A 60-second simulator recording is a few MB;
+#     recording the whole Maestro suite is not, which is why demo flows are short and
+#     single-purpose.
 #   * The recording is stopped with SIGINT, never SIGKILL. `simctl` writes the mp4 trailer on a
 #     clean shutdown; killing it leaves a file that no player will open.
 set -euo pipefail
 
 FLOW="${1:-}"
 CAPTION="${2:-Demo}"
+ISSUE="${3:-${LINEAR_ISSUE:-}}"
 
-if [[ -z "$FLOW" ]]; then
-  echo "usage: $0 <demo-flow-name> [caption]" >&2
+if [[ -z "$FLOW" || -z "$ISSUE" ]]; then
+  echo "usage: $0 <demo-flow-name> <caption> <linear-issue>" >&2
+  echo "  e.g.: $0 chat \"chat renders results and confirms writes\" TEN-168" >&2
   echo "  flows: $(ls .maestro/demo/*.yaml 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/.yaml//' | tr '\n' ' ')" >&2
   exit 2
 fi
@@ -42,9 +43,12 @@ fi
 FLOW_FILE=".maestro/demo/${FLOW}.yaml"
 [[ -f "$FLOW_FILE" ]] || { echo "no such demo flow: $FLOW_FILE" >&2; exit 2; }
 
-# Fail before recording rather than after, so a missing token does not waste a run.
-: "${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN (see ../gastosai-backend/.env)}"
-: "${TELEGRAM_CHAT_ID:?set TELEGRAM_CHAT_ID (see ../gastosai-backend/.env)}"
+# Fail before recording rather than after, so a missing prerequisite does not waste a run.
+ATTACH="../gastosai-app/scripts/attach_evidence.py"
+[[ -f "$ATTACH" ]] || {
+  echo "cannot find $ATTACH — the workspace repo must be checked out beside this one" >&2
+  exit 2
+}
 
 command -v maestro >/dev/null || { echo "maestro not on PATH" >&2; exit 127; }
 # Also written without `| grep -q`, for the pipefail/SIGPIPE reason described below.
@@ -85,7 +89,7 @@ fi
 
 # Green before recording, not after.
 #
-# A demo arriving in Telegram is a claim that the change is sound. Recording a passing flow while
+# A demo on the issue is a claim that the change is sound. Recording a passing flow while
 # the type-checker is red would make that claim false — the flow only walks one path, and the
 # broken thing is somewhere it does not go. Checked first so a failure costs seconds rather than a
 # recording run.
@@ -144,20 +148,20 @@ fi
 SIZE_MB=$(( $(stat -f%z "$OUT") / 1024 / 1024 ))
 echo "▶ recorded ${SIZE_MB}MB"
 if (( SIZE_MB >= 50 )); then
-  echo "recording is ${SIZE_MB}MB; Telegram rejects bot uploads over 50MB. Shorten the flow." >&2
+  echo "recording is ${SIZE_MB}MB; Linear rejects uploads at or over 50MB. Shorten the flow." >&2
   exit 1
 fi
 
-# Nothing is sent unless the flow passed.
+# Nothing is attached unless the flow passed.
 #
-# A recording only means anything if it shows the feature working. Shipping a clip of a failure —
-# even a clearly labelled one — turns the channel into somewhere things get skimmed, and the whole
-# value of a demo is that arriving in Telegram means "this works".
+# A recording only means anything if it shows the feature working. Attaching a clip of a failure —
+# even a clearly labelled one — turns the issue into somewhere things get skimmed, and the whole
+# value of a demo is that a clip on the issue means "this works".
 #
-# The file is kept, so a failure is still debuggable locally; it just does not get broadcast.
+# The file is kept, so a failure is still debuggable locally; it just does not get published.
 if (( FLOW_STATUS != 0 )); then
   echo "" >&2
-  echo "✗ the flow failed — nothing sent." >&2
+  echo "✗ the flow failed — nothing attached." >&2
   echo "  recording kept for debugging: $OUT" >&2
   exit "$FLOW_STATUS"
 fi
@@ -165,15 +169,15 @@ fi
 # ── Narration ───────────────────────────────────────────────────────────────────────────────────
 #
 # A raw recording is a person tapping a phone. Nobody watching it knows which feature is on trial or
-# what they were supposed to notice, and the Telegram message caption does not travel with the file
-# once it is forwarded or screenshotted. So the clip has to explain itself: a title card naming the
-# feature and what to look for, then a caption over each step.
+# what they were supposed to notice, and the comment caption does not travel with the file once it is
+# downloaded or screenshotted. So the clip has to explain itself: a title card naming the feature and
+# what to look for, then a caption over each step.
 #
 # The captions come from `label:` on the flow's own steps and are timed from the Maestro run log —
 # see `caption_filters` below for why that is the only way this stays in sync.
 #
-# Still strictly cosmetic. Every failure here falls through to sending the recording as-is, because a
-# clip that arrives plain is worth more than one that does not arrive.
+# Still strictly cosmetic. Every failure here falls through to attaching the recording as-is, because
+# a clip that lands plain is worth more than one that does not land.
 SEND="$OUT"
 if [[ -n "$FFMPEG" ]]; then
   echo "▶ narrating"
@@ -364,11 +368,11 @@ PY
     && [[ -s "$TITLED" ]]; then
     SEND="$TITLED"
   elif [[ -s "$CAPTIONED" && "$CAPTIONED" != "$OUT" ]]; then
-    # Captions landed but the card did not; send what we have rather than nothing.
-    echo "  ⚠️ title card failed — sending the captioned clip without it" >&2
+    # Captions landed but the card did not; attach what we have rather than nothing.
+    echo "  ⚠️ title card failed — attaching the captioned clip without it" >&2
     SEND="$CAPTIONED"
   else
-    echo "  ⚠️ narration failed — sending the raw recording" >&2
+    echo "  ⚠️ narration failed — attaching the raw recording" >&2
   fi
 
   # Reported in KB below a megabyte: re-encoding routinely lands these under 1 MB, and integer
@@ -377,24 +381,23 @@ PY
   NEW_MB=$(( NEW_KB / 1024 ))
   if (( NEW_MB >= 1 )); then echo "▶ narrated: ${NEW_MB}MB"; else echo "▶ narrated: ${NEW_KB}KB"; fi
   if (( NEW_MB >= 50 )); then
-    echo "narrated clip is ${NEW_MB}MB; Telegram rejects bot uploads over 50MB." >&2
+    echo "narrated clip is ${NEW_MB}MB; Linear rejects uploads at or over 50MB." >&2
     echo "  falling back to the raw recording (${SIZE_MB}MB)" >&2
     SEND="$OUT"
   fi
 fi
 
-echo "▶ sending to Telegram"
-RESPONSE=$(curl -s --max-time 180 \
-  -F "chat_id=${TELEGRAM_CHAT_ID}" \
-  -F "caption=${CAPTION}" \
-  -F "video=@${SEND}" \
-  "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo")
-
-if ! grep -q '"ok":true' <<<"$RESPONSE"; then
-  echo "Telegram rejected the upload:" >&2
-  echo "$RESPONSE" >&2
-  exit 1
+# ── Publish ─────────────────────────────────────────────────────────────────────────────────────
+#
+# The clip goes on the Linear issue rather than to a chat. It outlives the PR that produced it, and
+# the person deciding whether to merge is already reading the issue. `--pr` is optional: the demo is
+# often recorded before the PR exists, and the uploader links it later.
+echo "▶ attaching to $ISSUE"
+ATTACH_ARGS=("$ISSUE" "$SEND" --caption "$CAPTION")
+if [[ -n "${PR_NUMBER:-}" ]]; then
+  ATTACH_ARGS+=(--pr "$PR_NUMBER" --repo gastosai-mobile)
 fi
+python3 "$ATTACH" "${ATTACH_ARGS[@]}"
 
-echo "✔ sent: $CAPTION"
+echo "✔ attached: $CAPTION"
 exit "$FLOW_STATUS"
