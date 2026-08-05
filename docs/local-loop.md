@@ -32,6 +32,10 @@ So the address is **discovered at runtime, not configured**.
 | 3 | `EXPO_PUBLIC_API_URL` is set | Used **verbatim** — no detection, no rewriting |
 | 4 | nothing set | `http://localhost:8080` |
 
+Read the order literally: in development, rule 2 fires before rule 3, so a `.env` pointing
+`EXPO_PUBLIC_API_URL` at a deployed API still gets your own laptop under `npm start`. That is
+what a dev session is for. To reach something else from development, use rule 1.
+
 The LAN address comes from `Constants.expoConfig.hostUri` — the packager connection the bundle
 arrived over. It is read when the app starts, so it is right on whatever network you are on
 today and appears in no build artifact.
@@ -79,8 +83,7 @@ EXPO_PUBLIC_API_URL_LOCAL=https://gastos.example.ngrok.app
 Restart `npm start` after changing it — the value is inlined when the bundle is built, so a
 fast refresh will not pick it up.
 
-> `.env.example` does not list `EXPO_PUBLIC_API_URL_LOCAL` yet. That file is owned by another
-> issue and was deliberately left alone here; the variable is documented above instead.
+`.env.example` carries the same variable, commented out.
 
 ## Verifying it
 
