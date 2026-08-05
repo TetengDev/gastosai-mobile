@@ -11,28 +11,89 @@ import { tokenStore } from "../lib/tokenStore";
  * declared here.
  */
 
-/**
- * `localhost` is the device itself, not the dev machine, so a physical phone or an Android
- * emulator cannot reach a backend on your laptop that way. Falling back to the Expo host's IP
- * makes `npm start` work on a real device without hand-editing an env file.
- */
-function resolveBaseUrl(): string {
-  const configured = process.env.EXPO_PUBLIC_API_URL;
-  if (configured && !/localhost|127\.0\.0\.1/.test(configured)) return configured;
+/** The port the backend listens on locally. Only used when no URL says otherwise. */
+const DEFAULT_LOCAL_PORT = 8080;
 
-  const hostUri = Constants.expoConfig?.hostUri ?? Constants.expoGoConfig?.debuggerHost;
-  const lanHost = hostUri?.split(":")[0];
-  if (lanHost && lanHost !== "localhost" && lanHost !== "127.0.0.1") {
-    return `http://${lanHost}:8080`;
-  }
-  return configured ?? "http://localhost:8080";
+/** Hosts that mean "this machine" — on a phone, that is the phone, never the laptop. */
+const LOOPBACK = /^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/i;
+
+function normalise(url: string): string {
+  return url.trim().replace(/\/+$/, "");
 }
 
-export const API_BASE_URL = resolveBaseUrl();
+/**
+ * The address the Expo dev server is being served from — i.e. the laptop, as the device sees it.
+ * Discovered at runtime from the packager connection, so it is never a value in the bundle.
+ */
+function expoLanHost(): string | null {
+  const hostUri = Constants.expoConfig?.hostUri ?? Constants.expoGoConfig?.debuggerHost;
+  const host = hostUri?.split(":")[0];
+  return host && !LOOPBACK.test(host) ? host : null;
+}
+
+/** Swaps a loopback host for the Expo dev server's LAN address, keeping scheme, port and path. */
+function toLanAddress(url: string): string {
+  const lanHost = expoLanHost();
+  if (!lanHost) return url;
+  return url.replace(/^(https?:\/\/)(localhost|127\.0\.0\.1|0\.0\.0\.0)(?=[:/]|$)/i, `$1${lanHost}`);
+}
+
+/**
+ * Where the API lives, and whether that is the developer's laptop.
+ *
+ * Three rules, in order:
+ *
+ * 1. **`EXPO_PUBLIC_API_URL_LOCAL` wins in development.** It is the local loop's opt-in: point it
+ *    at the backend on your machine and `npm start` reaches it from a real phone. It is read only
+ *    under `__DEV__`, so a release bundle ignores it even if the build machine had it set.
+ * 2. **The LAN address is detected, never configured.** `localhost` is the *device* — a phone or
+ *    an Android emulator cannot reach your laptop that way — so a loopback host is rewritten to
+ *    the address Expo is already serving the bundle from. That is a runtime lookup; the IP is
+ *    never inlined, which matters because it changes with every network you join and
+ *    `EXPO_PUBLIC_*` is frozen into the bundle at build time.
+ * 3. **A build uses `EXPO_PUBLIC_API_URL` verbatim.** No detection, no rewriting: outside `__DEV__`
+ *    there is no dev server to ask, and quietly substituting a host in a shipped app would be a
+ *    way to point it somewhere nobody chose.
+ */
+function resolveBaseUrl(): { url: string; local: boolean } {
+  if (__DEV__) {
+    const local = process.env.EXPO_PUBLIC_API_URL_LOCAL?.trim();
+    if (local) return { url: normalise(toLanAddress(local)), local: true };
+
+    const lanHost = expoLanHost();
+    if (lanHost) return { url: `http://${lanHost}:${DEFAULT_LOCAL_PORT}`, local: true };
+  }
+
+  const configured = process.env.EXPO_PUBLIC_API_URL?.trim();
+  if (configured) {
+    const swapped = __DEV__ ? toLanAddress(configured) : configured;
+    // Only a host we actually substituted is known to be the laptop; a real remote URL is not.
+    return { url: normalise(swapped), local: __DEV__ && swapped !== configured };
+  }
+
+  return { url: `http://localhost:${DEFAULT_LOCAL_PORT}`, local: false };
+}
+
+const resolved = resolveBaseUrl();
+
+export const API_BASE_URL = resolved.url;
+
+/** True when the base URL was resolved to the developer's own machine. Always false in a build. */
+export const IS_LOCAL_BACKEND = resolved.local;
+
+// Which backend a dev session is actually talking to is otherwise invisible, and "the app does
+// nothing" looks identical whether the URL is wrong or the server is down. Suppressed under jest,
+// where every suite importing this module would otherwise print it.
+if (__DEV__ && process.env.NODE_ENV !== "test") {
+  console.log(`[api] base URL ${API_BASE_URL}${IS_LOCAL_BACKEND ? " (local)" : ""}`);
+}
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 20_000,
+  // A laptop that is asleep, on another network, or not running the API does not refuse the
+  // connection — it swallows it, and the default wait is long enough to read as a frozen screen.
+  // Locally the round trip is a few milliseconds, so failing fast costs nothing real.
+  timeout: IS_LOCAL_BACKEND ? 8_000 : 20_000,
 });
 
 /**
@@ -80,13 +141,22 @@ api.interceptors.response.use(
  *
  * The backend returns RFC 7807 problem details (`{title, detail, status}`), so prefer `detail`;
  * fall back to a network message rather than leaking an axios stack into the UI.
+ *
+ * When the base URL is the developer's own machine, "check your connection" sends them to look at
+ * the wrong thing — their phone's wifi is fine and the laptop is what is missing. Naming the
+ * address turns the two failures that actually happen (API not running, phone on the guest
+ * network) into something readable off the screen.
  */
 export function errorMessage(error: unknown, fallback = "Something went wrong."): string {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as { detail?: string; title?: string; message?: string } | undefined;
     const fromBody = data?.detail ?? data?.message ?? data?.title;
     if (fromBody) return fromBody;
-    if (!error.response) return "Cannot reach the server. Check your connection.";
+    if (!error.response) {
+      return IS_LOCAL_BACKEND
+        ? `Cannot reach the local backend at ${API_BASE_URL}. Check the API is running and that this device is on the same network.`
+        : "Cannot reach the server. Check your connection.";
+    }
   }
   return fallback;
 }
