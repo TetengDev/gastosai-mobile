@@ -17,6 +17,9 @@ const DEFAULT_LOCAL_PORT = 8080;
 /** Hosts that mean "this machine" — on a phone, that is the phone, never the laptop. */
 const LOOPBACK = /^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/i;
 
+/** The same hosts, matched at the front of a URL. Anchored so `localhost.example.com` misses. */
+const LOOPBACK_URL = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(?=[:/]|$)/i;
+
 function normalise(url: string): string {
   return url.trim().replace(/\/+$/, "");
 }
@@ -80,6 +83,20 @@ export const API_BASE_URL = resolved.url;
 
 /** True when the base URL was resolved to the developer's own machine. Always false in a build. */
 export const IS_LOCAL_BACKEND = resolved.local;
+
+/**
+ * The local backend that is really the phone.
+ *
+ * Only rule 1 can produce this: `EXPO_PUBLIC_API_URL_LOCAL=http://localhost:9090` is what someone
+ * writes because it is what works on their laptop, and normally the loopback host is swapped for
+ * the detected LAN address. In tunnel mode or over a USB-forwarded emulator there is no LAN
+ * address to swap in, so the value survives verbatim and the app asks *itself* for the API.
+ *
+ * The generic local message is actively wrong here — the API is running and the network is fine;
+ * the address is the problem — so this is worth telling apart. Rules 2 and 3 cannot reach it:
+ * both only claim `local` for a host they resolved to a non-loopback LAN address.
+ */
+const RESOLVED_TO_DEVICE = IS_LOCAL_BACKEND && LOOPBACK_URL.test(API_BASE_URL);
 
 // Which backend a dev session is actually talking to is otherwise invisible, and "the app does
 // nothing" looks identical whether the URL is wrong or the server is down. Suppressed under jest,
@@ -153,6 +170,9 @@ export function errorMessage(error: unknown, fallback = "Something went wrong.")
     const fromBody = data?.detail ?? data?.message ?? data?.title;
     if (fromBody) return fromBody;
     if (!error.response) {
+      if (RESOLVED_TO_DEVICE) {
+        return `EXPO_PUBLIC_API_URL_LOCAL is ${API_BASE_URL}, which is this device, not your laptop. Expo is not serving over the LAN (tunnel mode or USB), so there was no address to substitute — set it to your laptop's LAN address in full.`;
+      }
       return IS_LOCAL_BACKEND
         ? `Cannot reach the local backend at ${API_BASE_URL}. Check the API is running and that this device is on the same network.`
         : "Cannot reach the server. Check your connection.";

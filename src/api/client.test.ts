@@ -179,6 +179,50 @@ describe("base URL resolution", () => {
     expect(IS_LOCAL_BACKEND).toBe(false);
   });
 
+  it("says the address is the device when a loopback override has no LAN address to swap in", () => {
+    // The `.env.example` value, in tunnel mode. `localhost:9090` is what works on the laptop, so
+    // it is what people write; with nothing to substitute it survives and the phone asks itself.
+    // The ordinary local message ("check the API is running, check the network") is wrong advice
+    // here — both are fine — so this case has to be told apart rather than lumped in.
+    const { API_BASE_URL, errorMessage: message } = loadClient({
+      dev: true,
+      hostUri: "localhost:8081",
+      localUrl: "http://localhost:9090",
+    });
+
+    expect(API_BASE_URL).toBe("http://localhost:9090");
+
+    const noResponse = Object.assign(new Error("Network Error"), {
+      isAxiosError: true,
+      response: undefined,
+    });
+
+    expect(message(noResponse)).toContain("which is this device, not your laptop");
+    expect(message(noResponse)).toContain("set it to your laptop's LAN address in full");
+  });
+
+  it("does not mistake a hostname merely starting with localhost for the device", () => {
+    // `localhost.example.com` is a real, routable host. Matching it as loopback would hand the
+    // developer the tunnel-mode advice for a machine that is not theirs.
+    const { API_BASE_URL, errorMessage: message } = loadClient({
+      dev: true,
+      hostUri: "localhost:8081",
+      localUrl: "http://localhost.example.com:9090",
+    });
+
+    expect(API_BASE_URL).toBe("http://localhost.example.com:9090");
+
+    const noResponse = Object.assign(new Error("Network Error"), {
+      isAxiosError: true,
+      response: undefined,
+    });
+
+    expect(message(noResponse)).toBe(
+      "Cannot reach the local backend at http://localhost.example.com:9090. " +
+        "Check the API is running and that this device is on the same network.",
+    );
+  });
+
   it("ignores EXPO_PUBLIC_API_URL_LOCAL outside development", () => {
     // EXPO_PUBLIC_* is inlined at build time, so a build machine that happened to have the local
     // override set would otherwise ship an app pointed at someone's laptop.
