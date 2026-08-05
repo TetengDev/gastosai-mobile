@@ -114,7 +114,7 @@ anything to reject; the packets go nowhere. Two things in `client.ts` exist for 
 | "Cannot reach the local backend at `http://192.168.1.14:8080`" | Backend not running, or `./mvnw spring-boot:run` died. Check the laptop first. |
 | Same message, but the IP is not your laptop's | Rule 2 picked the wrong interface — VPN, or a second active network. Set `EXPO_PUBLIC_API_URL_LOCAL` explicitly. |
 | Logged base URL is `http://localhost:8080` on a device | Expo is serving over `localhost` (tunnel mode, or a USB-forwarded emulator). Set `EXPO_PUBLIC_API_URL_LOCAL` explicitly. |
-| "…is `http://localhost:9090`, which is this device, not your laptop" | You set a loopback `EXPO_PUBLIC_API_URL_LOCAL` *and* Expo is in tunnel mode, so there was no LAN address to substitute into it. Write the address out in full. |
+| "…is `http://localhost:9090`, which is this device, not your laptop" | You set a loopback `EXPO_PUBLIC_API_URL_LOCAL` *and* Expo is serving over `localhost` (tunnel mode, or a USB-forwarded emulator), so there was no LAN address to substitute into it. Write the address out in full. |
 | "Cannot reach the server. Check your connection." | The base URL is **not** local — you have `EXPO_PUBLIC_API_URL` pointing somewhere remote. |
 | Sign-in reaches the API but hangs on the AI screens | Not this — `/ai/chat` and `/ai/vision` set their own 90s timeout. See `docs/lessons.md`. |
 | Phone can't even load the bundle | Not an API problem. Client isolation on the Wi-Fi, or a firewall on the Expo port. |
