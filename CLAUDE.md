@@ -3,9 +3,11 @@
 Expo (SDK 54) + React Native + TypeScript. A capture surface over the gastosai backend, consuming
 the **same published contract** as web.
 
-**Read first:** `CONTRACT.md`, then `KNOWN-GAPS.md`.
-**Before changing navigation, month handling, chat, or how an amount is displayed:**
-`docs/lessons.md` — each entry there is a bug that shipped or nearly did.
+The invariants below are always in force. Everything else is conditional — see §10 for which
+document to open for which task, and do not preload the rest. The one worth knowing about
+up front: **`docs/lessons.md`**, where every entry is a bug that shipped or nearly did — read it
+before touching navigation, date/month handling, chat, receipt capture, auth startup, token
+storage, or how an amount is formatted.
 
 Scope is deliberately what a phone is better at than a laptop: recording spend at the moment it
 happens, including photographing the receipt. Pricing, billing and admin stay web-only.
@@ -103,17 +105,17 @@ hand-maintained tree drifted out of date within one release.
 
 ## 7. Before opening a PR
 
-Run the gate in `ai/skills/shared/pre-pr-checklist.md`, or the `pre-pr` agent
-(`.claude/agents/pre-pr.md`) which executes it and reports a table. The checklist is authoritative;
-it is not summarised here.
+**When preparing a PR** — not while implementing — run the `pre-pr` agent
+(`.claude/agents/pre-pr.md`), which executes the full checklist and reports a table.
 
 Two items are skipped most often, so they are worth naming: **runtime execution** (a green suite is
 not evidence the code was run) and **the demo recording** —
 `./scripts/record-demo.sh <flow> "caption" <LINEAR-ISSUE>` records a short flow and attaches it to
-the Linear issue, and attaches nothing if anything is red.
+the Linear issue, and attaches nothing if anything is red. Use targeted tests while implementing;
+the full suite belongs here, once.
 
-Then run `/ship`, which gates, opens the PR, and puts it through an independent review pass before
-a human sees it. See `../gastosai-app/docs/ship-loop.md`.
+Then `/ship`, which gates, opens the PR, and puts it through an independent review pass before a
+human sees it.
 
 ---
 
@@ -129,30 +131,18 @@ raising the minimum supported app version, moving backend computation on-device.
 the JWT insecurely, ship any non-public key, render a date without pinning the timezone, or drop
 support for an API version installed apps still call.
 
-### Tracking
+### Working with tracked issues
 
-Work is tracked as Linear issues in the **GastosAI** project (team `TEN`). The backlog and the
-cross-repo roadmap live in the `gastosai-app` workspace beside this repo — see its
-`docs/ROADMAP.md` and `docs/ownership.toml`.
+Shared workflow — Linear lifecycle, `Owns` restrictions, evidence, PR linking, `/ship`, dispatch,
+subagent policy, search discipline — lives in
+[`../docs/agent-workflow.md`](../docs/agent-workflow.md).
 
-- Assign the issue to its human owner and move it to `In Progress` when you start.
-- **Only write the files your issue's `Owns` block lists.** They are also in `ownership.toml`.
-- Attach the PR to its issue before review; `In Review` when the PR opens, `Done` only after merge.
-- A finding too large to fix in the PR becomes a new Linear issue, related to the current one and
-  mentioned in a PR comment.
-- **Finish with `/ship <ISSUE>`.** It runs `pre-pr`, opens the PR, links it to the issue, then puts
-  the diff through an independent `pr-reviewer` → `pr-review-auditor` pass, iterating on findings
-  until the verdict is `APPROVE` or three passes have gone by. Rules:
-  `../gastosai-app/docs/ship-loop.md`. Never merge — a human does that.
-- Evidence goes on the Linear issue via `../gastosai-app/scripts/attach_evidence.py`. GitHub
-  carries the conversation, Linear carries the artifacts; there is no third channel.
-- **Deployment is deferred.** Verify locally — Expo against the LAN address via
-  `EXPO_PUBLIC_API_URL_LOCAL`. EAS builds and store submission are milestone `M5` and are parked.
+**Read it when** you start tracked implementation, move an issue's state, prepare or open a PR,
+attach evidence, run `/ship`, or coordinate across repositories. **Not** for debugging, planning,
+reading code, or a local edit.
 
-### Generated, do not hand-edit
-
-`.agentic-team/` and the agent and command files under `.claude/` come from the `agentic-team`
-CLI. Regenerate through it; never edit them in place.
+Two rules from it worth repeating: **only write the files your issue's `Owns` block lists**, and
+**never merge** — a human does that.
 
 ---
 
@@ -169,3 +159,20 @@ npm run test:run
 `EXPO_PUBLIC_API_URL` points at the backend. `localhost` does not resolve from a device or Android
 emulator — `src/api/client.ts` falls back to the Expo host's LAN IP so `npm start` works on a real
 phone without editing env files.
+
+---
+
+## 10. Reference documents — read when the task calls for them
+
+**Do not preload linked reference documents for unrelated tasks.**
+
+| Read | When |
+|---|---|
+| `docs/lessons.md` | navigation, date/month handling, chat, receipt capture, auth startup, token storage, amount formatting |
+| `CONTRACT.md` | API/client/type compatibility, or a contract version bump |
+| `KNOWN-GAPS.md` | the issue names a documented limitation, or you are touching one |
+| `.claude/agents/pre-pr.md` | preparing a PR, or running the gate by hand |
+| `../docs/ship-loop.md` | running `/ship`, or changing the review process |
+| `../docs/agent-workflow.md` | tracked work, issue state, PRs, evidence, cross-repo |
+
+Never search or read the `gastosai/` archive beside this repo during ordinary work.

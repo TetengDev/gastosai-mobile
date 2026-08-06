@@ -9,7 +9,7 @@ Take the current branch from "I think this is done" to a PR a human can merge.
 Linear issue: $ARGUMENTS (e.g. `TEN-158`). If it is missing, read it from the branch name or ask —
 do not guess, because the `Owns` block and the acceptance criteria both come from it.
 
-**Full rules: `../gastosai-app/docs/ship-loop.md`.** Read it. What follows is only the part
+**Full rules: `../docs/ship-loop.md`.** Read it. What follows is only the part
 specific to this repo.
 
 ## Per pass
