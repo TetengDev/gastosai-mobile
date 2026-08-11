@@ -22,6 +22,8 @@ const bump = process.argv[2];
 const pkgPath = 'package.json';
 const appPath = 'app.json';
 
+const lockPath = 'package-lock.json';
+
 const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 const app = JSON.parse(fs.readFileSync(appPath, 'utf8'));
 
@@ -45,5 +47,24 @@ app.expo.version = next;
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 fs.writeFileSync(appPath, JSON.stringify(app, null, 2) + '\n');
 
-console.log(`${previous} -> ${next} (package.json, app.json)`);
+// The lockfile records the project's own version twice, and npm only rewrites it on an install.
+// Bumping without it is how this repo reached 0.10.0 in package.json while the lockfile still
+// said 0.5.0. Web gets this free because its helper shells out to `npm version`; this one writes
+// the JSON directly, so it has to say so.
+//
+// Edited in place rather than via `npm install --package-lock-only`, which would reach the
+// registry — and the private @tetengdev package makes that need PACKAGE_TOKEN. A version bump
+// changes no dependency, so it should not need credentials or a network. Verified that
+// parse → stringify(2-space) → write round-trips this lockfile byte-for-byte, so the diff is
+// exactly the two version lines.
+if (fs.existsSync(lockPath)) {
+  const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+  lock.version = next;
+  if (lock.packages && lock.packages['']) {
+    lock.packages[''].version = next;
+  }
+  fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');
+}
+
+console.log(`${previous} -> ${next} (package.json, app.json, package-lock.json)`);
 EOF
