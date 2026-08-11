@@ -96,9 +96,25 @@ appId: host.exp.Exponent
 - tapOn:
     id: "header-chat"
 
+# What "food" should come back as for last month, and a month that has nothing at all.
+#
+# Both questions used to name fixed months: June, which had data, and July, which did not. Seeding
+# rolls with the calendar, so July filled up and the "no results" half became unanswerable — it was
+# asserting emptiness about a month with 15,404.60 in it.
+#
+# The figure is summed from the expenses themselves because no endpoint returns a category total
+# for a single month (`/expenses/report/category` ignores `month` — see dashboard.yaml). The sum
+# was checked against `/ai/insights/top-category`, which does report one month's leader: both give
+# 5,020.00 for Meal Plan in 2026-07, so this reproduces the server's arithmetic rather than
+# inventing its own.
+- evalScript: |
+    ${output.food = (function(){var body = json(http.get('http://localhost:8080/expenses', {headers: {'Authorization': 'Bearer ' + output.token}}).body); var rows = body.content ? body.content : body; var sum = 0; for (var i = 0; i < rows.length; i++) { var r = rows[i]; if (r.category === 'Meal Plan' && r.date.slice(0, 7) === output.prevKey) { sum += (r.amountInBaseCurrency === null || r.amountInBaseCurrency === undefined) ? r.amount : r.amountInBaseCurrency; } } return '₱' + Number(sum).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');})()}
+- evalScript: |
+    ${output.emptyMonth = (function(){var rows = json(http.get('http://localhost:8080/expenses/report/monthly', {headers: {'Authorization': 'Bearer ' + output.token}}).body); var earliest = rows[0].month; for (var i = 0; i < rows.length; i++) { if (rows[i].month < earliest) earliest = rows[i].month; } var y = Number(earliest.slice(0, 4)), m = Number(earliest.slice(5, 7)); var n = ['January','February','March','April','May','June','July','August','September','October','November','December']; var t = new Date(Date.UTC(y, m - 2, 1)); return n[t.getUTCMonth()] + ' ' + t.getUTCFullYear();})()}
+
 - tapOn:
     id: "chat-input"
-- inputText: "How much did I spend on food in June 2026?"
+- inputText: "How much did I spend on food in ${output.prevMonth}?"
 - hideKeyboard
 - tapOn:
     id: "chat-send"
@@ -111,15 +127,14 @@ appId: host.exp.Exponent
       id: "chat-result"
     timeout: 120000
 - assertVisible: "(?i).*meal plan.*"
-# The figure itself. ₱3,347.50 is June's Meal Plan total, computed server-side — the client cannot
-# invent it, and rendering only the caption cannot produce it.
-- assertVisible: "₱3,347.50"
+# The figure itself — the client cannot invent it, and rendering only the caption cannot produce it.
+- assertVisible: "(?i).*${output.food}.*"
 
 # An empty result is a real answer and must say so, rather than showing a caption over nothing —
 # which is exactly what "Category totals for 2026-07." looked like.
 - tapOn:
     id: "chat-input"
-- inputText: "How much did I spend on food in July 2026?"
+- inputText: "How much did I spend on food in ${output.emptyMonth}?"
 - hideKeyboard
 - tapOn:
     id: "chat-send"
