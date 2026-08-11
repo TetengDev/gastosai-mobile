@@ -45,11 +45,32 @@ appId: host.exp.Exponent
 # extendedWaitUntil, not assertVisible: saving invalidates the expense and report queries, so Home
 # is mid-refetch when this runs. A plain assertion races the spinner and fails on behaviour that
 # is actually correct.
-- extendedWaitUntil:
-      visible: "₱177.00"
-      timeout: 20000
+#
+# scrollUntilVisible, not extendedWaitUntil: Recent sits below the fold on Home, under the month
+# total, Safe to Spend and the insight card. Waiting alone asserts against the visible hierarchy
+# and times out while the row exists just off-screen — which is what it did, on a save that had
+# demonstrably worked (the month total had already moved by exactly 177).
+# The pattern is wildcarded because a Recent row is one accessibility label, not a row of separate
+# nodes: `Lunch at Jollibee, Meal Plan · Aug 11, ₱177.00` under id `recent-row-0`. Maestro matches
+# `text` against the whole label, so a bare "₱177.00" matches nothing here however plainly the
+# amount is on screen. The amount alone is still the right assertion — the description is model-
+# rewritten and the date moves — so it is the pattern that has to widen, not the target.
+- scrollUntilVisible:
+    element:
+      text: "(?i).*₱177.00.*"
+    direction: DOWN
+    timeout: 20000
 
 # Home is month-scoped since v0.6, and a new expense is dated today — so saving one while browsing
 # an earlier month used to file it correctly and then show nothing. The app now snaps back to the
 # current month on save; this asserts that, because the alternative looks exactly like data loss.
-- assertVisible: "(?i).*spent this month.*"
+#
+# The month label, not "spent this month": the previous assertion was the same string checked
+# above, so it re-proved that Home was on screen and said nothing about *which* month — while
+# failing outright once the scroll above moved the total card off the top. The label is what
+# actually carries the claim, and it is scrolled back into view rather than assumed.
+- scrollUntilVisible:
+    element:
+      text: "(?i).*${output.thisMonth}.*"
+    direction: UP
+    timeout: 20000

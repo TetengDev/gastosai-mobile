@@ -98,3 +98,32 @@ env:
             visible: "Save Password?"
           commands:
             - tapOn: "Not Now"
+
+# Month labels every other flow asserts against, computed here rather than written down.
+#
+# The suite used to name absolute months — "june 2026", "july 2026" — written when those *were*
+# the current and previous month. They rotted on schedule: on 11 Aug 2026, four flows failed
+# asserting June and July against an app correctly showing August, and `month.yaml`'s header still
+# described a premise ("today is in July 2026 and the demo account's data ends in June") that had
+# stopped being true. A suite that has to be rewritten every month is one nobody runs.
+#
+# `output` set in a subflow is visible to its caller, and every flow starts by running this one, so
+# defining these here defines them everywhere.
+#
+# Manila, not the machine: the app renders months in Asia/Manila (CLAUDE.md §3), so a runner in
+# any other zone must still compare against the month the *app* is showing. +8h then reading UTC
+# fields gives Manila wall-clock without depending on the JS engine having full ICU data.
+- evalScript: ${output.thisMonth = (function(){var n=['January','February','March','April','May','June','July','August','September','October','November','December'];var d=new Date(Date.now()+28800000);return n[d.getUTCMonth()]+' '+d.getUTCFullYear();})()}
+- evalScript: ${output.prevMonth = (function(){var n=['January','February','March','April','May','June','July','August','September','October','November','December'];var d=new Date(Date.now()+28800000);var p=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()-1,1));return n[p.getUTCMonth()]+' '+p.getUTCFullYear();})()}
+- evalScript: ${output.nextMonth = (function(){var n=['January','February','March','April','May','June','July','August','September','October','November','December'];var d=new Date(Date.now()+28800000);var x=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1));return n[x.getUTCMonth()]+' '+x.getUTCFullYear();})()}
+
+# The same months as API keys (`2026-08`), for flows that ask the backend what a figure should be
+# instead of writing it down. Same reason as above: `₱9,049.50` was June's total when June was
+# last month, and it is nobody's total now.
+- evalScript: ${output.thisKey = (function(){var d=new Date(Date.now()+28800000);var m=d.getUTCMonth()+1;return d.getUTCFullYear()+'-'+(m<10?'0':'')+m;})()}
+- evalScript: ${output.prevKey = (function(){var d=new Date(Date.now()+28800000);var p=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()-1,1));var m=p.getUTCMonth()+1;return p.getUTCFullYear()+'-'+(m<10?'0':'')+m;})()}
+
+# A token for those calls. The host runs these, not the simulator, so localhost is the backend —
+# unlike the app, which must reach it over the LAN (see the section in README.md).
+- evalScript: |
+    ${output.token = json(http.post('http://localhost:8080/auth/login', {headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email: GASTOSAI_EMAIL, password: GASTOSAI_PASSWORD})}).body).token}

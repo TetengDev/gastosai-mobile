@@ -15,8 +15,38 @@ appId: host.exp.Exponent
 - tapOn:
     id: "month-prev"
 - extendedWaitUntil:
-    visible: "(?i).*june 2026.*"
+    visible: "(?i).*${output.prevMonth}.*"
     timeout: 25000
+
+# What last month's figures *are*, asked of the same endpoints the screen reads. The percentage,
+# the category and the top amount were written down as 38.71%, "meal plan" and ₱1,900.00 — true of
+# June when June was last month, and wrong from the day the calendar moved. Asking keeps the
+# original point intact: these are numbers the client cannot invent, and a card that computed its
+# own would still not match the server's.
+- evalScript: |
+    ${output.cmp = json(http.get('http://localhost:8080/expenses/report/monthly-comparison?month=' + output.prevKey, {headers: {'Authorization': 'Bearer ' + output.token}}).body)}
+- evalScript: |
+    ${output.topCat = json(http.get('http://localhost:8080/ai/insights/top-category?month=' + output.prevKey, {headers: {'Authorization': 'Bearer ' + output.token}}).body)}
+- evalScript: |
+    ${output.topExp = json(http.get('http://localhost:8080/expenses/report/top?month=' + output.prevKey, {headers: {'Authorization': 'Bearer ' + output.token}}).body)[0]}
+# Peso formatting the app's own way — thousands separators and two decimals — so the assertion
+# compares what is rendered, not a bare number that would never appear on screen.
+#
+# `amountInBaseCurrency`, never the raw `amount`: a ¥1,500 expense is not ₱1,500, and TopExpensesCard
+# renders the converted figure. Reading `amount` here passed only because this month's largest
+# expense happens to be in pesos, and would have asserted ¥1,500 against a card showing ₱577.50 the
+# first month a foreign-currency expense topped the list — the exact confusion expenses.yaml in this
+# same suite exists to catch.
+- evalScript: |
+    ${output.topAmount = '₱' + Number((output.topExp.amountInBaseCurrency === null || output.topExp.amountInBaseCurrency === undefined) ? output.topExp.amount : output.topExp.amountInBaseCurrency).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+# The magnitude, not the signed value. `changePercent` is negative when spending fell — it is
+# -51.83 for this August — while the sentence around it is model-generated prose that carries the
+# direction in words ("down 51.83% from", "51.83% lower") and never a minus sign. Interpolating the
+# raw value asserts "-51.83%" against text that will never contain it. This passed only because the
+# month it currently reads rose; it would have failed next month, which is the same expiry this
+# branch exists to remove.
+- evalScript: |
+    ${output.changePct = Math.abs(Number(output.cmp.changePercent)).toFixed(2)}
 
 # The insight sentence, generated server-side.
 #
@@ -27,9 +57,9 @@ appId: host.exp.Exponent
 # will change again. `Biggest category:` below is app-rendered, so it *is* safe to match, and it is
 # what actually proves the insight card resolved rather than a spinner.
 - extendedWaitUntil:
-    visible: "(?i).*38.71%.*"
+    visible: "(?i).*${output.changePct}%.*"
     timeout: 30000
-- assertVisible: "(?i).*biggest category: meal plan.*"
+- assertVisible: "(?i).*biggest category: ${output.topCat.category}.*"
 
 # The trend card's comparison against last month.
 - assertVisible:
@@ -41,8 +71,8 @@ appId: host.exp.Exponent
     element:
       id: "card-top"
     direction: DOWN
-# ₱1,900.00 is June's largest expense, ranked by the backend.
-- assertVisible: "₱1,900.00"
+# The largest expense of that month, ranked by the backend rather than named here.
+- assertVisible: "(?i).*${output.topAmount}.*"
 
 - scrollUntilVisible:
     element:

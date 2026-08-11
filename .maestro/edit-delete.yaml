@@ -22,6 +22,15 @@ appId: host.exp.Exponent
 ---
 - runFlow: launch.yaml
 
+# Create the expense this flow edits, rather than assuming it is already there.
+#
+# The header used to say this "depends on quick-add.yaml having created the ₱177.00 expense", but
+# Maestro runs a directory alphabetically: edit-delete is third and quick-add eleventh, so the
+# dependency ran backwards on every suite run. It only ever passed on an expense left behind by an
+# earlier run — and failed the moment it was run against a clean account, which is exactly when a
+# suite should be trustworthy. quick-add ends on Home in the current month, where this starts.
+- runFlow: quick-add.yaml
+
 - tapOn:
     id: "tab-expenses"
 - extendedWaitUntil:

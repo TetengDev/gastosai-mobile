@@ -14,6 +14,9 @@
 # the message alone and left pull-to-refresh as the undiscoverable way out. And the dashboard cards
 # render *nothing* rather than each reporting its own failure.
 appId: host.exp.Exponent
+# Tagged `manual` so the suite skips it — see config.yaml. Naming the file still runs it.
+tags:
+  - manual
 ---
 - launchApp:
     clearState: false

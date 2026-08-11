@@ -1,56 +1,90 @@
-# Stepping back a month, which is the failure this release exists to fix.
+# Stepping between months, which is the failure this release exists to fix.
 #
-# Before v0.6 every screen hard-coded the current month with no control to change it. Today is in
-# July 2026 and the demo account's data ends in June, so the app opened on ₱0.00 with six months
-# and 77 expenses present but unreachable. That is what "hard to navigate" turned out to mean.
+# Before v0.6 every screen hard-coded the current month with no control to change it. The demo
+# account's data does not always cover today, so the app could open on ₱0.00 with six months and
+# 77 expenses present but unreachable. That is what "hard to navigate" turned out to mean.
 #
-# **June's total is asserted as an exact figure on purpose.** ₱9,049.50 comes from
+# **Last month's total is asserted as an exact figure on purpose.** It comes from
 # `/expenses/report/monthly` and appears only if the client is asking the server for the right
 # month. A stepper that changed the label without rebinding the queries would still pass a vaguer
-# assertion, and that is precisely the bug worth catching.
+# assertion, and that is precisely the bug worth catching. It is *fetched* rather than written
+# down: this file used to assert ₱9,049.50, June's total back when June was last month, and every
+# month after that it asserted a number belonging to nobody.
+#
+# The empty-month affordance is tested on **next** month rather than this one. It used to rely on
+# the current month being empty, which was true in July 2026 and stopped being true the moment
+# seeding caught up with the calendar. A month in the future is reliably empty.
 #
 # Read-only: this flow creates nothing, so there is nothing to clean up.
 appId: host.exp.Exponent
 ---
 - runFlow: launch.yaml
 
-# Home opens on the current month, which for this account is empty.
-- assertVisible: "(?i).*july 2026.*"
+# What last month's total is, according to the endpoint the screen reads.
+- evalScript: |
+    ${output.prevTotal = (function(){var rows = json(http.get('http://localhost:8080/expenses/report/monthly', {headers: {'Authorization': 'Bearer ' + output.token}}).body); for (var i = 0; i < rows.length; i++) { if (rows[i].month === output.prevKey) return '₱' + Number(rows[i].total).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); } return 'NO ROW FOR ' + output.prevKey;})()}
+
+# Home opens on the current month.
+- assertVisible: "(?i).*${output.thisMonth}.*"
 
 - tapOn:
     id: "month-prev"
 - extendedWaitUntil:
-    visible: "(?i).*june 2026.*"
+    visible: "(?i).*${output.prevMonth}.*"
     timeout: 20000
 - extendedWaitUntil:
-    visible: "₱9,049.50"
+    visible: "(?i).*${output.prevTotal}.*"
     timeout: 20000
 
-# Forward again, back to an empty July — the stepper has to work in both directions.
+# Forward again, back to the current month — the stepper has to work in both directions.
 - tapOn:
     id: "month-next"
 - extendedWaitUntil:
-    visible: "(?i).*july 2026.*"
+    visible: "(?i).*${output.thisMonth}.*"
+    timeout: 20000
+
+# The empty month is reached by walking *back* past the start of the data, not forward: the app
+# refuses to step beyond the current month, so `month-next` on today is a no-op and a future month
+# is unreachable by design. Asserting on one failed here on an app behaving correctly.
+#
+# How far back is asked, not counted: seeding lays down a rolling window ending at today, so the
+# first empty month moves forward every month. One step past the earliest month with data is
+# always empty, whenever this runs.
+- evalScript: |
+    ${output.empty = (function(){var rows = json(http.get('http://localhost:8080/expenses/report/monthly', {headers: {'Authorization': 'Bearer ' + output.token}}).body); var earliest = rows[0].month; for (var i = 0; i < rows.length; i++) { if (rows[i].month < earliest) earliest = rows[i].month; } var ey = Number(earliest.slice(0, 4)), em = Number(earliest.slice(5, 7)); var ty = Number(output.thisKey.slice(0, 4)), tm = Number(output.thisKey.slice(5, 7)); var n = ['January','February','March','April','May','June','July','August','September','October','November','December']; var t = new Date(Date.UTC(ey, em - 2, 1)); return {steps: (ty - ey) * 12 + (tm - em) + 1, label: n[t.getUTCMonth()] + ' ' + t.getUTCFullYear()};})()}
+- repeat:
+    times: ${output.empty.steps}
+    commands:
+      - tapOn:
+          id: "month-prev"
+- extendedWaitUntil:
+    visible: "(?i).*${output.empty.label}.*"
     timeout: 20000
 
 # The empty month offers the nearest month that has data rather than dead-ending on ₱0.00.
-- assertVisible: "(?i).*nothing recorded in july 2026.*"
+- assertVisible: "(?i).*nothing recorded in ${output.empty.label}.*"
 - tapOn:
     id: "jump-to-latest"
 - extendedWaitUntil:
-    visible: "₱9,049.50"
+    visible: "(?i).*${output.thisMonth}.*"
     timeout: 20000
 
-# The month is shared context, not per-screen state: Expenses and Budgets must already be on June
-# without being told again.
+# The month is shared context, not per-screen state: Expenses and Budgets must already be on the
+# same month without being told again.
+- tapOn:
+    id: "month-prev"
+- extendedWaitUntil:
+    visible: "(?i).*${output.prevMonth}.*"
+    timeout: 20000
+
 - tapOn:
     id: "tab-expenses"
 - extendedWaitUntil:
-    visible: "(?i).*june 2026.*"
+    visible: "(?i).*${output.prevMonth}.*"
     timeout: 20000
 
 - tapOn:
     id: "tab-budgets"
 - extendedWaitUntil:
-    visible: "(?i).*june 2026.*"
+    visible: "(?i).*${output.prevMonth}.*"
     timeout: 20000

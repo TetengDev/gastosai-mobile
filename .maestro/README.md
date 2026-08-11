@@ -12,6 +12,10 @@ Maestro talks to the simulator directly instead, so no such permission is involv
 
 ## Running
 
+These flows drive the app, not the backend directly — they only pass if the running app can
+reach a real API. Bring up the local stack first (`../../docs/local-loop.md` §1 for the backend,
+§3 for mobile), then:
+
 ```bash
 # Backend on :8080, Metro on :8081, simulator booted with the app open
 maestro test .maestro/
@@ -25,6 +29,77 @@ development build. If it ever moves to a dev build, only `appId` changes.
 `launch.yaml` signs in when the stored JWT has expired, using `GASTOSAI_EMAIL` /
 `GASTOSAI_PASSWORD`. Those default to the backend's local demo account; point them elsewhere with
 `maestro test --env GASTOSAI_EMAIL=... --env GASTOSAI_PASSWORD=...`.
+
+### Reaching the backend: LAN, not localhost
+
+The simulator is its own machine — `localhost` inside it is the simulator, not the laptop running
+the backend. Nothing in this directory sets the API address; the *app* resolves it, once, at
+startup (`src/api/client.ts`), and every flow here just inherits whatever it picked:
+
+- `EXPO_PUBLIC_API_URL_LOCAL` (defaulted to `http://localhost:8080` in `.env`) is read only in
+  `__DEV__`, and its loopback host is swapped for the address Metro is actually being served
+  from — the LAN IP, not the simulator's own loopback.
+- That substitution needs Metro serving over the LAN, which is the default. Run `npm start`
+  plain; `--tunnel` and USB debugging give the device no LAN address to substitute, and the app
+  surfaces exactly that in its error text if you do.
+- Nothing under `.maestro/` names an IP or a port for this reason — hard-coding one here would
+  fight the detection in `client.ts` rather than rely on it, and would break the moment the
+  laptop joined a different network.
+
+If a flow's first assertion times out with "cannot reach the server", check the app is actually
+signed in against the local backend before suspecting the flow — `../../docs/local-smoke.md`'s
+mobile leg is the fastest way to confirm that independently of Maestro.
+
+### What the suite runs, and what it does not
+
+`maestro test .maestro/` runs every flow **except those tagged `manual`** (filtered in
+`config.yaml`). Two carry that tag, both because the local loop cannot meet their preconditions:
+
+| Flow | Why it is excluded | What would re-enable it |
+|---|---|---|
+| `offline.yaml` | Needs the backend **stopped**; every other flow needs it up | Nothing — run it deliberately: `lsof -ti :8080 \| xargs kill -9 && maestro test .maestro/offline.yaml` |
+| `receipt.yaml` | `POST /ai/vision` returns `401 missing_scope` — see `KNOWN-GAPS.md` §5 | An API key whose scope permits image requests; the flow then passes as written |
+
+Naming either file directly still runs it — the tag only filters a whole-directory run.
+
+### Assertions are computed, not written down
+
+No flow names a month, a date or a total. They were written that way once — `"june 2026"`,
+`₱9,049.50`, `38.71%` — and every one of them expired: on 11 Aug 2026 four flows failed asserting
+June and July against an app correctly showing August.
+
+Two mechanisms replace them, and both live in `launch.yaml`, which every flow already runs (a
+subflow's `output` is visible to its caller):
+
+- **Months** — `thisMonth`, `prevMonth`, `nextMonth`, and the `thisKey` / `prevKey` API forms,
+  computed in Asia/Manila so a runner in another timezone still compares against the month the app
+  is showing.
+- **Figures** — fetched from the same endpoints the screen reads, using `output.token`. A flow
+  asserting `₱1,900.00` now asks `/expenses/report/top` what that month's largest expense is.
+
+This keeps the original intent — these are numbers the client cannot invent, so a card computing
+its own would not match — without the expiry date. Seeded data rolls forward with the calendar, so
+anything written down is wrong within a month.
+
+Two consequences worth knowing before editing a flow:
+
+- The app **refuses to step past the current month**, so `month-next` on today is a no-op and a
+  future month is unreachable. `month.yaml` reaches an empty month by walking *back* past the
+  earliest month with data, a distance it computes.
+- `/expenses/report/category` ignores `month`, so `chat.yaml` sums a category's month total from
+  the expenses themselves. That sum was checked against `/ai/insights/top-category`, which does
+  report one month's leader, and both agree.
+
+### Manual checks
+
+Not everything here can run unattended against a simulator:
+
+- **Taking an actual photo in `receipt.yaml`.** The simulator has no camera, so the flow
+  automates the photo-*library* path (`choose-photo`) instead — same upload, same parse, same
+  save, just a different picker. The camera path (`fab-add` → "Scan receipt", `scan-receipt`)
+  shares that code after the picker returns, so it is a manual check on a physical device:
+  confirm the camera opens, a photo can be taken, and the result reaches the same
+  parse-and-confirm screen the library path exercises here.
 
 ## Conventions
 

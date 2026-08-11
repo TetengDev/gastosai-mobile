@@ -16,23 +16,38 @@ appId: host.exp.Exponent
 - tapOn:
     id: "tab-expenses"
 
-# July is empty for this account, so step to a month that has data.
-- tapOn:
-    id: "month-prev"
+# Find the foreign-currency fixture rather than naming the day it used to fall on.
+#
+# This flow asserted "jun 26, 2026", which was that expense's date when seeding began in June. The
+# seeded window rolls forward with the calendar, so the same fixture is now dated 2026-03-26 and
+# the assertion named a day holding nothing. Ask where it is, then walk there.
+- evalScript: |
+    ${output.fx = (function(){var body = json(http.get('http://localhost:8080/expenses', {headers: {'Authorization': 'Bearer ' + output.token}}).body); var rows = body.content ? body.content : body; var hit = null; for (var i = 0; i < rows.length; i++) { if (rows[i].currency === 'JPY') { hit = rows[i]; break; } } var ymd = hit.date.slice(0, 10); var y = Number(ymd.slice(0, 4)), m = Number(ymd.slice(5, 7)), d = Number(ymd.slice(8, 10)); var abbr = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; var full = ['January','February','March','April','May','June','July','August','September','October','November','December']; var ty = Number(output.thisKey.slice(0, 4)), tm = Number(output.thisKey.slice(5, 7)); return {steps: (ty - y) * 12 + (tm - m), dayLabel: abbr[m - 1] + ' ' + d + ', ' + y, monthLabel: full[m - 1] + ' ' + y, base: '₱' + Number(hit.amountInBaseCurrency).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','), raw: '₱' + Number(hit.amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')};})()}
+
+# Step back to the month holding it.
+- repeat:
+    times: ${output.fx.steps}
+    commands:
+      - tapOn:
+          id: "month-prev"
 - extendedWaitUntil:
-    visible: "(?i).*june 2026.*"
+    visible: "(?i).*${output.fx.monthLabel}.*"
     timeout: 20000
 
 # A day section header, with the total the server computed for that day.
 - extendedWaitUntil:
-    visible: "(?i).*jun 26, 2026.*"
+    visible: "(?i).*${output.fx.dayLabel}.*"
     timeout: 20000
 
-# The row and its header must agree. Jun 26 holds one expense, recorded as ¥1,500 — the row used
-# to render "₱1,500.00" from the raw `amount` while the header read ₱577.50 from the converted
-# figure, two numbers for the same thing on the same screen. Both are ₱577.50 now.
-- assertVisible: "₱577.50"
-- assertNotVisible: "₱1,500.00"
+# The row and its header must agree. That day holds one expense, recorded in JPY — the row used to
+# render the raw amount as pesos ("₱1,500.00") while the header read the converted figure
+# (₱577.50), two numbers for the same thing on the same screen. Both are the converted one now.
+#
+# Both figures come from the expense itself, so the assertion keeps meaning if the fixture's
+# amount or the rate ever changes: `amountInBaseCurrency` is what must be shown, and the raw
+# `amount` rendered as pesos is precisely what must not.
+- assertVisible: "(?i).*${output.fx.base}.*"
+- assertNotVisible: "${output.fx.raw}"
 - assertVisible: "(?i).*1,500.00 jpy.*"
 
 # Search narrows within the month rather than across all time.
