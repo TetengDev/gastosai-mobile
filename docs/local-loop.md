@@ -5,7 +5,7 @@ the dev server on your machine, and this document is about the other half — ge
 **API calls** to land on the backend running beside it.
 
 The end-to-end path from three empty checkouts (Postgres, backend, web, mobile, seeded accounts)
-is `../../gastosai-app/docs/local-loop.md`. This file covers only what is specific to mobile:
+is `../../docs/local-loop.md`. This file covers only what is specific to mobile:
 how `src/api/client.ts` decides on a base URL, how to override it, and what the failures look
 like. Deployment is deferred — no EAS build, no store submission, milestone `M5`.
 
