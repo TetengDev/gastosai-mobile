@@ -1,3 +1,13 @@
 # Applies to every flow in this directory.
 appId: host.exp.Exponent
+
+# `offline.yaml` requires the backend to be STOPPED, which every other flow requires up. Its
+# header always said it was "excluded from the normal suite run" — nothing enforced that, so
+# `maestro test .maestro/` ran it against a live backend and it failed by construction, every
+# time. A comment is not an exclusion mechanism; a tag is.
+#
+# Run it deliberately by naming the file, which ignores this filter:
+#     lsof -ti :8080 | xargs kill -9 && maestro test .maestro/offline.yaml
+excludeTags:
+  - manual
 ---
