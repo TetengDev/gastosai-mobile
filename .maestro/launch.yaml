@@ -115,3 +115,15 @@ env:
 # fields gives Manila wall-clock without depending on the JS engine having full ICU data.
 - evalScript: ${output.thisMonth = (function(){var n=['January','February','March','April','May','June','July','August','September','October','November','December'];var d=new Date(Date.now()+28800000);return n[d.getUTCMonth()]+' '+d.getUTCFullYear();})()}
 - evalScript: ${output.prevMonth = (function(){var n=['January','February','March','April','May','June','July','August','September','October','November','December'];var d=new Date(Date.now()+28800000);var p=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()-1,1));return n[p.getUTCMonth()]+' '+p.getUTCFullYear();})()}
+- evalScript: ${output.nextMonth = (function(){var n=['January','February','March','April','May','June','July','August','September','October','November','December'];var d=new Date(Date.now()+28800000);var x=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1));return n[x.getUTCMonth()]+' '+x.getUTCFullYear();})()}
+
+# The same months as API keys (`2026-08`), for flows that ask the backend what a figure should be
+# instead of writing it down. Same reason as above: `₱9,049.50` was June's total when June was
+# last month, and it is nobody's total now.
+- evalScript: ${output.thisKey = (function(){var d=new Date(Date.now()+28800000);var m=d.getUTCMonth()+1;return d.getUTCFullYear()+'-'+(m<10?'0':'')+m;})()}
+- evalScript: ${output.prevKey = (function(){var d=new Date(Date.now()+28800000);var p=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()-1,1));var m=p.getUTCMonth()+1;return p.getUTCFullYear()+'-'+(m<10?'0':'')+m;})()}
+
+# A token for those calls. The host runs these, not the simulator, so localhost is the backend —
+# unlike the app, which must reach it over the LAN (see the section in README.md).
+- evalScript: |
+    ${output.token = json(http.post('http://localhost:8080/auth/login', {headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email: GASTOSAI_EMAIL, password: GASTOSAI_PASSWORD})}).body).token}
