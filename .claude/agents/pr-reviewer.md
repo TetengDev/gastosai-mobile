@@ -65,7 +65,7 @@ number is missing, ask — do not guess.
    file in the diff outside those paths is a finding. This is what makes parallel work safe: two
    agents told they may run concurrently, writing the same file, is the failure the ownership map
    exists to prevent. Read the issue's `Owns` block, or
-   `../gastosai-app/docs/ownership.toml` if the issue key was not given.
+   `../docs/ownership.toml` if the issue key was not given.
 
    **Tests and evidence** — a new screen or hook needs a test; a bug fix needs a regression test
    that fails without the fix. A user-visible change needs a demo recording attached to the Linear
