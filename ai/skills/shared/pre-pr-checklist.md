@@ -106,7 +106,7 @@ and what you observed.
 ```
 
 The script records the simulator while a short flow in `.maestro/demo/` runs, then attaches the
-video to the Linear issue via `../gastosai-app/scripts/attach_evidence.py`. Written evidence is a
+video to the Linear issue via `../scripts/attach_evidence.py`. Written evidence is a
 claim; a clip is something the reviewer can check without setting up a simulator, which is the
 whole point.
 
