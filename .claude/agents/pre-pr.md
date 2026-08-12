@@ -54,6 +54,11 @@ Be terse: run each command once, report the table, do not re-explain checks that
 9. **Contract pacing** — if the pinned contract version changed, confirm the old `/api/v1` path
    stays live and that `X-App-Version` is still sent.
 
+10. **Rollback** — state the answer to "how do I revert this?" On mobile the honest answer is
+    usually *you cannot*: a submitted build reaches devices and stays there, and users run old
+    versions for months (`CLAUDE.md` §1.5). The revert path is a fix shipped forward, which is why
+    a change needing recall must be caught here rather than after release.
+
 ## Report
 
 ```
@@ -68,6 +73,7 @@ Be terse: run each command once, report the table, do not re-explain checks that
 | Branch lane          | ✅ PASS  | release/0.3.0                            |
 | Simulator execution  | ⚠️ WARN  | rendered light+dark; taps unavailable (-1719) |
 | Contract pacing      | ➖ SKIP  | pin unchanged                            |
+| Rollback             | ✅ PASS  | fix-forward; no recall needed             |
 
 Overall: PASS — ready to open the PR.
 ```

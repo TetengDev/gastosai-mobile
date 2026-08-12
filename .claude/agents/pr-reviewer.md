@@ -61,6 +61,12 @@ number is missing, ask — do not guess.
    MINOR, `fix:`/`perf:` → PATCH, `!` → MAJOR, `docs:`/`chore:`/`ci:` → none. A `meta/*` branch
    must not touch `src/`, `app/`, or the version.
 
+   **Contract** — `src/api/generated/` is generated from the pinned `@tetengdev/gastosai-api-contract`
+   and is never hand-edited; if the pin moved, the regenerated output must be committed in the same
+   PR. Mobile is the contract's pacing constraint (`CLAUDE.md` §1.5): installed apps run old
+   versions for months, so a change that relies on a backend removing `/api/v1` is a BLOCKER here
+   even when the backend has already shipped it.
+
    **Ownership** — the Linear issue carries an `Owns` block listing the paths it may write. Any
    file in the diff outside those paths is a finding. This is what makes parallel work safe: two
    agents told they may run concurrently, writing the same file, is the failure the ownership map
