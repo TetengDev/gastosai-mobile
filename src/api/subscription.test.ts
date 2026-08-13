@@ -123,6 +123,29 @@ describe("describeSubscription", () => {
     expect(partial.status).toBe("Unknown");
   });
 
+  // An installed build outlives the enum it was compiled against, so both maps must degrade to
+  // the raw value rather than to `undefined` — a blank plan line is indistinguishable from a
+  // failed request. See CLAUDE.md §1.5.
+  it("falls back to the raw value for a plan or status it predates", () => {
+    const s = describeSubscription({
+      plan: "PLATINUM",
+      status: "PAUSED",
+    } as unknown as Parameters<typeof describeSubscription>[0]);
+    expect(s.plan).toBe("PLATINUM");
+    expect(s.status).toBe("PAUSED");
+  });
+
+  // A TRIAL with no end date is missing information, not an ended trial. Asserting it has ended
+  // tells an active trial user their access is gone.
+  it("does not claim a trial ended when no end date was sent", () => {
+    const s = describeSubscription({
+      plan: "PREMIUM",
+      status: "TRIAL",
+    } as unknown as Parameters<typeof describeSubscription>[0]);
+    expect(s.detail).toBe("");
+    expect(s.tone).not.toBe("danger");
+  });
+
   // The three payloads below are verbatim `GET /subscription` responses from the local backend,
   // signed in as each seeded tier. Two details only show up against the real thing: the trial's
   // timestamp carries microseconds and an offset, and both Free and Premium seed with a null

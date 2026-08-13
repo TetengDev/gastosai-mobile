@@ -101,8 +101,11 @@ export const describeSubscription = (
   sub: SubscriptionResponse | undefined,
   now: Date = new Date(),
 ): SubscriptionSummary => {
-  const plan = sub?.plan ? PLAN_LABELS[sub.plan] : "—";
-  const status = sub?.status ? STATUS_LABELS[sub.status] : "Unknown";
+  // Fall back to the raw value, never `undefined`: this app's enums are the ones pinned at build
+  // time, and installed builds meet server-side values they predate (CLAUDE.md §1.5). An unmapped
+  // value renders as itself, which is worse than a label and far better than a blank line.
+  const plan = sub?.plan ? PLAN_LABELS[sub.plan] ?? sub.plan : "—";
+  const status = sub?.status ? STATUS_LABELS[sub.status] ?? sub.status : "Unknown";
   const endsOn = sub?.currentPeriodEnd ? formatDateOnly(sub.currentPeriodEnd) : null;
   const left = timeRemaining(sub?.currentPeriodEnd, now);
   const billing = sub?.billingPeriod ? PERIOD_LABELS[sub.billingPeriod] : null;
@@ -112,10 +115,15 @@ export const describeSubscription = (
       return {
         plan,
         status,
+        // Absent is not elapsed. Only claim the trial ended when the backend actually sent an end
+        // date that has passed; with no date there is nothing to say beyond the badge, exactly as
+        // the ACTIVE branch does. Telling an active trial it is over is the worse error.
         detail: left
           ? `Trial ends ${endsOn} · ${left}`
-          : "Your trial has ended. Renew on the web app to keep premium features.",
-        tone: left ? "warn" : "danger",
+          : endsOn
+            ? "Your trial has ended. Renew on the web app to keep premium features."
+            : "",
+        tone: left || !endsOn ? "warn" : "danger",
       };
 
     case "ACTIVE":
