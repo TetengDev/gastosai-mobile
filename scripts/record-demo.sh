@@ -8,7 +8,7 @@
 #
 #   ./scripts/record-demo.sh chat "chat renders results and confirms writes" TEN-168
 #
-# Uploading is delegated to `../gastosai-app/scripts/attach_evidence.py`, which reads
+# Uploading is delegated to `../scripts/attach_evidence.py`, which reads
 # LINEAR_API_KEY from the workspace `.env`. Nothing here needs a token of its own. Set PR_NUMBER
 # in the environment to also link the PR to the issue; without it the clip is attached alone,
 # which is the common case since the demo is usually recorded before the PR exists.
@@ -44,7 +44,7 @@ FLOW_FILE=".maestro/demo/${FLOW}.yaml"
 [[ -f "$FLOW_FILE" ]] || { echo "no such demo flow: $FLOW_FILE" >&2; exit 2; }
 
 # Fail before recording rather than after, so a missing prerequisite does not waste a run.
-ATTACH="../gastosai-app/scripts/attach_evidence.py"
+ATTACH="../scripts/attach_evidence.py"
 [[ -f "$ATTACH" ]] || {
   echo "cannot find $ATTACH — the workspace repo must be checked out beside this one" >&2
   exit 2

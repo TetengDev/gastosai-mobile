@@ -1,0 +1,44 @@
+# Demo: the More hub tells you what you are paying for, before it lists what you can do.
+#
+# **This flow is filmed.** Written for someone who has never seen the app — a client, not a
+# reviewer. Same rules as `dashboard.yaml`: no housekeeping on camera, open and close on a full
+# screen.
+#
+# Read-only. It creates nothing, so there is no cleanup flow for it.
+#
+# The plan card is the subject (TEN-158). Every string on it restates a field from
+# `GET /subscription` — the phone decides none of it, which is the point worth filming.
+#
+# Narration lives in `label:` lines beginning `>> ` — see `.maestro/README.md`. What actually
+# guards this behaviour is `.maestro/more.yaml`.
+#
+# @watch The plan and its status come from the server
+# @watch Every action sits one tap away, without scrolling
+appId: host.exp.Exponent
+---
+- runFlow: ../launch.yaml
+
+- tapOn:
+    id: "tab-more"
+    label: ">> Everything else lives here"
+
+# The subject of the demo. Asserted by id rather than by the plan wording: the label is whatever
+# the backend sent, and the demo account's tier is not this flow's business to hardcode.
+- extendedWaitUntil:
+    visible:
+      id: "more-plan"
+    timeout: 25000
+    label: ">> What you are on, and what it costs you"
+
+# The hub's design rule, on camera: every action reachable without a scroll, plan card included.
+- assertVisible:
+    id: "more-recurring"
+- assertVisible:
+    id: "more-categories"
+- assertVisible:
+    id: "more-alerts"
+- assertVisible:
+    id: "more-chat"
+- assertVisible:
+    id: "more-settings"
+    label: ">> And everything else, still one tap away"
