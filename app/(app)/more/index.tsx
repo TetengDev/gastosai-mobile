@@ -1,10 +1,68 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Alert, ScrollView, View } from "react-native";
+import { Alert, ScrollView, Text, View } from "react-native";
 import { listAlerts, unreadCount } from "../../../src/api/alerts";
+import { errorMessage } from "../../../src/api/client";
+import { describeSubscription, getSubscription } from "../../../src/api/subscription";
 import { useAuth } from "../../../src/context/AuthContext";
-import { Body, Card, Divider, ListRow } from "../../../src/components/ui";
+import { Body, Card, Divider, ListRow, Pill, Skeleton } from "../../../src/components/ui";
 import { useTheme } from "../../../src/theme/useTheme";
+
+/**
+ * What the user is paying for, at the top of the settings hub.
+ *
+ * Every word of it comes from `GET /subscription` by way of `describeSubscription` — this
+ * component picks a colour and lays the strings out, and decides nothing about plans. Colour is
+ * the only judgement it makes, and it is driven by the tone the summary already carries.
+ */
+function PlanCard() {
+  const t = useTheme();
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["subscription"],
+    queryFn: getSubscription,
+  });
+
+  // Reserve the same height while loading, so the rows below do not jump under a thumb already
+  // travelling towards them.
+  if (isLoading) return <Skeleton height={96} />;
+
+  if (isError) {
+    return (
+      <Card testID="more-plan">
+        <Body dim style={{ fontSize: 12.5 }}>Plan</Body>
+        <Body>{errorMessage(error)}</Body>
+      </Card>
+    );
+  }
+
+  const { plan, status, detail, tone } = describeSubscription(data);
+  const toneColor =
+    tone === "danger" ? t.colors.danger : tone === "warn" ? t.colors.warnText : t.colors.text2;
+
+  return (
+    <Card testID="more-plan">
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <Text
+          style={{
+            fontFamily: t.fonts.mono,
+            fontSize: 11,
+            letterSpacing: 1.3,
+            textTransform: "uppercase",
+            color: t.colors.text3,
+          }}
+        >
+          Plan
+        </Text>
+        <Text style={{ fontFamily: t.fonts.display, fontSize: 20, color: t.colors.textHi }}>
+          {plan}
+        </Text>
+        <View style={{ flex: 1 }} />
+        <Pill label={status} dotColor={toneColor} />
+      </View>
+      <Body style={{ fontSize: 13, color: toneColor }}>{detail}</Body>
+    </Card>
+  );
+}
 
 /**
  * The hub for everything that is not a daily destination.
@@ -44,6 +102,10 @@ export default function More() {
       style={{ flex: 1, backgroundColor: t.colors.page }}
       contentContainerStyle={{ padding: t.spacing.screen, gap: t.spacing.gap, paddingBottom: 96 }}
     >
+      {/* First, because "what am I paying for" is the question this hub is opened with, and a
+          card below the rows is a card below the fold on a small phone. */}
+      <PlanCard />
+
       <Card>
         <ListRow
           testID="more-recurring"
