@@ -143,7 +143,27 @@ describe("describeSubscription", () => {
       status: "TRIAL",
     } as unknown as Parameters<typeof describeSubscription>[0]);
     expect(s.detail).toBe("");
-    expect(s.tone).not.toBe("danger");
+    expect(s.tone).toBe("normal");
+  });
+
+  // A cancelled period that has already elapsed must not promise future access.
+  it("puts a lapsed CANCELLED period in the past tense", () => {
+    const now = new Date("2026-08-14T00:00:00+08:00");
+    const past = describeSubscription(
+      { plan: "PREMIUM", status: "CANCELLED", currentPeriodEnd: "2026-07-01T00:00:00+08:00" } as
+        unknown as Parameters<typeof describeSubscription>[0],
+      now,
+    );
+    expect(past.detail).toContain("ended");
+    expect(past.tone).toBe("danger");
+
+    const future = describeSubscription(
+      { plan: "PREMIUM", status: "CANCELLED", currentPeriodEnd: "2026-09-01T00:00:00+08:00" } as
+        unknown as Parameters<typeof describeSubscription>[0],
+      now,
+    );
+    expect(future.detail).toContain("ends");
+    expect(future.tone).toBe("warn");
   });
 
   // The three payloads below are verbatim `GET /subscription` responses from the local backend,

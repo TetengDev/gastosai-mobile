@@ -123,7 +123,9 @@ export const describeSubscription = (
           : endsOn
             ? "Your trial has ended. Renew on the web app to keep premium features."
             : "",
-        tone: left || !endsOn ? "warn" : "danger",
+        // No detail means nothing justifies a colour, so match the ACTIVE-with-no-dates case
+        // rather than showing an amber dot with no sentence under it.
+        tone: left ? "warn" : endsOn ? "danger" : "normal",
       };
 
     case "ACTIVE":
@@ -142,8 +144,14 @@ export const describeSubscription = (
         status,
         // Cancelled is not expired. The period the user already paid for still has an end date,
         // and stating it is a restatement of `currentPeriodEnd`, not an entitlement decision.
-        detail: endsOn ? `Cancelled · ends ${endsOn}` : "Cancelled.",
-        tone: "warn",
+        // Once that date is behind us the future tense becomes a false promise, so it moves to
+        // the past tense and the harder colour — the same distinction EXPIRED makes.
+        detail: endsOn
+          ? left
+            ? `Cancelled · ends ${endsOn}`
+            : `Cancelled · ended ${endsOn}`
+          : "Cancelled.",
+        tone: !endsOn || left ? "warn" : "danger",
       };
 
     case "EXPIRED":
