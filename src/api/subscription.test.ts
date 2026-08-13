@@ -115,7 +115,11 @@ describe("describeSubscription", () => {
     expect(partial.status).toBe("Unknown");
   });
 
-  it("falls back to a bare status when the backend sends no period end", () => {
-    expect(describeSubscription(sub({ plan: "PREMIUM", status: "ACTIVE" })).detail).toBe("Active");
+  it("says nothing extra when the backend sends no period end", () => {
+    // What a seeded Free or manually granted Premium account really returns:
+    // `{ plan, status: "ACTIVE", currentPeriodEnd: null, billingPeriod: null }`. "Active" under
+    // an Active badge is noise, and a renewal date the backend never sent would be a fiction.
+    expect(describeSubscription(sub({ plan: "PREMIUM", status: "ACTIVE" })).detail).toBe("");
+    expect(describeSubscription(sub({ plan: "FREE", status: "ACTIVE" })).detail).toBe("");
   });
 });

@@ -59,7 +59,7 @@ function PlanCard() {
         <View style={{ flex: 1 }} />
         <Pill label={status} dotColor={toneColor} />
       </View>
-      <Body style={{ fontSize: 13, color: toneColor }}>{detail}</Body>
+      {detail ? <Body style={{ fontSize: 13, color: toneColor }}>{detail}</Body> : null}
     </Card>
   );
 }

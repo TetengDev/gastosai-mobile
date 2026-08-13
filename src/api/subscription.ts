@@ -78,7 +78,14 @@ export type SubscriptionTone = "normal" | "warn" | "danger";
 export interface SubscriptionSummary {
   plan: string;
   status: string;
-  /** One plain line under the plan — renewal date, trial countdown, or the bad news. */
+  /**
+   * One plain line under the plan — renewal date, trial countdown, or the bad news.
+   *
+   * Empty when the backend sent nothing beyond plan and status, which is what a seeded Free or
+   * manually granted Premium account actually looks like (`currentPeriodEnd: null`). The screen
+   * drops the line rather than filling it: "Active" under an Active badge is noise, and
+   * inventing a renewal that the backend did not describe is worse than saying nothing.
+   */
   detail: string;
   tone: SubscriptionTone;
 }
@@ -115,8 +122,9 @@ export const describeSubscription = (
       return {
         plan,
         status,
-        // Two facts, both the backend's: when the period ends and how it is billed.
-        detail: [endsOn ? `Renews ${endsOn}` : "Active", billing].filter(Boolean).join(" · "),
+        // Two facts, both the backend's: when the period ends and how it is billed. Either may
+        // be absent, and then there is simply nothing more to say than the badge already says.
+        detail: [endsOn ? `Renews ${endsOn}` : null, billing].filter(Boolean).join(" · "),
         tone: "normal",
       };
 
