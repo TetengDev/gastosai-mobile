@@ -14,7 +14,15 @@ import { describeSubscription, timeRemaining, type SubscriptionResponse } from "
 const ENDS = "2026-09-12T00:30:00+08:00";
 const NOW = new Date("2026-09-01T00:30:00+08:00"); // 11 days before ENDS, to the minute
 
-const sub = (over: Partial<SubscriptionResponse>): SubscriptionResponse => ({ ...over });
+/**
+ * The contract types every field as optional-but-not-nullable, while the backend really sends
+ * `"currentPeriodEnd": null` for an account with no period (verified against the seeded Free and
+ * Premium users). Both spellings must land on the same rendering, so the helper accepts null and
+ * casts once here rather than letting the production type pretend the value cannot arrive.
+ */
+type SubscriptionPayload = { [K in keyof SubscriptionResponse]?: SubscriptionResponse[K] | null };
+
+const sub = (over: SubscriptionPayload): SubscriptionResponse => ({ ...over }) as SubscriptionResponse;
 
 describe("timeRemaining", () => {
   it("counts whole days once more than a day is left", () => {
@@ -113,6 +121,34 @@ describe("describeSubscription", () => {
     const partial = describeSubscription(sub({ plan: "PREMIUM" }));
     expect(partial.plan).toBe("Premium");
     expect(partial.status).toBe("Unknown");
+  });
+
+  // The three payloads below are verbatim `GET /subscription` responses from the local backend,
+  // signed in as each seeded tier. Two details only show up against the real thing: the trial's
+  // timestamp carries microseconds and an offset, and both Free and Premium seed with a null
+  // period end — the case that reads as a bare badge.
+  describe("against real backend payloads", () => {
+    it("renders the seeded trial, microsecond timestamp and all", () => {
+      const s = describeSubscription(
+        sub({ plan: "TRIAL", status: "TRIAL", currentPeriodEnd: "2026-08-20T20:22:46.606429+08:00" }),
+        new Date("2026-08-14T20:22:46+08:00"),
+      );
+      expect(s.plan).toBe("Trial");
+      expect(s.detail).toBe("Trial ends Aug 20, 2026 · 6 days left");
+      expect(s.tone).toBe("warn");
+    });
+
+    it("renders the seeded free and premium accounts as a plan and a badge", () => {
+      const free = describeSubscription(
+        sub({ plan: "FREE", status: "ACTIVE", currentPeriodEnd: null, billingPeriod: null }),
+      );
+      expect([free.plan, free.status, free.detail]).toEqual(["Free", "Active", ""]);
+
+      const premium = describeSubscription(
+        sub({ plan: "PREMIUM", status: "ACTIVE", currentPeriodEnd: null, billingPeriod: null }),
+      );
+      expect([premium.plan, premium.status, premium.detail]).toEqual(["Premium", "Active", ""]);
+    });
   });
 
   it("says nothing extra when the backend sends no period end", () => {
