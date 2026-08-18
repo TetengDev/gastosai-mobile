@@ -1,6 +1,6 @@
 import { api } from "./client";
 import type { components } from "./generated/schema";
-import { formatDateOnly } from "../lib/formatters";
+import { formatCurrency, formatDateOnly } from "../lib/formatters";
 
 /**
  * The user's subscription, as the backend sees it.
@@ -26,6 +26,78 @@ export type BillingPeriod = NonNullable<SubscriptionResponse["billingPeriod"]>;
 
 export const getSubscription = () =>
   api.get<SubscriptionResponse>("/subscription").then((r) => r.data);
+
+export type PricingItem = components["schemas"]["PricingItem"];
+export type CheckoutRequest = components["schemas"]["CheckoutRequest"];
+export type CheckoutResponse = components["schemas"]["CheckoutResponse"];
+
+/**
+ * The published price list. Two rows today — premium monthly and premium annual — and the screen
+ * renders whatever arrives rather than assuming that count.
+ */
+export const getPricing = () =>
+  api.get<PricingItem[]>("/subscription/pricing").then((r) => r.data);
+
+/**
+ * Ask the backend to open a checkout session and hand back the provider's URL.
+ *
+ * The period is typed from `CheckoutRequest` rather than from `SubscriptionResponse`, even though
+ * the two unions are identical today: this is the request's own field, and if the contract ever
+ * widens one without the other, the build should break here rather than silently send a value the
+ * endpoint rejects.
+ */
+export const startCheckout = (period: CheckoutRequest["period"]) =>
+  api
+    .post<CheckoutResponse>("/subscription/checkout", { period } satisfies CheckoutRequest)
+    .then((r) => r.data);
+
+/**
+ * Integer centavos as an exact decimal string — `129000` -> `"1290.00"`.
+ *
+ * `/subscription/pricing` is the one endpoint that serves money as an int32 of centavos rather
+ * than a decimal, so it needs a conversion the rest of the app does not. Doing it as `c / 100`
+ * puts a float between the contract and the screen, which CLAUDE.md §1.3 rules out; string
+ * slicing is exact for every value the field can hold. The result goes straight to
+ * `formatCurrency`, so grouping and the peso sign stay in `formatters.ts` with every other amount.
+ */
+export const centavosToAmount = (centavos: number): string => {
+  if (!Number.isFinite(centavos)) return "0.00";
+  const whole = Math.trunc(centavos);
+  const digits = String(Math.abs(whole)).padStart(3, "0");
+  return `${whole < 0 ? "-" : ""}${digits.slice(0, -2)}.${digits.slice(-2)}`;
+};
+
+/** `₱1,290.00` for a price row, or a dash when the backend sent no amount. */
+export const formatPrice = (item: PricingItem | undefined): string =>
+  item?.amountCentavos === undefined ? "—" : formatCurrency(centavosToAmount(item.amountCentavos));
+
+/** "per month" / "per year", for the line under the price. */
+export const PERIOD_CADENCE: Record<BillingPeriod, string> = {
+  MONTHLY: "per month",
+  ANNUAL: "per year",
+};
+
+/**
+ * Has the backend's view of the subscription moved since the snapshot taken before checkout?
+ *
+ * This is how the app decides a checkout landed, and it is deliberately a field-by-field diff
+ * rather than a test for "is this person premium now". Reading `plan === "PREMIUM"` would be the
+ * device deciding what someone is entitled to, which is the backend's alone (CLAUDE.md §1.2); a
+ * diff only asks whether the authoritative answer changed, and stays correct for cases that are
+ * not an upgrade at all — a renewal that only moves `currentPeriodEnd`, or a monthly plan
+ * switching to annual.
+ *
+ * The consequence is the honest one: a cancelled payment changes nothing, so nothing is claimed.
+ */
+export const subscriptionChanged = (
+  before: SubscriptionResponse | undefined,
+  after: SubscriptionResponse | undefined,
+): boolean =>
+  !!after &&
+  (before?.plan !== after.plan ||
+    before?.status !== after.status ||
+    before?.currentPeriodEnd !== after.currentPeriodEnd ||
+    before?.billingPeriod !== after.billingPeriod);
 
 const PLAN_LABELS: Record<SubscriptionPlan, string> = {
   FREE: "Free",
@@ -94,8 +166,15 @@ export interface SubscriptionSummary {
  * The whole rendered state of the screen, derived from the response and nothing else.
  *
  * Every branch below is a restatement of a field the backend sent, phrased for a person. An
- * expired subscription says so plainly rather than being softened into "inactive", because the
- * user's next action — go to the web app and renew — depends on knowing which one it is.
+ * expired subscription says so plainly rather than being softened into "inactive": the two mean
+ * different things to someone deciding whether to pay again, and softening one into the other
+ * hides the decision.
+ *
+ * No branch tells the user where to renew. It used to say "on the web app", which was true until
+ * this screen grew a checkout of its own — and a sentence that names a route goes stale the moment
+ * the route moves. The affordance carries that job instead: the plan card renders "View plans"
+ * directly under this line, and the same summary is reused *inside* the plans sheet, where telling
+ * someone to open the sheet they are already looking at would be nonsense.
  */
 export const describeSubscription = (
   sub: SubscriptionResponse | undefined,
@@ -121,7 +200,7 @@ export const describeSubscription = (
         detail: left
           ? `Trial ends ${endsOn} · ${left}`
           : endsOn
-            ? "Your trial has ended. Renew on the web app to keep premium features."
+            ? "Your trial has ended."
             : "",
         // No detail means nothing justifies a colour, so match the ACTIVE-with-no-dates case
         // rather than showing an amber dot with no sentence under it.
@@ -158,9 +237,7 @@ export const describeSubscription = (
       return {
         plan,
         status,
-        detail: endsOn
-          ? `Expired on ${endsOn}. Renew on the web app to keep premium features.`
-          : "Expired. Renew on the web app to keep premium features.",
+        detail: endsOn ? `Expired on ${endsOn}.` : "Expired.",
         tone: "danger",
       };
 
