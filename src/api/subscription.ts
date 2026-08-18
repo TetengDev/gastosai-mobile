@@ -166,8 +166,15 @@ export interface SubscriptionSummary {
  * The whole rendered state of the screen, derived from the response and nothing else.
  *
  * Every branch below is a restatement of a field the backend sent, phrased for a person. An
- * expired subscription says so plainly rather than being softened into "inactive", because the
- * user's next action — go to the web app and renew — depends on knowing which one it is.
+ * expired subscription says so plainly rather than being softened into "inactive": the two mean
+ * different things to someone deciding whether to pay again, and softening one into the other
+ * hides the decision.
+ *
+ * No branch tells the user where to renew. It used to say "on the web app", which was true until
+ * this screen grew a checkout of its own — and a sentence that names a route goes stale the moment
+ * the route moves. The affordance carries that job instead: the plan card renders "View plans"
+ * directly under this line, and the same summary is reused *inside* the plans sheet, where telling
+ * someone to open the sheet they are already looking at would be nonsense.
  */
 export const describeSubscription = (
   sub: SubscriptionResponse | undefined,
@@ -193,7 +200,7 @@ export const describeSubscription = (
         detail: left
           ? `Trial ends ${endsOn} · ${left}`
           : endsOn
-            ? "Your trial has ended. Renew on the web app to keep premium features."
+            ? "Your trial has ended."
             : "",
         // No detail means nothing justifies a colour, so match the ACTIVE-with-no-dates case
         // rather than showing an amber dot with no sentence under it.
@@ -230,9 +237,7 @@ export const describeSubscription = (
       return {
         plan,
         status,
-        detail: endsOn
-          ? `Expired on ${endsOn}. Renew on the web app to keep premium features.`
-          : "Expired. Renew on the web app to keep premium features.",
+        detail: endsOn ? `Expired on ${endsOn}.` : "Expired.",
         tone: "danger",
       };
 

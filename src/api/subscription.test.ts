@@ -97,6 +97,25 @@ describe("describeSubscription", () => {
     expect(s.tone).toBe("danger");
   });
 
+  // These lines used to end with "Renew on the web app", which stopped being true the moment this
+  // screen grew a checkout — and the whole point of that checkout is not having to reach for a
+  // laptop. Naming a route in copy is what went stale; the plan card's "View plans" affordance
+  // carries the action now, and the same summary renders inside the sheet itself, where an
+  // instruction to open the sheet would be nonsense.
+  it("does not send a phone user to the web app to renew", () => {
+    const lapsed: SubscriptionResponse[] = [
+      sub({ plan: "PREMIUM", status: "EXPIRED", currentPeriodEnd: ENDS }),
+      sub({ plan: "PREMIUM", status: "EXPIRED" }),
+      sub({ plan: "TRIAL", status: "TRIAL", currentPeriodEnd: ENDS }),
+      sub({ plan: "PREMIUM", status: "CANCELLED", currentPeriodEnd: ENDS }),
+    ];
+    for (const s of lapsed) {
+      expect(describeSubscription(s, new Date("2026-10-01T00:00:00+08:00")).detail).not.toMatch(
+        /web app/i,
+      );
+    }
+  });
+
   it("says an expired subscription is expired, not merely inactive", () => {
     const s = describeSubscription(sub({ plan: "PREMIUM", status: "EXPIRED", currentPeriodEnd: ENDS }));
     expect(s.status).toBe("Expired");
