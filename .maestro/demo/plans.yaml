@@ -1,0 +1,96 @@
+# Demo: choosing a plan on the phone, and the hand-off to the payment provider.
+#
+# **This flow is filmed.** Written for someone who has never seen the app — a client, not a
+# reviewer. Same rules as `dashboard.yaml`: no housekeeping on camera, open and close on a full
+# screen.
+#
+# Read-only, and it stops at the button. The subject is TEN-159: pricing on the phone and a
+# purchase started from it, so that upgrading no longer means finding a laptop.
+#
+# ## Why it does not tap "Continue to payment"
+#
+# That tap leaves the app for the provider's page in an external browser. Maestro drives the app,
+# not Safari, so from that point the run is neither controllable nor assertable — and the recording
+# would film a stub checkout page, which is not what a client should be shown. The hand-off itself
+# is verified out of band against a local backend (`POST /subscription/checkout` returning a
+# provider URL), and the *state machine* behind the button — hand-off, confirming, settled — is
+# covered by `src/api/subscription.test.ts`.
+#
+# So the camera stops where the app's own responsibility stops: showing the real published prices,
+# both periods, and one honest button.
+#
+# ## Prices are asked for, never written down
+#
+# `₱149.00` was correct the day it was typed and will not be forever — the same rot that expired
+# four flows on absolute months (see `.maestro/README.md`). The two figures asserted below are
+# fetched from the same endpoint the screen reads, so this flow fails if the screen invents a
+# number and passes when the price list changes. `/subscription/pricing` needs no token, unlike
+# every other computed assertion in this suite.
+#
+# Narration lives in `label:` lines beginning `>> ` — see `.maestro/README.md`.
+#
+# @watch Both billing periods, priced by the server
+# @watch The phone renders the price list, it never computes it
+appId: host.exp.Exponent
+---
+- runFlow: ../launch.yaml
+
+# The peso strings the screen should be showing, built from the published centavos.
+#
+# Formatted by hand rather than through `toLocaleString`: the runner's JS engine is not guaranteed
+# full ICU data, and a grouping separator that silently goes missing would fail this flow for a
+# reason that has nothing to do with the app.
+- evalScript: |
+    ${output.peso = function(c){var w=String(Math.floor(c/100));var f=String(c%100);if(f.length<2)f='0'+f;return '₱'+w.replace(/\B(?=(\d{3})+(?!\d))/g,',')+'.'+f;}}
+- evalScript: |
+    ${output.prices = (function(){var rows=json(http.get('http://localhost:8080/subscription/pricing').body);var out={};for(var i=0;i<rows.length;i++){out[rows[i].period]=output.peso(rows[i].amountCentavos);}return out;})()}
+
+- tapOn:
+    id: "tab-more"
+    label: ">> Everything else lives here"
+
+# The plan card is the way in. Asserted by id, not by the plan wording: the label is whatever the
+# backend sent, and the demo account's tier is not this flow's business to hardcode.
+- extendedWaitUntil:
+    visible:
+      id: "more-plan"
+    timeout: 25000
+    label: ">> What you are on today"
+
+- tapOn:
+    id: "more-plan"
+    label: ">> And the way to change it, without reaching for a laptop"
+
+# Lazily mounted behind a modal, and the price list is a fresh request — so wait rather than assert.
+- extendedWaitUntil:
+    visible:
+      id: "upgrade-plans"
+    timeout: 25000
+
+# Monthly is the default selection, so this is the first price on screen.
+- assertVisible:
+    id: "upgrade-price"
+    text: ${output.prices.MONTHLY}
+    label: ">> Priced by the server, not by the phone"
+
+- assertVisible: ".*per month.*"
+
+# The annual option existing at all is the reason this screen was asked for.
+- tapOn:
+    id: "upgrade-period-annual"
+    label: ">> Or pay for the year"
+
+- assertVisible:
+    id: "upgrade-price"
+    text: ${output.prices.ANNUAL}
+
+- assertVisible: ".*per year.*"
+
+# One button, and it says exactly what it does. Not tapped — see the header.
+- assertVisible:
+    id: "upgrade-continue"
+    label: ">> One tap to the payment provider, and back again when it is done"
+
+- tapOn:
+    id: "upgrade-close"
+    label: ">> Nothing is charged until you finish paying"
