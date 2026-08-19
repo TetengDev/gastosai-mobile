@@ -173,7 +173,7 @@ describe("paywall", () => {
   });
 
   it("still says something when a 402 arrives with no body at all", () => {
-    expect(paywall(gateError({})).message).toBe(
+    expect(paywall(gateError({}))?.message).toBe(
       "AI features are unavailable on this account right now.",
     );
   });
