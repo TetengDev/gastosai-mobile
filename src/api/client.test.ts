@@ -1,7 +1,15 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import type { InternalAxiosRequestConfig } from "axios";
 // jest.mock calls below are hoisted above these imports by babel-jest, so the mocks still apply.
-import { api, APP_PLATFORM, APP_VERSION, errorMessage } from "./client";
+import {
+  api,
+  APP_PLATFORM,
+  APP_VERSION,
+  errorMessage,
+  isPaywallMessage,
+  paywall,
+  UPGRADE_PROMPT,
+} from "./client";
 
 jest.mock("../lib/tokenStore", () => ({
   tokenStore: { getToken: async () => "test-jwt", clear: async () => {} },
@@ -84,6 +92,118 @@ describe("errorMessage", () => {
 
   it("falls back for a non-axios error", () => {
     expect(errorMessage(new Error("boom"), "Could not save.")).toBe("Could not save.");
+  });
+});
+
+/** A 402 as the backend actually sends it: an RFC 7807 body, plus `feature` on a plan gate. */
+function gateError(data: Record<string, unknown>) {
+  return Object.assign(new Error("Request failed with status code 402"), {
+    isAxiosError: true,
+    response: { status: 402, data },
+  });
+}
+
+describe("paywall", () => {
+  it("names the feature instead of echoing the enum the server sent", () => {
+    // The annotation-driven gate's default detail is literally
+    // "This feature requires an upgraded plan: NL_CHATBOT". Showing a user an enum name is the
+    // failure this issue exists to remove, and it is a *specific* message, so it would sail past
+    // any check that only looks for a generic one.
+    const gate = paywall(
+      gateError({
+        title: "Upgrade Required",
+        detail: "This feature requires an upgraded plan: NL_CHATBOT",
+        feature: "NL_CHATBOT",
+      }),
+    );
+
+    expect(gate).toEqual({
+      kind: "plan",
+      feature: "NL_CHATBOT",
+      message: `Ask AI is not included in your plan. ${UPGRADE_PROMPT}`,
+    });
+    expect(gate?.message).not.toContain("NL_CHATBOT");
+  });
+
+  it("keeps a hand-written detail, which carries a fact this app cannot know", () => {
+    // The category cap comes from server configuration. "limited to 5" is worth more than
+    // anything this file could write, so a detail that is not just the enum restated is kept.
+    const gate = paywall(
+      gateError({
+        detail: "Your plan is limited to 5 categories. Upgrade to add more.",
+        feature: "CUSTOM_CATEGORIES",
+      }),
+    );
+
+    expect(gate?.message).toBe(
+      `Your plan is limited to 5 categories. Upgrade to add more. ${UPGRADE_PROMPT}`,
+    );
+  });
+
+  it("degrades to honest generic copy for a feature key this build predates", () => {
+    // CLAUDE.md §1.5: installed apps meet server-side values newer than the build. The one thing
+    // that must not happen is the enum reaching the screen.
+    const gate = paywall(
+      gateError({
+        detail: "This feature requires an upgraded plan: SOMETHING_NEW",
+        feature: "SOMETHING_NEW",
+      }),
+    );
+
+    expect(gate?.message).toBe(`This feature is not included in your plan. ${UPGRADE_PROMPT}`);
+    expect(gate?.message).not.toContain("SOMETHING_NEW");
+  });
+
+  it("does not offer an upgrade for a missing AI key, which upgrading would not fix", () => {
+    // /ai/** answers 402 through the bring-your-own-key interceptor, which sends no `feature`.
+    // Selling a plan here would take someone's money and leave them exactly as stuck.
+    const gate = paywall(
+      gateError({
+        title: "AI key required",
+        detail: "Add your OpenAI key in Settings to use AI features.",
+      }),
+    );
+
+    expect(gate).toEqual({
+      kind: "ai-key",
+      feature: null,
+      message: "Add your OpenAI key in Settings to use AI features.",
+    });
+    expect(isPaywallMessage(gate?.message)).toBe(false);
+  });
+
+  it("still says something when a 402 arrives with no body at all", () => {
+    expect(paywall(gateError({})).message).toBe(
+      "AI features are unavailable on this account right now.",
+    );
+  });
+
+  it("ignores anything that is not a 402", () => {
+    const err = Object.assign(new Error("nope"), {
+      isAxiosError: true,
+      response: { status: 403, data: { feature: "NL_CHATBOT" } },
+    });
+    expect(paywall(err)).toBeNull();
+    expect(paywall(new Error("boom"))).toBeNull();
+  });
+});
+
+describe("errorMessage on a gated request", () => {
+  // This is the whole coverage argument. Every screen renders `errorMessage(error)`, so answering
+  // 402 here — ahead of the fallback — is what makes "no 402 surfaces as a generic unexpected
+  // error" true everywhere at once, including endpoints gated after this was written.
+  it("explains the gate rather than using the caller's fallback", () => {
+    const err = gateError({
+      detail: "This feature requires an upgraded plan: ADVANCED_INSIGHTS",
+      feature: "ADVANCED_INSIGHTS",
+    });
+
+    const message = errorMessage(err, "Could not read that receipt. Try a clearer photo.");
+
+    expect(message).toBe(`Spending insights is not included in your plan. ${UPGRADE_PROMPT}`);
+    // The suffix is the contract with ErrorText: it is how the string is recognised as a paywall
+    // once the error object is gone. Breaking it silently removes the upgrade button app-wide.
+    expect(isPaywallMessage(message)).toBe(true);
   });
 });
 

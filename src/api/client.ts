@@ -153,11 +153,117 @@ api.interceptors.response.use(
   },
 );
 
+/** The RFC 7807 body the backend sends, plus the `feature` extension it sets on a plan gate. */
+interface ProblemBody {
+  detail?: string;
+  title?: string;
+  message?: string;
+  /** A `FeatureKey` name — `NL_CHATBOT`, `ADVANCED_INSIGHTS`, … — present only on a plan gate. */
+  feature?: string;
+}
+
+/**
+ * Why a 402 happened. Two different things share the status and they need different answers.
+ *
+ * - `plan` — the account's subscription does not include the feature. Upgrading fixes it.
+ * - `ai-key` — `/ai/**` runs through a bring-your-own-key interceptor which answers 402 when the
+ *   account has no AI key of its own and shared-key fallback is off. **Upgrading does not fix
+ *   this**, so it must never be offered here: selling someone a plan that leaves them exactly as
+ *   stuck is worse than the generic error this issue set out to remove.
+ */
+export type PaywallKind = "plan" | "ai-key";
+
+/**
+ * The sentence every plan-gated message ends with.
+ *
+ * It does double duty. To the user it is the answer to "so what do I do?"; to `ErrorText` it is
+ * how a paywall is told apart from an ordinary failure, since screens hand that component the
+ * *string* and the error object never reaches it. Exact-suffix matching against a constant this
+ * module owns, rather than pattern-sniffing prose — see `isPaywallMessage`.
+ */
+export const UPGRADE_PROMPT = "Upgrade to Premium to unlock it.";
+
+/**
+ * What each gated capability is called in the product.
+ *
+ * Wording only, in the same sense `formatCurrency` is — this decides nothing about entitlement,
+ * which is the backend's alone (CLAUDE.md §1.2). The map exists because the server's default
+ * message for the annotation-driven gate is `"This feature requires an upgraded plan: NL_CHATBOT"`,
+ * and an enum name is not something to show a person.
+ *
+ * Every `FeatureKey` is listed, not just the ones mobile can reach today, because an installed
+ * build meets server-side values it predates (CLAUDE.md §1.5) — and an unmapped key still degrades
+ * to honest generic copy rather than to the enum.
+ */
+const FEATURE_LABELS: Record<string, string> = {
+  AI_ANALYTICS: "Asking the assistant about your spending",
+  NL_CHATBOT: "Ask AI",
+  ADVANCED_INSIGHTS: "Spending insights",
+  ANOMALY_DETECTION: "Unusual-spending alerts",
+  BUDGET_FORECASTING: "Budget forecasting",
+  TREND_ANALYSIS: "Trend analysis",
+  CHAT_PERSONAS: "Assistant personas",
+  CUSTOM_CATEGORIES: "Custom categories",
+  UNLIMITED_TRANSACTIONS: "Unlimited expenses",
+  EXPORT_CSV: "CSV export",
+  EXPORT_PDF: "PDF export",
+};
+
+export interface Paywall {
+  kind: PaywallKind;
+  /** The raw `FeatureKey` the server named, or `null` when it named none. */
+  feature: string | null;
+  /** Ready to render. Plan gates always end in `UPGRADE_PROMPT`; an `ai-key` gate never does. */
+  message: string;
+}
+
+/**
+ * Reads a 402 as the thing it is, or returns `null` for anything else.
+ *
+ * The server sends two shapes of detail on a plan gate: a hand-written sentence carrying a real
+ * fact ("Your plan is limited to 5 categories.") and a machine default that simply restates the
+ * enum. The first is better than anything this file could write and is kept; the second is
+ * detected by the only reliable tell it has — it contains the feature key verbatim — and replaced.
+ */
+export function paywall(error: unknown): Paywall | null {
+  if (!axios.isAxiosError(error) || error.response?.status !== 402) return null;
+
+  const body = (error.response?.data ?? {}) as ProblemBody;
+  const detail = body.detail ?? body.message;
+  const feature = body.feature ?? null;
+
+  // No feature key means this is not the plan gate. Today that is only the AI-key interceptor,
+  // whose own wording is already specific and actionable, so it is passed through untouched.
+  if (!feature) {
+    if (detail) return { kind: "ai-key", feature: null, message: detail };
+    return {
+      kind: "ai-key",
+      feature: null,
+      message: "AI features are unavailable on this account right now.",
+    };
+  }
+
+  const humanDetail = detail && !detail.includes(feature) ? detail : null;
+  const label = FEATURE_LABELS[feature];
+  const why = humanDetail ?? `${label ?? "This feature"} is not included in your plan.`;
+
+  return { kind: "plan", feature, message: `${why} ${UPGRADE_PROMPT}` };
+}
+
+/** True for a message `paywall` minted for a plan gate — see `UPGRADE_PROMPT`. */
+export const isPaywallMessage = (message?: string | null): boolean =>
+  !!message && message.endsWith(UPGRADE_PROMPT);
+
 /**
  * Turns an axios failure into something worth showing a user.
  *
- * The backend returns RFC 7807 problem details (`{title, detail, status}`), so prefer `detail`;
- * fall back to a network message rather than leaking an axios stack into the UI.
+ * A 402 is answered first and never falls through: it is not an unexpected error but a plan
+ * boundary, and every screen in this app already renders whatever this function returns. Handling
+ * it here rather than screen by screen is what makes the coverage complete — a gated endpoint
+ * added tomorrow is explained without anyone remembering to wire it up.
+ *
+ * Otherwise the backend returns RFC 7807 problem details (`{title, detail, status}`), so prefer
+ * `detail`; fall back to a network message rather than leaking an axios stack into the UI.
  *
  * When the base URL is the developer's own machine, "check your connection" sends them to look at
  * the wrong thing — their phone's wifi is fine and the laptop is what is missing. Naming the
@@ -165,8 +271,11 @@ api.interceptors.response.use(
  * network) into something readable off the screen.
  */
 export function errorMessage(error: unknown, fallback = "Something went wrong."): string {
+  const gate = paywall(error);
+  if (gate) return gate.message;
+
   if (axios.isAxiosError(error)) {
-    const data = error.response?.data as { detail?: string; title?: string; message?: string } | undefined;
+    const data = error.response?.data as ProblemBody | undefined;
     const fromBody = data?.detail ?? data?.message ?? data?.title;
     if (fromBody) return fromBody;
     if (!error.response) {
