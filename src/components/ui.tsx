@@ -11,6 +11,8 @@ import {
   View,
 } from "react-native";
 import type { TextInputProps, TextProps, TextStyle, ViewStyle } from "react-native";
+import { useRouter } from "expo-router";
+import { isPaywallMessage } from "../api/client";
 import { useTheme } from "../theme/useTheme";
 
 /**
@@ -736,9 +738,55 @@ export function Skeleton({ height = 96 }: { height?: number }) {
   );
 }
 
+/**
+ * A plan boundary, rendered as the offer it is rather than as a failure.
+ *
+ * Deliberately not red and not `ErrorText`'s voice: nothing broke and the user did nothing wrong,
+ * so the danger colour would be the app blaming them for not having paid. The card carries the
+ * server's reason and the one thing that resolves it.
+ *
+ * "View plans" goes to the More hub, where the plan card sits with its own View plans control. The
+ * plans sheet is local state inside that screen rather than a route of its own, so this is as
+ * direct as a link can currently be — one tap short of the sheet, and still a real affordance
+ * instead of a sentence telling someone to go hunting.
+ *
+ * `navigate`, not `push`: More is a tab, and pushing stacks a second copy of a destination the
+ * user can already reach from the bar.
+ */
+function PaywallNotice({ message }: { message: string }) {
+  const t = useTheme();
+  const router = useRouter();
+  return (
+    <Card testID="paywall-notice" tone="panel">
+      <Text style={{ fontFamily: t.fonts.body, fontSize: 14, color: t.colors.textHi }}>
+        {message}
+      </Text>
+      <Button
+        testID="paywall-view-plans"
+        title="View plans"
+        size="sm"
+        onPress={() => router.navigate("/(app)/more" as never)}
+      />
+    </Card>
+  );
+}
+
+/**
+ * Every error string in this app is rendered through here, which is why the paywall branch lives
+ * here too.
+ *
+ * A 402 is not an error — it is "this costs money, here is how to buy it" — and it can come back
+ * from any request, so handling it screen by screen guarantees the one screen nobody remembered.
+ * `errorMessage` in `src/api/client.ts` already turns a plan gate into copy ending in
+ * `UPGRADE_PROMPT`; matching that exact suffix is how the string gets recognised without the error
+ * object, which screens do not pass down. The suffix is a constant that module owns, so this is
+ * identity against a known value, not prose sniffing — and a message rendered without this
+ * component still reads correctly on its own, because the sentence *is* the instruction.
+ */
 export function ErrorText({ children }: { children?: string | null }) {
   const t = useTheme();
   if (!children) return null;
+  if (isPaywallMessage(children)) return <PaywallNotice message={children} />;
   return (
     <Text style={{ fontFamily: t.fonts.body, fontSize: 14, color: t.colors.danger }}>
       {children}
