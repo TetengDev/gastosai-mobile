@@ -25,8 +25,10 @@ specific to this repo.
    recorder, which attaches to Linear itself:
    `./scripts/record-demo.sh <flow> "what to look at" <ISSUE>` — set `PR_NUMBER` in the
    environment to link the PR at the same time. Move the issue to `In Review`.
-3. **Review** — run the `pr-reviewer` agent with the PR number and the issue key.
-4. **Audit** — run the `pr-review-auditor` agent with the reviewer's findings and the PR number.
+3. **Review** — run the `pr-reviewer` agent **and** the `security-reviewer` agent, both with the
+   PR number and the issue key. Independent passes over the same diff; neither sees the other's
+   output. `security-reviewer` runs on every PR — there is no low-risk exemption for it.
+4. **Audit** — run the `pr-review-auditor` agent with **both** finding lists and the PR number.
    **Low-risk changes skip this step**; medium and high always run it. Risk levels and the
    critical-domain list: `../docs/ship-loop.md`. When in doubt, take the higher level.
 5. **Decide** — `APPROVE` stops the loop. Otherwise fix the upheld findings and start a new pass.
