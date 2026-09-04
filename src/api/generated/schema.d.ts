@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/admin/ai-usage/cost-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cost to serve per user and per plan
+         * @description Recomputes USD cost from recorded token counts, keeping text and vision apart, and states the per-token prices used and when they were last checked. Defaults to month-to-date in Asia/Manila.
+         */
+        get: operations["costReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/ai-usage/summary": {
         parameters: {
             query?: never;
@@ -110,6 +130,26 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["chat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ai/chat/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Execute a previously previewed assistant action
+         * @description Runs the action the server proposed on a `preview` turn. Post that turn's `toolName` and `params` back unchanged; no natural language is sent, so nothing is re-parsed and the executed action is the one that was shown.
+         */
+        post: operations["confirmChat"];
         delete?: never;
         options?: never;
         head?: never;
@@ -274,6 +314,974 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["markRead"];
+        trace?: never;
+    };
+    "/api/v2/admin/ai-usage/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2AdminAiUsageSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/admin/chat-audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2AdminChatAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/admin/observability/cost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2AdminObservabilityCost"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/admin/observability/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2AdminObservabilityEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/admin/observability/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2AdminObservabilityHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/admin/observability/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2AdminObservabilitySummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/ai/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a message to the assistant
+         * @description One assistant turn. Money inside `result` is an integer number of centavos; a `preview` turn's `params` are the opaque arguments to echo back to POST /ai/chat/confirm, and are not converted.
+         */
+        post: operations["v2AiChat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/ai/insights/month-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2MonthSummaryInsight"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/ai/insights/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2RecommendationsInsight"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/ai/insights/top-category": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2TopCategoryInsight"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/ai/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v2AiQuery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/ai/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2AiUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/ai/vision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v2AiVision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2ListAlerts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/alerts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["v2DeleteAlert"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/alerts/{id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["v2DismissAlert"];
+        trace?: never;
+    };
+    "/api/v2/alerts/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["v2MarkAlertRead"];
+        trace?: never;
+    };
+    "/api/v2/auth/google": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v2GoogleAuth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v2Login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/auth/magic-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v2RequestMagicLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/auth/magic-link/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v2VerifyMagicLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v2Register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/budget-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2GetBudgetRule"];
+        put: operations["v2UpsertBudgetRule"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/budget-rules/buckets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["v2AssignBuckets"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/budget-rules/enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["v2SetBudgetRuleEnabled"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/budget-rules/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2BudgetRuleSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2ListBudgets"];
+        put?: never;
+        post: operations["v2CreateBudget"];
+        delete: operations["v2DeleteAllBudgets"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/budgets/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2BudgetSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/budgets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["v2UpdateBudget"];
+        post?: never;
+        delete: operations["v2DeleteBudget"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2ListCategories"];
+        put?: never;
+        post: operations["v2CreateCategory"];
+        delete: operations["v2DeleteAllCategories"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/categories/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2GetCategory"];
+        put: operations["v2UpdateCategory"];
+        post?: never;
+        delete: operations["v2DeleteCategory"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/chat/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the caller's chat conversations
+         * @description Conversation summaries for the authenticated user, most recently updated first. Carries no messages; fetch a transcript with GET /api/v2/chat/conversations/{id}.
+         */
+        get: operations["v2ListConversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/chat/conversations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2ConversationMessages"];
+        put?: never;
+        post?: never;
+        delete: operations["v2DeleteConversation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/expenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2ListExpenses"];
+        put?: never;
+        post: operations["v2CreateExpense"];
+        delete: operations["v2DeleteAllExpenses"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/expenses/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2ExportExpenses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/expenses/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v2ImportExpenses"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/expenses/import/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2ImportTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/expenses/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2PageExpenses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/expenses/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v2ParseExpense"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/expenses/report/category": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2CategoryReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/expenses/report/daily": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2DailyReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/expenses/report/monthly": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2MonthlyReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/expenses/report/monthly-comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2MonthlyComparison"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/expenses/report/top": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2TopTransactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/expenses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2GetExpense"];
+        put: operations["v2UpdateExpense"];
+        post?: never;
+        delete: operations["v2DeleteExpense"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2Features"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/goals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2ListGoals"];
+        put?: never;
+        post: operations["v2CreateGoal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/goals/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2GetGoal"];
+        put: operations["v2UpdateGoal"];
+        post?: never;
+        delete: operations["v2DeleteGoal"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/recurring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2ListRecurringExpenses"];
+        put?: never;
+        post: operations["v2CreateRecurringExpense"];
+        delete: operations["v2DeleteAllRecurringExpenses"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/recurring/upcoming": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2UpcomingBills"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/recurring/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["v2UpdateRecurringExpense"];
+        post?: never;
+        delete: operations["v2DeleteRecurringExpense"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2ListSubmissions"];
+        put?: never;
+        post: operations["v2CreateSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/submissions/{id}/handled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["v2MarkSubmissionHandled"];
+        trace?: never;
+    };
+    "/api/v2/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2CurrentSubscription"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/subscription/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v2StartCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/subscription/pricing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2Pricing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/user/ai-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2GetAiSettings"];
+        put: operations["v2UpdateAiSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/user/ai-settings/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["v2ClearAiSettings"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/user/entitlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2Entitlements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/user/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v2GetProfile"];
+        put: operations["v2UpdateProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/auth/google": {
@@ -507,7 +1515,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_5"];
+        /**
+         * List the caller's chat conversations
+         * @description Conversation summaries for the authenticated user, most recently updated first. Carries no messages; fetch a transcript with GET /chat/conversations/{id}.
+         */
+        get: operations["listConversations"];
         put?: never;
         post?: never;
         delete?: never;
@@ -556,6 +1568,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/expenses/export/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["exportPdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -628,6 +1656,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/expenses/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["projects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/expenses/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["renameProject"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/expenses/quick-add": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["quickAdd"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/expenses/report/category": {
         parameters: {
             query?: never;
@@ -684,6 +1760,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["monthlyComparison"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/expenses/report/project": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["projectReport"];
         put?: never;
         post?: never;
         delete?: never;
@@ -984,6 +2076,138 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Requests, tokens and USD cost for one slice (text or vision) of recorded AI usage. */
+        AiCostBreakdown: {
+            /**
+             * @description Cost in USD, recomputed from the tokens above at this report's per-token prices. Six decimal places: a single call costs far less than a cent.
+             * @example 0.046292
+             */
+            costUsd?: number;
+            /**
+             * Format: int64
+             * @description Prompt tokens summed over the slice.
+             * @example 184320
+             */
+            inputTokens?: number;
+            /**
+             * Format: int64
+             * @description Completion tokens summed over the slice.
+             * @example 31044
+             */
+            outputTokens?: number;
+            /**
+             * Format: int64
+             * @description Metered requests in the slice, including failed ones.
+             * @example 142
+             */
+            requests?: number;
+        };
+        /** @description Cost to serve one plan over the reporting period. */
+        AiCostByPlanItem: {
+            /**
+             * Format: int64
+             * @description Distinct users on this plan with recorded usage in the period. Users who made no AI call are not counted — they cost nothing to serve.
+             * @example 37
+             */
+            activeUsers?: number;
+            /**
+             * @description `totalCostUsd` divided by `activeUsers`; zero when nobody was active. Compare this against the plan's price to read the margin.
+             * @example 0.130078
+             */
+            costPerActiveUserUsd?: number;
+            /**
+             * @description `FREE`, `PREMIUM` or `TRIAL`.
+             * @example PREMIUM
+             */
+            plan?: string;
+            /** @description Text-only calls: chat, insights, summaries, category suggestions. */
+            text?: components["schemas"]["AiCostBreakdown"];
+            /**
+             * @description Text plus vision, in USD.
+             * @example 4.8129
+             */
+            totalCostUsd?: number;
+            /** @description Vision calls: receipt analysis. Usually the smaller request count and the larger bill. */
+            vision?: components["schemas"]["AiCostBreakdown"];
+        };
+        /** @description Cost to serve one user over the reporting period. */
+        AiCostByUserItem: {
+            /**
+             * @description The plan the user is on now — `FREE`, `PREMIUM` or `TRIAL`. This is the plan at report time, not necessarily the plan held during the period.
+             * @example PREMIUM
+             */
+            plan?: string;
+            /** @description Text-only calls: chat, insights, summaries, category suggestions. */
+            text?: components["schemas"]["AiCostBreakdown"];
+            /**
+             * @description Text plus vision, in USD.
+             * @example 0.183921
+             */
+            totalCostUsd?: number;
+            /**
+             * Format: int64
+             * @description The user's id.
+             * @example 42
+             */
+            userId?: number;
+            /** @description Vision calls: receipt analysis. */
+            vision?: components["schemas"]["AiCostBreakdown"];
+        };
+        /** @description The per-token prices used to compute this report, and when they were last checked. */
+        AiCostPricing: {
+            /**
+             * Format: date
+             * @description The date a human last reconciled these rates against the provider's published pricing. Treat the report as an estimate that ages from this date.
+             * @example 2026-08-24
+             */
+            pricesLastCheckedOn?: string;
+            /**
+             * @description Where the rates were checked.
+             * @example OpenAI API pricing page
+             */
+            pricesSource?: string;
+            /**
+             * @description USD per million prompt tokens for text calls.
+             * @example 0.15
+             */
+            textInputPerMtokUsd?: number;
+            /**
+             * @description USD per million completion tokens for text calls.
+             * @example 0.6
+             */
+            textOutputPerMtokUsd?: number;
+            /**
+             * @description USD per million prompt tokens for vision (receipt) calls. An order of magnitude above the text rate — an image is billed as a large token block.
+             * @example 2.5
+             */
+            visionInputPerMtokUsd?: number;
+            /**
+             * @description USD per million completion tokens for vision (receipt) calls.
+             * @example 10
+             */
+            visionOutputPerMtokUsd?: number;
+        };
+        /** @description Cost to serve per user and per plan, recomputed from recorded AI usage. */
+        AiCostReport: {
+            /** @description Every plan with recorded usage in the period. */
+            byPlan?: components["schemas"]["AiCostByPlanItem"][];
+            /** @description Every user with recorded usage in the period, most expensive first. */
+            byUser?: components["schemas"]["AiCostByUserItem"][];
+            /**
+             * Format: date
+             * @description Last day counted, inclusive, in Asia/Manila.
+             * @example 2026-08-24
+             */
+            periodEnd?: string;
+            /**
+             * Format: date
+             * @description First day counted, inclusive, in Asia/Manila.
+             * @example 2026-08-01
+             */
+            periodStart?: string;
+            /** @description The per-token prices used, and when they were last checked. */
+            pricing?: components["schemas"]["AiCostPricing"];
+        };
         AiQueryRequest: {
             mode?: string;
             question: string;
@@ -1027,6 +2251,37 @@ export interface components {
             /** Format: int64 */
             requests?: number;
         };
+        /** @description An alert in a chat answer — enough to render the notice and mark it read. */
+        AlertChatItem: {
+            /**
+             * Format: int64
+             * @description Stable alert identifier. Pass it back to mark read, dismiss or delete.
+             * @example 91
+             */
+            id: number;
+            /**
+             * @description The human-readable notice, already composed by the server.
+             * @example You have used 92% of your Groceries budget for August.
+             */
+            message: string;
+            /**
+             * @description Whether the user has already seen this alert.
+             * @example false
+             */
+            read: boolean;
+            /**
+             * @description How loudly to render it.
+             * @enum {string}
+             */
+            severity: "INFO" | "WARNING" | "CRITICAL";
+            /**
+             * @description What triggered the alert.
+             * @enum {string}
+             */
+            type: "BUDGET_WARNING" | "BUDGET_EXCEEDED" | "SPENDING_SPIKE" | "RECURRING_DUE";
+        };
+        /** @description The result of a `list_alerts` turn: a JSON array of alerts. */
+        AlertChatItemList: components["schemas"]["AlertChatItem"][];
         AlertResponse: {
             categoryName?: string;
             /** Format: date-time */
@@ -1084,7 +2339,102 @@ export interface components {
             spent?: number;
             target?: number;
         };
+        BucketSummaryV2: {
+            /** @enum {string} */
+            bucket?: "NEEDS" | "WANTS" | "SAVINGS";
+            /** Format: int32 */
+            percent?: number;
+            /** Format: double */
+            percentUsed?: number;
+            /** Format: int64 */
+            remaining?: number;
+            /** Format: int64 */
+            spent?: number;
+            /** Format: int64 */
+            target?: number;
+        };
+        /** @description One category's budget line in a chat budget summary. */
+        BudgetChatItem: {
+            /**
+             * @description The budget limit for the month, in PHP.
+             * @example 8000
+             */
+            budgeted: number;
+            /**
+             * @description The budgeted category's name.
+             * @example Groceries
+             */
+            categoryName: string;
+            /**
+             * @description Share of the budget used, as a percentage. May exceed 100.
+             * @example 80.26
+             */
+            percentUsed: number;
+            /**
+             * @description `budgeted` minus `spent`, in PHP. Negative once the budget is exceeded.
+             * @example 1579.5
+             */
+            remaining: number;
+            /**
+             * @description Spent against this budget so far, in PHP.
+             * @example 6420.5
+             */
+            spent: number;
+            /**
+             * @description Banding derived from `percentUsed`: `WARNING` at 80%, `OVER_BUDGET` at 100%. The server computes it — a client must never re-derive it.
+             * @example WARNING
+             * @enum {string}
+             */
+            status: "ON_TRACK" | "WARNING" | "OVER_BUDGET";
+        };
+        /** @description One category's budget line in a chat budget summary, money in centavos. */
+        BudgetChatItemV2: {
+            /**
+             * Format: int64
+             * @description The budget limit for the month, in centavos.
+             * @example 800000
+             */
+            budgeted: number;
+            /**
+             * @description The budgeted category's name.
+             * @example Groceries
+             */
+            categoryName: string;
+            /**
+             * @description Share of the budget used, as a percentage. May exceed 100. Not money, so it stays a decimal.
+             * @example 80.26
+             */
+            percentUsed: number;
+            /**
+             * Format: int64
+             * @description `budgeted` minus `spent`, in centavos. Negative once the budget is exceeded.
+             * @example 157950
+             */
+            remaining: number;
+            /**
+             * Format: int64
+             * @description Spent against this budget so far, in centavos.
+             * @example 642050
+             */
+            spent: number;
+            /**
+             * @description Banding derived from `percentUsed`: `WARNING` at 80%, `OVER_BUDGET` at 100%. The server computes it — a client must never re-derive it.
+             * @example WARNING
+             * @enum {string}
+             */
+            status: "ON_TRACK" | "WARNING" | "OVER_BUDGET";
+        };
         BudgetRequest: {
+            amountLimit: number;
+            /** Format: int64 */
+            categoryId: number;
+            currency?: string;
+            exchangeRate?: number;
+            month: string;
+            recurring?: boolean;
+        };
+        BudgetRequestV2: {
+            /** Format: int64 */
             amountLimit: number;
             /** Format: int64 */
             categoryId: number;
@@ -1095,6 +2445,21 @@ export interface components {
         };
         BudgetResponse: {
             amountLimit?: number;
+            amountLimitInBaseCurrency?: number;
+            /** Format: int64 */
+            categoryId?: number;
+            categoryName?: string;
+            currency?: string;
+            exchangeRate?: number;
+            /** Format: int64 */
+            id?: number;
+            month?: string;
+            recurring?: boolean;
+        };
+        BudgetResponseV2: {
+            /** Format: int64 */
+            amountLimit?: number;
+            /** Format: int64 */
             amountLimitInBaseCurrency?: number;
             /** Format: int64 */
             categoryId?: number;
@@ -1120,8 +2485,33 @@ export interface components {
             /** Format: int32 */
             wantsPct?: number;
         };
+        BudgetRuleRequestV2: {
+            /** Format: int64 */
+            monthlyIncome: number;
+            /** Format: int32 */
+            needsPct?: number;
+            /** @enum {string} */
+            ruleType: "FIFTY_THIRTY_TWENTY" | "SEVENTY_TWENTY_TEN" | "CUSTOM";
+            /** Format: int32 */
+            savingsPct?: number;
+            /** Format: int32 */
+            wantsPct?: number;
+        };
         BudgetRuleResponse: {
             enabled?: boolean;
+            monthlyIncome?: number;
+            /** Format: int32 */
+            needsPct?: number;
+            /** @enum {string} */
+            ruleType?: "FIFTY_THIRTY_TWENTY" | "SEVENTY_TWENTY_TEN" | "CUSTOM";
+            /** Format: int32 */
+            savingsPct?: number;
+            /** Format: int32 */
+            wantsPct?: number;
+        };
+        BudgetRuleResponseV2: {
+            enabled?: boolean;
+            /** Format: int64 */
             monthlyIncome?: number;
             /** Format: int32 */
             needsPct?: number;
@@ -1140,6 +2530,69 @@ export interface components {
             ruleType?: "FIFTY_THIRTY_TWENTY" | "SEVENTY_TWENTY_TEN" | "CUSTOM";
             unassignedSpent?: number;
         };
+        BudgetRuleSummaryResponseV2: {
+            buckets?: components["schemas"]["BucketSummaryV2"][];
+            month?: string;
+            /** Format: int64 */
+            monthlyIncome?: number;
+            /** @enum {string} */
+            ruleType?: "FIFTY_THIRTY_TWENTY" | "SEVENTY_TWENTY_TEN" | "CUSTOM";
+            /** Format: int64 */
+            unassignedSpent?: number;
+        };
+        /** @description A month's budget summary as returned by a chat turn. */
+        BudgetSummaryChatResult: {
+            /** @description One line per budgeted category. Empty when no budget is set. */
+            items: components["schemas"]["BudgetChatItem"][];
+            /**
+             * @description The month summarised, `YYYY-MM` in Asia/Manila.
+             * @example 2026-08
+             */
+            month: string;
+            /**
+             * @description What remains across all budgets for the month, in PHP.
+             * @example 6259.75
+             */
+            safeToSpend: number;
+            /**
+             * @description Sum of every budget limit for the month, in PHP.
+             * @example 25000
+             */
+            totalBudgeted: number;
+            /**
+             * @description Sum of spending against those budgets, in PHP.
+             * @example 18740.25
+             */
+            totalSpent: number;
+        };
+        /** @description A month's budget summary as returned by a chat turn, money in centavos. */
+        BudgetSummaryChatResultV2: {
+            /** @description One line per budgeted category. Empty when no budget is set. */
+            items: components["schemas"]["BudgetChatItemV2"][];
+            /**
+             * @description The month summarised, `YYYY-MM` in Asia/Manila.
+             * @example 2026-08
+             */
+            month: string;
+            /**
+             * Format: int64
+             * @description What remains across all budgets for the month, in centavos.
+             * @example 625975
+             */
+            safeToSpend: number;
+            /**
+             * Format: int64
+             * @description Sum of every budget limit for the month, in centavos.
+             * @example 2500000
+             */
+            totalBudgeted: number;
+            /**
+             * Format: int64
+             * @description Sum of spending against those budgets, in centavos.
+             * @example 1874025
+             */
+            totalSpent: number;
+        };
         BudgetSummaryItem: {
             budgeted?: number;
             /** Format: int64 */
@@ -1147,6 +2600,19 @@ export interface components {
             categoryName?: string;
             percentUsed?: number;
             remaining?: number;
+            spent?: number;
+            status?: string;
+        };
+        BudgetSummaryItemV2: {
+            /** Format: int64 */
+            budgeted?: number;
+            /** Format: int64 */
+            categoryId?: number;
+            categoryName?: string;
+            percentUsed?: number;
+            /** Format: int64 */
+            remaining?: number;
+            /** Format: int64 */
             spent?: number;
             status?: string;
         };
@@ -1158,8 +2624,34 @@ export interface components {
             totalBudgeted?: number;
             totalSpent?: number;
         };
+        BudgetSummaryResponseV2: {
+            /** Format: int64 */
+            dailyAllowance?: number;
+            items?: components["schemas"]["BudgetSummaryItemV2"][];
+            month?: string;
+            /** Format: int64 */
+            safeToSpend?: number;
+            /** Format: int64 */
+            totalBudgeted?: number;
+            /** Format: int64 */
+            totalSpent?: number;
+        };
+        /** @description How many expenses a bulk delete actually removed. */
+        BulkDeleteChatResult: {
+            /**
+             * Format: int32
+             * @description The number of expenses deleted. Can be lower than the number asked for — ids that no longer exist are skipped rather than failing the turn — and can be zero when a filter matched nothing.
+             * @example 12
+             */
+            deleted: number;
+        };
         CategoryReportItem: {
             category?: string;
+            total?: number;
+        };
+        CategoryReportItemV2: {
+            category?: string;
+            /** Format: int64 */
             total?: number;
         };
         CategoryRequest: {
@@ -1174,6 +2666,39 @@ export interface components {
             id?: number;
             name?: string;
         };
+        /** @description The result of a `list_categories` turn: a JSON array of the user's categories, as full CategoryResponse records. */
+        CategoryResponseList: components["schemas"]["CategoryResponse"][];
+        /** @description A category and what was spent in it over the requested window. */
+        CategoryTotalChatItem: {
+            /**
+             * @description Category name, or `Uncategorized`.
+             * @example Groceries
+             */
+            category: string;
+            /**
+             * @description Total spent in this category, in PHP, rounded to two decimal places.
+             * @example 6420.5
+             */
+            total: number;
+        };
+        /** @description The result of a `get_category_totals` turn: a JSON array of category totals. */
+        CategoryTotalChatItemList: components["schemas"]["CategoryTotalChatItem"][];
+        /** @description The result of a `get_category_totals` turn: a JSON array of category totals. */
+        CategoryTotalChatItemListV2: components["schemas"]["CategoryTotalChatItemV2"][];
+        /** @description A category and what was spent in it over the requested window, in centavos. */
+        CategoryTotalChatItemV2: {
+            /**
+             * @description Category name, or `Uncategorized`.
+             * @example Groceries
+             */
+            category: string;
+            /**
+             * Format: int64
+             * @description Total spent in this category, in centavos.
+             * @example 642050
+             */
+            total: number;
+        };
         ChatAuditLogDto: {
             /** Format: int64 */
             conversationId?: number;
@@ -1187,6 +2712,30 @@ export interface components {
             /** Format: int64 */
             userId?: number;
         };
+        /** @description A confirmation of a previously previewed action. Echo the preview's `toolName` and `params` back unchanged. */
+        ChatConfirmRequest: {
+            /**
+             * Format: int64
+             * @description The conversation the confirmed turn belongs to, so it is recorded in the same transcript as the preview. Omit to start a new conversation.
+             * @example 42
+             */
+            conversationId?: number;
+            /**
+             * @description `force` re-runs a create that was held back by the duplicate check (the user chose "add anyway"). Anything else, including omitting it, executes with the duplicate check still on.
+             * @example execute
+             * @enum {string}
+             */
+            mode?: "execute" | "force";
+            /** @description The tool's arguments, copied from the preview's `params` unchanged. The key set varies by tool and is not part of this contract. */
+            params: {
+                [key: string]: unknown;
+            };
+            /**
+             * @description The tool to run, copied from the preview's `toolName`. An unknown tool is rejected with 400 rather than answered as prose.
+             * @example create_budget
+             */
+            toolName: string;
+        };
         ChatMessageDto: {
             content?: string;
             /** Format: date-time */
@@ -1197,18 +2746,73 @@ export interface components {
             role?: string;
             toolName?: string;
         };
+        /** @description A pending assistant action awaiting confirmation. Echo `toolName` and `params` back to POST /ai/chat/confirm; the client never interprets them, it only renders and returns them. */
+        ChatPreviewData: {
+            /**
+             * Format: int64
+             * @description The id of the expense this one looks like a duplicate of. Present only on the duplicate-confirmation turn, which arrives as `type: "disambiguate"` rather than `"preview"`; the property is omitted, not null, on every other turn. A client may show it to let the user open the existing row before confirming.
+             * @example 1204
+             */
+            existingId?: number;
+            /** @description The tool's arguments, exactly as the assistant produced them. The key set varies by tool and is not part of this contract — treat it as opaque. */
+            params: {
+                [key: string]: unknown;
+            };
+            /**
+             * @description The tool the assistant resolved, e.g. `create_expense`. This is the one field that says which action is pending.
+             * @example create_expense
+             */
+            toolName: string;
+        };
         ChatRequest: {
             /** Format: int64 */
             conversationId?: number;
             message: string;
             mode?: string;
         };
+        /** @description One assistant turn: what kind of turn it is, what to say, and an optional structured payload to render. */
         ChatResponse: {
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description The conversation this turn belongs to. Omitted — not null — on turns served before a conversation is established, such as the circuit-breaker fallback.
+             * @example 42
+             */
             conversationId?: number;
-            message?: string;
-            result?: unknown;
-            type?: string;
+            /**
+             * @description The assistant's reply, ready to render. Always present, and always sufficient on its own — a client that cannot render `result` can show this.
+             * @example You have 3 savings goal(s).
+             */
+            message: string;
+            /** @description The structured payload for this turn, omitted when the turn carries none. Which member applies follows from the tool the assistant ran, which is not itself on the wire — so narrow on `type` first, then on the payload's own properties. See TEN-275 for why an explicit per-payload discriminator is not published here. */
+            result?: components["schemas"]["ChatPreviewData"] | components["schemas"]["BudgetSummaryChatResult"] | components["schemas"]["RecurringChatResult"] | components["schemas"]["MonthlyReportChatResult"] | components["schemas"]["SubscriptionChatResult"] | components["schemas"]["BulkDeleteChatResult"] | components["schemas"]["RecategorizeChatResult"] | components["schemas"]["GoalChatItemList"] | components["schemas"]["AlertChatItemList"] | components["schemas"]["ExpenseChatItemList"] | components["schemas"]["CategoryTotalChatItemList"] | components["schemas"]["ExpenseDisambiguateItemList"] | components["schemas"]["CategoryResponseList"];
+            /**
+             * @description The turn's kind, and the only field a client should branch on before reading `result`. `text` — prose only, no payload. `action` — something was read or written; `result` carries it. `preview` — a write is pending confirmation and `result` is a ChatPreviewData. `disambiguate` — the assistant needs the user to choose before it proceeds.
+             * @example action
+             * @enum {string}
+             */
+            type: "text" | "action" | "preview" | "disambiguate";
+        };
+        /** @description One assistant turn: what kind of turn it is, what to say, and an optional structured payload to render. Money inside the payload is an integer number of centavos. */
+        ChatResponseV2: {
+            /**
+             * Format: int64
+             * @description The conversation this turn belongs to. Omitted — not null — on turns served before a conversation is established, such as the circuit-breaker fallback.
+             * @example 42
+             */
+            conversationId?: number;
+            /**
+             * @description The assistant's reply, ready to render. Always present, and always sufficient on its own — a client that cannot render `result` can show this. Amounts quoted in this prose are formatted pesos, not centavos.
+             * @example You have 3 savings goal(s).
+             */
+            message: string;
+            /** @description The structured payload for this turn, omitted when the turn carries none. Which member applies follows from the tool the assistant ran, which is not itself on the wire — so narrow on `type` first, then on the payload's own properties. The `preview` branch is a ChatPreviewData whose `params` are the v1 decimal arguments, echoed back unchanged to POST /ai/chat/confirm. */
+            result?: components["schemas"]["ChatPreviewData"] | components["schemas"]["ExpenseResponseV2"] | components["schemas"]["BudgetResponseV2"] | components["schemas"]["GoalResponseV2"] | components["schemas"]["RecurringExpenseResponseV2"] | components["schemas"]["CategoryResponse"] | components["schemas"]["UserProfileResponse"] | components["schemas"]["BudgetSummaryChatResultV2"] | components["schemas"]["RecurringChatResultV2"] | components["schemas"]["MonthlyReportChatResultV2"] | components["schemas"]["SubscriptionChatResult"] | components["schemas"]["BulkDeleteChatResult"] | components["schemas"]["RecategorizeChatResult"] | components["schemas"]["GoalChatItemListV2"] | components["schemas"]["AlertChatItemList"] | components["schemas"]["ExpenseChatItemListV2"] | components["schemas"]["CategoryTotalChatItemListV2"] | components["schemas"]["ExpenseDisambiguateItemListV2"] | components["schemas"]["CategoryResponseList"];
+            /**
+             * @description The turn's kind, and the only field a client should branch on before reading `result`. `text` — prose only, no payload. `action` — something was read or written; `result` carries it. `preview` — a write is pending confirmation and `result` is a ChatPreviewData. `disambiguate` — the assistant needs the user to choose before it proceeds.
+             * @example action
+             * @enum {string}
+             */
+            type: "text" | "action" | "preview" | "disambiguate";
         };
         CheckoutRequest: {
             /** @enum {string} */
@@ -1217,17 +2821,39 @@ export interface components {
         CheckoutResponse: {
             checkoutUrl?: string;
         };
+        /** @description A chat conversation as it appears in a history list — enough to render a row and fetch the transcript, without the messages themselves. */
         ConversationSummaryDto: {
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: int64 */
-            id?: number;
-            title?: string;
-            /** Format: date-time */
-            updatedAt?: string;
+            /**
+             * Format: date-time
+             * @description When the conversation was started. ISO-8601 local date-time, no offset.
+             * @example 2026-08-19T09:41:12
+             */
+            createdAt: string;
+            /**
+             * Format: int64
+             * @description Stable identifier. Pass it to GET /chat/conversations/{id} for the transcript.
+             * @example 42
+             */
+            id: number;
+            /**
+             * @description The conversation's first user message, trimmed to 60 characters. Null until the first turn is recorded — a conversation can exist with no messages, so a history list must render a placeholder rather than assume a label.
+             * @example How much did I spend on groceries?
+             */
+            title?: string | null;
+            /**
+             * Format: date-time
+             * @description When the last turn was recorded. The list is ordered by this field, newest first, so it is also the sort key a client should display.
+             * @example 2026-08-19T10:02:57
+             */
+            updatedAt: string;
         };
         DailyReportItem: {
             date?: string;
+            total?: number;
+        };
+        DailyReportItemV2: {
+            date?: string;
+            /** Format: int64 */
             total?: number;
         };
         EntitlementResponse: {
@@ -1238,6 +2864,122 @@ export interface components {
             /** @enum {string} */
             status?: "ACTIVE" | "TRIAL" | "INACTIVE" | "EXPIRED" | "CANCELLED";
         };
+        /** @description An expense in a chat answer — flattened for a chat bubble. */
+        ExpenseChatItem: {
+            /**
+             * @description Amount in PHP, rounded to two decimal places for display.
+             * @example 320
+             */
+            amount: number;
+            /**
+             * @description Category name, or the literal `Uncategorized` when the expense has no category. Never null.
+             * @example Groceries
+             */
+            category: string;
+            /**
+             * @description The expense date as `YYYY-MM-DD` in Asia/Manila, or an empty string on the rare rows with no date. Not declared as a date format for that reason — parse defensively.
+             * @example 2026-08-14
+             */
+            date: string;
+            /**
+             * @description What the expense was for.
+             * @example SM Supermarket
+             */
+            description: string;
+            /**
+             * Format: int64
+             * @description Stable expense identifier.
+             * @example 1204
+             */
+            id: number;
+        };
+        /** @description The result of a `search_expenses` turn: a JSON array of matching expenses, at most 50. */
+        ExpenseChatItemList: components["schemas"]["ExpenseChatItem"][];
+        /** @description The result of a `search_expenses` turn: a JSON array of matching expenses, at most 50. */
+        ExpenseChatItemListV2: components["schemas"]["ExpenseChatItemV2"][];
+        /** @description An expense in a chat answer — flattened for a chat bubble, money in centavos. */
+        ExpenseChatItemV2: {
+            /**
+             * Format: int64
+             * @description Amount in centavos. The v1 field is a decimal rounded to two places, so this is that value with the point moved right — 320.00 becomes 32000.
+             * @example 32000
+             */
+            amount: number;
+            /**
+             * @description Category name, or the literal `Uncategorized` when the expense has no category. Never null.
+             * @example Groceries
+             */
+            category: string;
+            /**
+             * @description The expense date as `YYYY-MM-DD` in Asia/Manila, or an empty string on the rare rows with no date. Not declared as a date format for that reason — parse defensively.
+             * @example 2026-08-14
+             */
+            date: string;
+            /**
+             * @description What the expense was for.
+             * @example SM Supermarket
+             */
+            description: string;
+            /**
+             * Format: int64
+             * @description Stable expense identifier.
+             * @example 1204
+             */
+            id: number;
+        };
+        /** @description One expense the user must choose between before a delete can proceed. */
+        ExpenseDisambiguateItem: {
+            /**
+             * @description Amount in PHP, at the stored precision. Unlike ExpenseChatItem this is not rounded for display, so format it at the edge.
+             * @example 320
+             */
+            amount: number;
+            /**
+             * @description The expense date as `YYYY-MM-DD` in Asia/Manila, or an empty string on the rare rows with no date.
+             * @example 2026-08-14
+             */
+            date: string;
+            /**
+             * @description What the expense was for — the field the user's ambiguous phrase matched.
+             * @example SM Supermarket
+             */
+            description: string;
+            /**
+             * Format: int64
+             * @description The expense's identifier. Send it back to name the one to delete.
+             * @example 1204
+             */
+            id: number;
+        };
+        /** @description The result of a delete-expense `disambiguate` turn: a JSON array of the candidates the user must choose between. */
+        ExpenseDisambiguateItemList: components["schemas"]["ExpenseDisambiguateItem"][];
+        /** @description The result of a delete-expense `disambiguate` turn: a JSON array of the candidates the user must choose between. */
+        ExpenseDisambiguateItemListV2: components["schemas"]["ExpenseDisambiguateItemV2"][];
+        /** @description One expense the user must choose between before a delete can proceed, money in centavos. */
+        ExpenseDisambiguateItemV2: {
+            /**
+             * Format: int64
+             * @description Amount in centavos, rounded from the stored four-place value.
+             * @example 32000
+             */
+            amount: number;
+            /**
+             * @description The expense date as `YYYY-MM-DD` in Asia/Manila, or an empty string on the rare rows with no date.
+             * @example 2026-08-14
+             */
+            date: string;
+            /**
+             * @description What the expense was for — the field the user's ambiguous phrase matched.
+             * @example SM Supermarket
+             */
+            description: string;
+            /**
+             * Format: int64
+             * @description The expense's identifier. Send it back to name the one to delete.
+             * @example 1204
+             */
+            id: number;
+        };
         ExpenseRequest: {
             amount: number;
             category?: string;
@@ -1247,7 +2989,31 @@ export interface components {
             description: string;
             exchangeRate?: number;
             expenseType?: string;
+            /** @description The project or client this expense is billable to, by name. Created on first use and matched case-insensitively afterwards, like a category. Omit it — or send null or an empty string — for an untagged expense; on update that removes a tag the expense already carried. */
+            project?: string;
             reimbursable?: boolean;
+            /**
+             * @description How this expense was created. Only MANUAL and RECEIPT_SCAN may be declared by a client — the other values belong to routes that write the row themselves, and naming one here is rejected with 400. Omitted means MANUAL. Ignored on update: a source is recorded once, at creation.
+             * @enum {string}
+             */
+            source?: "MANUAL" | "RECEIPT_SCAN";
+        };
+        ExpenseRequestV2: {
+            /** Format: int64 */
+            amount: number;
+            category?: string;
+            currency?: string;
+            /** Format: date-time */
+            date?: string;
+            description: string;
+            exchangeRate?: number;
+            expenseType?: string;
+            reimbursable?: boolean;
+            /**
+             * @description How this expense was created. Only MANUAL and RECEIPT_SCAN may be declared by a client — the other values belong to routes that write the row themselves, and naming one here is rejected with 400. Omitted means MANUAL. Ignored on update: a source is recorded once, at creation.
+             * @enum {string}
+             */
+            source?: "MANUAL" | "RECEIPT_SCAN";
         };
         ExpenseResponse: {
             amount?: number;
@@ -1261,17 +3027,144 @@ export interface components {
             expenseType?: string;
             /** Format: int64 */
             id?: number;
+            /** @description Name of the project or client this expense is billable to; null when it carries no tag. */
+            project?: string;
+            /**
+             * Format: int64
+             * @description Id of the project or client this expense is billable to; null when it carries no tag. Stable across renames — filter by this, not by the name.
+             */
+            projectId?: number;
             reimbursable?: boolean;
+            /**
+             * @description The route that created this expense. Rows written before the field existed report MANUAL.
+             * @enum {string}
+             */
+            source?: "MANUAL" | "QUICK_ADD" | "RECEIPT_SCAN" | "RECURRING" | "IMPORT";
+        };
+        ExpenseResponseV2: {
+            /** Format: int64 */
+            amount?: number;
+            /** Format: int64 */
+            amountInBaseCurrency?: number;
+            category?: string;
+            currency?: string;
+            /** Format: date-time */
+            date?: string;
+            description?: string;
+            exchangeRate?: number;
+            expenseType?: string;
+            /** Format: int64 */
+            id?: number;
+            reimbursable?: boolean;
+            /** @enum {string} */
+            source?: "MANUAL" | "QUICK_ADD" | "RECEIPT_SCAN" | "RECURRING" | "IMPORT";
         };
         FeatureProperties: {
             chatAttachments?: boolean;
             csvImport?: boolean;
+        };
+        /** @description A savings goal in a chat answer — the subset a chat bubble renders. */
+        GoalChatItem: {
+            /**
+             * Format: int64
+             * @description Stable goal identifier.
+             * @example 7
+             */
+            id: number;
+            /**
+             * @description The goal's name.
+             * @example Emergency fund
+             */
+            name: string;
+            /**
+             * @description Progress as a percentage, 0–100. Not money: a decimal fraction here is correct.
+             * @example 25
+             */
+            progressPercent: number;
+            /**
+             * @description Amount saved so far, in PHP.
+             * @example 12500
+             */
+            savedAmount: number;
+            /**
+             * @description Where the goal stands against its target date.
+             * @enum {string}
+             */
+            status: "ON_TRACK" | "BEHIND" | "COMPLETED" | "PAUSED";
+            /**
+             * @description Target amount in PHP, at full decimal precision.
+             * @example 50000
+             */
+            targetAmount: number;
+            /**
+             * Format: date
+             * @description Target date as `YYYY-MM-DD`. Absent — the property is omitted, not null — when the goal has no target date.
+             * @example 2026-12-31
+             */
+            targetDate?: string | null;
+        };
+        /** @description The result of a `list_goals` turn: a JSON array of savings goals. */
+        GoalChatItemList: components["schemas"]["GoalChatItem"][];
+        /** @description The result of a `list_goals` turn: a JSON array of savings goals. */
+        GoalChatItemListV2: components["schemas"]["GoalChatItemV2"][];
+        /** @description A savings goal in a chat answer, money in centavos. */
+        GoalChatItemV2: {
+            /**
+             * Format: int64
+             * @description Stable goal identifier.
+             * @example 7
+             */
+            id: number;
+            /**
+             * @description The goal's name.
+             * @example Emergency fund
+             */
+            name: string;
+            /**
+             * @description Progress as a percentage, 0–100. Not money: a decimal fraction here is correct.
+             * @example 25
+             */
+            progressPercent: number;
+            /**
+             * Format: int64
+             * @description Amount saved so far, in centavos.
+             * @example 1250000
+             */
+            savedAmount: number;
+            /**
+             * @description Where the goal stands against its target date.
+             * @enum {string}
+             */
+            status: "ON_TRACK" | "BEHIND" | "COMPLETED" | "PAUSED";
+            /**
+             * Format: int64
+             * @description Target amount in centavos.
+             * @example 5000000
+             */
+            targetAmount: number;
+            /**
+             * Format: date
+             * @description Target date as `YYYY-MM-DD`. Absent — the property is omitted, not null — when the goal has no target date.
+             * @example 2026-12-31
+             */
+            targetDate?: string;
         };
         GoalRequest: {
             currency?: string;
             name: string;
             paused?: boolean;
             savedAmount: number;
+            targetAmount: number;
+            /** Format: date */
+            targetDate?: string;
+        };
+        GoalRequestV2: {
+            currency?: string;
+            name: string;
+            paused?: boolean;
+            /** Format: int64 */
+            savedAmount: number;
+            /** Format: int64 */
             targetAmount: number;
             /** Format: date */
             targetDate?: string;
@@ -1292,6 +3185,24 @@ export interface components {
             /** Format: date */
             targetDate?: string;
         };
+        GoalResponseV2: {
+            /** Format: date-time */
+            createdAt?: string;
+            currency?: string;
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+            paused?: boolean;
+            progressPercent?: number;
+            /** Format: int64 */
+            savedAmount?: number;
+            /** @enum {string} */
+            status?: "ON_TRACK" | "BEHIND" | "COMPLETED" | "PAUSED";
+            /** Format: int64 */
+            targetAmount?: number;
+            /** Format: date */
+            targetDate?: string;
+        };
         GoogleAuthRequest: {
             idToken: string;
         };
@@ -1299,6 +3210,7 @@ export interface components {
             errors?: string[];
             /** Format: int32 */
             imported?: number;
+            limitReached?: string;
             /** Format: int32 */
             skipped?: number;
         };
@@ -1330,8 +3242,56 @@ export interface components {
             month?: string;
             previousTotal?: number;
         };
+        MonthlyComparisonResponseV2: {
+            changePercent?: number;
+            /** Format: int64 */
+            currentTotal?: number;
+            month?: string;
+            /** Format: int64 */
+            previousTotal?: number;
+        };
+        /** @description A month's spending report as returned by a chat turn. */
+        MonthlyReportChatResult: {
+            /** @description Spend per category for the month. Empty when nothing was spent. */
+            categoryBreakdown: components["schemas"]["CategoryTotalChatItem"][];
+            /**
+             * @description The month reported, `YYYY-MM` in Asia/Manila.
+             * @example 2026-08
+             */
+            month: string;
+            /** @description The month's five largest expenses, descending by amount. Fewer than five when the month has fewer expenses. */
+            topExpenses: components["schemas"]["ExpenseChatItem"][];
+            /**
+             * @description Total spent in the month, in PHP. Equals the sum of `categoryBreakdown[].total`; the server computes it, a client must not re-derive it.
+             * @example 18740.25
+             */
+            totalSpent: number;
+        };
+        /** @description A month's spending report as returned by a chat turn, money in centavos. */
+        MonthlyReportChatResultV2: {
+            /** @description Spend per category for the month. Empty when nothing was spent. */
+            categoryBreakdown: components["schemas"]["CategoryTotalChatItemV2"][];
+            /**
+             * @description The month reported, `YYYY-MM` in Asia/Manila.
+             * @example 2026-08
+             */
+            month: string;
+            /** @description The month's five largest expenses, descending by amount. Fewer than five when the month has fewer expenses. */
+            topExpenses: components["schemas"]["ExpenseChatItemV2"][];
+            /**
+             * Format: int64
+             * @description Total spent in the month, in centavos. Equals the sum of `categoryBreakdown[].total`; the server computes it, a client must not re-derive it.
+             * @example 1874025
+             */
+            totalSpent: number;
+        };
         MonthlyReportItem: {
             month?: string;
+            total?: number;
+        };
+        MonthlyReportItemV2: {
+            month?: string;
+            /** Format: int64 */
             total?: number;
         };
         ObservabilityCost: {
@@ -1375,10 +3335,34 @@ export interface components {
             /** Format: int32 */
             totalPages?: number;
         };
+        PageResponseExpenseResponseV2: {
+            content?: components["schemas"]["ExpenseResponseV2"][];
+            last?: boolean;
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+        };
         ParseExpenseRequest: {
             text: string;
         };
         ParsedExpenseResult: {
+            amount?: number;
+            category?: string;
+            confidence?: string;
+            /** Format: date-time */
+            date?: string;
+            description?: string;
+            hint?: string;
+            rejectionMessage?: string;
+            saveable?: boolean;
+        };
+        ParsedExpenseResultV2: {
+            /** Format: int64 */
             amount?: number;
             category?: string;
             confidence?: string;
@@ -1398,9 +3382,121 @@ export interface components {
             /** @enum {string} */
             planKey?: "FREE" | "PREMIUM" | "TRIAL";
         };
+        ProjectReportItem: {
+            project?: string;
+            /**
+             * Format: int64
+             * @description Stable across renames.
+             */
+            projectId?: number;
+            total?: number;
+        };
+        ProjectRequest: {
+            name: string;
+        };
+        ProjectResponse: {
+            /**
+             * Format: int64
+             * @description Stable across renames. Filter and report by this, not by the name.
+             */
+            id?: number;
+            name?: string;
+        };
+        /** @description How many expenses a bulk recategorization moved. */
+        RecategorizeChatResult: {
+            /**
+             * Format: int32
+             * @description The number of expenses moved to the target category. Zero when nothing matched the source category over the requested window.
+             * @example 8
+             */
+            updated: number;
+        };
         RecommendationsInsightResponse: {
             month?: string;
             recommendations?: string[];
+        };
+        /** @description A recurring expense in a chat answer. */
+        RecurringChatItem: {
+            /**
+             * @description False once paused; a paused entry is still listed, but generates nothing and never appears in `upcoming`.
+             * @example true
+             */
+            active: boolean;
+            /**
+             * @description Amount charged each period, in PHP.
+             * @example 549
+             */
+            amount: number;
+            /**
+             * @description Category the generated expenses land in.
+             * @example Subscriptions
+             */
+            categoryName: string;
+            /**
+             * @description How often it recurs.
+             * @enum {string}
+             */
+            frequency: "MONTHLY" | "WEEKLY" | "YEARLY";
+            /**
+             * Format: int64
+             * @description Stable recurring-expense identifier.
+             * @example 13
+             */
+            id: number;
+            /**
+             * @description The recurring expense's name.
+             * @example Netflix
+             */
+            name: string;
+        };
+        /** @description A recurring expense in a chat answer, money in centavos. */
+        RecurringChatItemV2: {
+            /**
+             * @description False once paused; a paused entry is still listed, but generates nothing and never appears in `upcoming`.
+             * @example true
+             */
+            active: boolean;
+            /**
+             * Format: int64
+             * @description Amount charged each period, in centavos.
+             * @example 54900
+             */
+            amount: number;
+            /**
+             * @description Category the generated expenses land in.
+             * @example Subscriptions
+             */
+            categoryName: string;
+            /**
+             * @description How often it recurs.
+             * @enum {string}
+             */
+            frequency: "MONTHLY" | "WEEKLY" | "YEARLY";
+            /**
+             * Format: int64
+             * @description Stable recurring-expense identifier.
+             * @example 13
+             */
+            id: number;
+            /**
+             * @description The recurring expense's name.
+             * @example Netflix
+             */
+            name: string;
+        };
+        /** @description A user's recurring expenses and the bills due this month. */
+        RecurringChatResult: {
+            /** @description Every recurring expense the user has, active or paused. */
+            items: components["schemas"]["RecurringChatItem"][];
+            /** @description Bills falling due in the requested month. A projection of `items`, not a parallel list — the two can differ in length, and a paused entry appears in `items` only. */
+            upcoming: components["schemas"]["UpcomingBillChatItem"][];
+        };
+        /** @description A user's recurring expenses and the bills due this month, money in centavos. */
+        RecurringChatResultV2: {
+            /** @description Every recurring expense the user has, active or paused. */
+            items: components["schemas"]["RecurringChatItemV2"][];
+            /** @description Bills falling due in the requested month. A projection of `items`, not a parallel list — the two can differ in length, and a paused entry appears in `items` only. */
+            upcoming: components["schemas"]["UpcomingBillChatItemV2"][];
         };
         RecurringExpenseRequest: {
             active?: boolean;
@@ -1418,8 +3514,44 @@ export interface components {
             monthOfYear?: number;
             name: string;
         };
+        RecurringExpenseRequestV2: {
+            active?: boolean;
+            /** Format: int64 */
+            amount: number;
+            categoryName?: string;
+            currency?: string;
+            /** Format: int32 */
+            dayOfMonth?: number;
+            /** Format: int32 */
+            dayOfWeek?: number;
+            exchangeRate?: number;
+            /** @enum {string} */
+            frequency: "MONTHLY" | "WEEKLY" | "YEARLY";
+            /** Format: int32 */
+            monthOfYear?: number;
+            name: string;
+        };
         RecurringExpenseResponse: {
             active?: boolean;
+            amount?: number;
+            categoryName?: string;
+            currency?: string;
+            /** Format: int32 */
+            dayOfMonth?: number;
+            /** Format: int32 */
+            dayOfWeek?: number;
+            exchangeRate?: number;
+            /** @enum {string} */
+            frequency?: "MONTHLY" | "WEEKLY" | "YEARLY";
+            /** Format: int64 */
+            id?: number;
+            /** Format: int32 */
+            monthOfYear?: number;
+            name?: string;
+        };
+        RecurringExpenseResponseV2: {
+            active?: boolean;
+            /** Format: int64 */
             amount?: number;
             categoryName?: string;
             currency?: string;
@@ -1462,6 +3594,26 @@ export interface components {
             /** @enum {string} */
             type?: "CONTACT" | "SUGGESTION";
         };
+        /** @description The user's plan and what it entitles them to, as reported by a chat turn. */
+        SubscriptionChatResult: {
+            /**
+             * @description True when the account is an administrator, which bypasses plan gating and AI quota entirely.
+             * @example false
+             */
+            admin: boolean;
+            /** @description The capabilities currently unlocked. Unordered, and already resolved against `status` — a client gates on membership here, never on `plan`. */
+            features: ("AI_ANALYTICS" | "NL_CHATBOT" | "EXPORT_CSV" | "EXPORT_PDF" | "BUDGET_FORECASTING" | "TREND_ANALYSIS" | "CUSTOM_CATEGORIES" | "UNLIMITED_TRANSACTIONS" | "ADVANCED_INSIGHTS" | "ANOMALY_DETECTION" | "CHAT_PERSONAS")[];
+            /**
+             * @description The tier in force. `FREE` is the implicit default when there is no active subscription.
+             * @enum {string}
+             */
+            plan: "FREE" | "PREMIUM" | "TRIAL";
+            /**
+             * @description The subscription's lifecycle state. Only `ACTIVE` and `TRIAL` grant a paid plan's features — the other values mean the effective plan is `FREE`.
+             * @enum {string}
+             */
+            status: "ACTIVE" | "TRIAL" | "INACTIVE" | "EXPIRED" | "CANCELLED";
+        };
         SubscriptionResponse: {
             /** @enum {string} */
             billingPeriod?: "MONTHLY" | "ANNUAL";
@@ -1478,13 +3630,71 @@ export interface components {
             percentOfMonthTotal?: number;
             total?: number;
         };
+        TopCategoryInsightResponseV2: {
+            category?: string;
+            month?: string;
+            percentOfMonthTotal?: number;
+            /** Format: int64 */
+            total?: number;
+        };
         TopUserItem: {
             /** Format: int64 */
             requests?: number;
             /** Format: int64 */
             userId?: number;
         };
+        /** @description A bill projected to fall due in the requested month. */
+        UpcomingBillChatItem: {
+            /**
+             * @description Amount due, in PHP.
+             * @example 549
+             */
+            amount: number;
+            /**
+             * Format: date
+             * @description The due date as `YYYY-MM-DD`, in Asia/Manila.
+             * @example 2026-08-28
+             */
+            dueDate: string;
+            /**
+             * @description The originating recurring expense's name.
+             * @example Netflix
+             */
+            name: string;
+        };
+        /** @description A bill projected to fall due in the requested month, money in centavos. */
+        UpcomingBillChatItemV2: {
+            /**
+             * Format: int64
+             * @description Amount due, in centavos.
+             * @example 54900
+             */
+            amount: number;
+            /**
+             * Format: date
+             * @description The due date as `YYYY-MM-DD`, in Asia/Manila.
+             * @example 2026-08-28
+             */
+            dueDate: string;
+            /**
+             * @description The originating recurring expense's name.
+             * @example Netflix
+             */
+            name: string;
+        };
         UpcomingBillResponse: {
+            amount?: number;
+            categoryName?: string;
+            currency?: string;
+            dueDate?: string;
+            /** @enum {string} */
+            frequency?: "MONTHLY" | "WEEKLY" | "YEARLY";
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+        };
+        UpcomingBillResponseV2: {
+            /** Format: int64 */
             amount?: number;
             categoryName?: string;
             currency?: string;
@@ -1530,6 +3740,31 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    costReport: {
+        parameters: {
+            query?: {
+                /** @description First day counted, inclusive (`YYYY-MM-DD`, Asia/Manila). */
+                from?: string;
+                /** @description Last day counted, inclusive (`YYYY-MM-DD`, Asia/Manila). */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiCostReport"];
+                };
+            };
+        };
+    };
     summary_3: {
         parameters: {
             query?: never;
@@ -1665,6 +3900,30 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ChatRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ChatResponse"];
+                };
+            };
+        };
+    };
+    confirmChat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatConfirmRequest"];
             };
         };
         responses: {
@@ -1901,6 +4160,1830 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AlertResponse"];
+                };
+            };
+        };
+    };
+    v2AdminAiUsageSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiUsageSummaryItem"][];
+                };
+            };
+        };
+    };
+    v2AdminChatAudit: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ChatAuditLogDto"][];
+                };
+            };
+        };
+    };
+    v2AdminObservabilityCost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ObservabilityCost"];
+                };
+            };
+        };
+    };
+    v2AdminObservabilityEvents: {
+        parameters: {
+            query?: {
+                type?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AppEventDto"][];
+                };
+            };
+        };
+    };
+    v2AdminObservabilityHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ObservabilityHealth"];
+                };
+            };
+        };
+    };
+    v2AdminObservabilitySummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ObservabilitySummary"];
+                };
+            };
+        };
+    };
+    v2AiChat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ChatResponseV2"];
+                };
+            };
+        };
+    };
+    v2MonthSummaryInsight: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MonthSummaryInsightResponse"];
+                };
+            };
+        };
+    };
+    v2RecommendationsInsight: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RecommendationsInsightResponse"];
+                };
+            };
+        };
+    };
+    v2TopCategoryInsight: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TopCategoryInsightResponseV2"];
+                };
+            };
+        };
+    };
+    v2AiQuery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiQueryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiQueryResponse"];
+                };
+            };
+        };
+    };
+    v2AiUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiUsageResponse"];
+                };
+            };
+        };
+    };
+    v2AiVision: {
+        parameters: {
+            query?: {
+                question?: string;
+                mode?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ParsedExpenseResultV2"];
+                };
+            };
+        };
+    };
+    v2ListAlerts: {
+        parameters: {
+            query?: {
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AlertResponse"][];
+                };
+            };
+        };
+    };
+    v2DeleteAlert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v2DismissAlert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AlertResponse"];
+                };
+            };
+        };
+    };
+    v2MarkAlertRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AlertResponse"];
+                };
+            };
+        };
+    };
+    v2GoogleAuth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoogleAuthRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AuthResponse"];
+                };
+            };
+        };
+    };
+    v2Login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AuthResponse"];
+                };
+            };
+        };
+    };
+    v2RequestMagicLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MagicLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+        };
+    };
+    v2VerifyMagicLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MagicLinkVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AuthResponse"];
+                };
+            };
+        };
+    };
+    v2Register: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AuthResponse"];
+                };
+            };
+        };
+    };
+    v2GetBudgetRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BudgetRuleResponseV2"];
+                };
+            };
+        };
+    };
+    v2UpsertBudgetRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetRuleRequestV2"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BudgetRuleResponseV2"];
+                };
+            };
+        };
+    };
+    v2AssignBuckets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BucketAssignmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v2SetBudgetRuleEnabled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetRuleEnabledRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BudgetRuleResponseV2"];
+                };
+            };
+        };
+    };
+    v2BudgetRuleSummary: {
+        parameters: {
+            query?: {
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BudgetRuleSummaryResponseV2"];
+                };
+            };
+        };
+    };
+    v2ListBudgets: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BudgetResponseV2"][];
+                };
+            };
+        };
+    };
+    v2CreateBudget: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetRequestV2"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BudgetResponseV2"];
+                };
+            };
+        };
+    };
+    v2DeleteAllBudgets: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v2BudgetSummary: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BudgetSummaryResponseV2"];
+                };
+            };
+        };
+    };
+    v2UpdateBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetRequestV2"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BudgetResponseV2"];
+                };
+            };
+        };
+    };
+    v2DeleteBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v2ListCategories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CategoryResponse"][];
+                };
+            };
+        };
+    };
+    v2CreateCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CategoryResponse"];
+                };
+            };
+        };
+    };
+    v2DeleteAllCategories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v2GetCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CategoryResponse"];
+                };
+            };
+        };
+    };
+    v2UpdateCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CategoryResponse"];
+                };
+            };
+        };
+    };
+    v2DeleteCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v2ListConversations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's conversations, newest activity first. Empty when they have never chatted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationSummaryDto"][];
+                };
+            };
+        };
+    };
+    v2ConversationMessages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ChatMessageDto"][];
+                };
+            };
+        };
+    };
+    v2DeleteConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v2ListExpenses: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExpenseResponseV2"][];
+                };
+            };
+        };
+    };
+    v2CreateExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseRequestV2"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExpenseResponseV2"];
+                };
+            };
+        };
+    };
+    v2DeleteAllExpenses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v2ExportExpenses: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+        };
+    };
+    v2ImportExpenses: {
+        parameters: {
+            query?: {
+                strict?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ImportResult"];
+                };
+            };
+        };
+    };
+    v2ImportTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+        };
+    };
+    v2PageExpenses: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseExpenseResponseV2"];
+                };
+            };
+        };
+    };
+    v2ParseExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseExpenseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ParsedExpenseResultV2"];
+                };
+            };
+        };
+    };
+    v2CategoryReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CategoryReportItemV2"][];
+                };
+            };
+        };
+    };
+    v2DailyReport: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DailyReportItemV2"][];
+                };
+            };
+        };
+    };
+    v2MonthlyReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MonthlyReportItemV2"][];
+                };
+            };
+        };
+    };
+    v2MonthlyComparison: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MonthlyComparisonResponseV2"];
+                };
+            };
+        };
+    };
+    v2TopTransactions: {
+        parameters: {
+            query: {
+                month: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExpenseResponseV2"][];
+                };
+            };
+        };
+    };
+    v2GetExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExpenseResponseV2"];
+                };
+            };
+        };
+    };
+    v2UpdateExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseRequestV2"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExpenseResponseV2"];
+                };
+            };
+        };
+    };
+    v2DeleteExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v2Features: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["FeatureProperties"];
+                };
+            };
+        };
+    };
+    v2ListGoals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["GoalResponseV2"][];
+                };
+            };
+        };
+    };
+    v2CreateGoal: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoalRequestV2"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["GoalResponseV2"];
+                };
+            };
+        };
+    };
+    v2GetGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["GoalResponseV2"];
+                };
+            };
+        };
+    };
+    v2UpdateGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoalRequestV2"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["GoalResponseV2"];
+                };
+            };
+        };
+    };
+    v2DeleteGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v2ListRecurringExpenses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RecurringExpenseResponseV2"][];
+                };
+            };
+        };
+    };
+    v2CreateRecurringExpense: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecurringExpenseRequestV2"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RecurringExpenseResponseV2"];
+                };
+            };
+        };
+    };
+    v2DeleteAllRecurringExpenses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v2UpcomingBills: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UpcomingBillResponseV2"][];
+                };
+            };
+        };
+    };
+    v2UpdateRecurringExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecurringExpenseRequestV2"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RecurringExpenseResponseV2"];
+                };
+            };
+        };
+    };
+    v2DeleteRecurringExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v2ListSubmissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SubmissionResponse"][];
+                };
+            };
+        };
+    };
+    v2CreateSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmissionRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SubmissionResponse"];
+                };
+            };
+        };
+    };
+    v2MarkSubmissionHandled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SubmissionResponse"];
+                };
+            };
+        };
+    };
+    v2CurrentSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SubscriptionResponse"];
+                };
+            };
+        };
+    };
+    v2StartCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckoutRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CheckoutResponse"];
+                };
+            };
+        };
+    };
+    v2Pricing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PricingItem"][];
+                };
+            };
+        };
+    };
+    v2GetAiSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiSettingsResponse"];
+                };
+            };
+        };
+    };
+    v2UpdateAiSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiSettingsResponse"];
+                };
+            };
+        };
+    };
+    v2ClearAiSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiSettingsResponse"];
+                };
+            };
+        };
+    };
+    v2Entitlements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EntitlementResponse"];
+                };
+            };
+        };
+    };
+    v2GetProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UserProfileResponse"];
+                };
+            };
+        };
+    };
+    v2UpdateProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UpdateProfileResponse"];
                 };
             };
         };
@@ -2405,7 +6488,7 @@ export interface operations {
             };
         };
     };
-    list_5: {
+    listConversations: {
         parameters: {
             query?: never;
             header?: never;
@@ -2414,13 +6497,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description The caller's conversations, newest activity first. Empty when they have never chatted. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ConversationSummaryDto"][];
+                    "application/json": components["schemas"]["ConversationSummaryDto"][];
                 };
             };
         };
@@ -2472,6 +6555,9 @@ export interface operations {
             query?: {
                 from?: string;
                 to?: string;
+                source?: "MANUAL" | "QUICK_ADD" | "RECEIPT_SCAN" | "RECURRING" | "IMPORT";
+                /** @description Only expenses tagged to this project or client. By id, so a saved filter survives a rename. */
+                projectId?: number;
             };
             header?: never;
             path?: never;
@@ -2555,6 +6641,31 @@ export interface operations {
             };
         };
     };
+    exportPdf: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                /** @description Only expenses tagged to this project or client, by id. Omit for every expense in the range. */
+                projectId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+        };
+    };
     importCsv: {
         parameters: {
             query?: {
@@ -2611,6 +6722,9 @@ export interface operations {
                 size?: number;
                 from?: string;
                 to?: string;
+                source?: "MANUAL" | "QUICK_ADD" | "RECEIPT_SCAN" | "RECURRING" | "IMPORT";
+                /** @description Only expenses tagged to this project or client, by id. */
+                projectId?: number;
             };
             header?: never;
             path?: never;
@@ -2649,6 +6763,76 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ParsedExpenseResult"];
+                };
+            };
+        };
+    };
+    projects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectResponse"][];
+                };
+            };
+        };
+    };
+    renameProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectResponse"];
+                };
+            };
+        };
+    };
+    quickAdd: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseExpenseRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExpenseResponse"];
                 };
             };
         };
@@ -2733,6 +6917,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["MonthlyComparisonResponse"];
+                };
+            };
+        };
+    };
+    projectReport: {
+        parameters: {
+            query?: {
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectReportItem"][];
                 };
             };
         };
