@@ -81,6 +81,21 @@ const resolved = resolveBaseUrl();
 
 export const API_BASE_URL = resolved.url;
 
+/**
+ * The contract version every request goes to.
+ *
+ * `/api/v2` is the surface that serves and accepts money as integer centavos; the unversioned v1
+ * paths this app used before serve the same rows as decimals. The two are the same data, so this
+ * is a representation change and not a second backend — but a client must pick one, because a
+ * v1 amount and a v2 amount differ by a factor of a hundred.
+ *
+ * Kept separate from `API_BASE_URL` rather than folded into it: the base URL is the address of a
+ * machine and is what the local-backend error messages name, while this is the contract the app
+ * is pinned to. Joining them here means no call site repeats the prefix, and moving to `/api/v3`
+ * is one line.
+ */
+export const API_VERSION_PATH = "/api/v2";
+
 /** True when the base URL was resolved to the developer's own machine. Always false in a build. */
 export const IS_LOCAL_BACKEND = resolved.local;
 
@@ -106,7 +121,7 @@ if (__DEV__ && process.env.NODE_ENV !== "test") {
 }
 
 export const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: `${API_BASE_URL}${API_VERSION_PATH}`,
   // A laptop that is asleep, on another network, or not running the API does not refuse the
   // connection — it swallows it, and the default wait is long enough to read as a frozen screen.
   // Locally the round trip is a few milliseconds, so failing fast costs nothing real.
