@@ -20,7 +20,14 @@ type Schemas = components["schemas"];
  * version path.
  *
  * Shapes with no `*V2` twin carry no money and are unversioned: the contract publishes one schema
- * used by both surfaces.
+ * used by both surfaces. Checked field by field against the pinned contract, not assumed — the
+ * whole point of the rule is that a decimal reaching `formatCentavos` renders a hundredth of the
+ * real figure and nothing fails.
+ *
+ * **One schema is unversioned and still carries money: `PricingItem.amountCentavos`.** It was an
+ * integer of centavos before v2 existed, so it needed no twin — it is aliased in
+ * `src/api/subscription.ts` rather than here, and `formatPrice` already sends it through
+ * `formatCentavos`.
  */
 export type AuthResponse = Schemas["AuthResponse"];
 export type LoginRequest = Schemas["LoginRequest"];
