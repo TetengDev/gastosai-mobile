@@ -1,6 +1,6 @@
 import { api } from "./client";
 import type { components } from "./generated/schema";
-import { formatCurrency, formatDateOnly } from "../lib/formatters";
+import { formatCentavos, formatDateOnly } from "../lib/formatters";
 
 /**
  * The user's subscription, as the backend sees it.
@@ -52,24 +52,16 @@ export const startCheckout = (period: CheckoutRequest["period"]) =>
     .then((r) => r.data);
 
 /**
- * Integer centavos as an exact decimal string — `129000` -> `"1290.00"`.
+ * `₱1,290.00` for a price row, or a dash when the backend sent no amount.
  *
- * `/subscription/pricing` is the one endpoint that serves money as an int32 of centavos rather
- * than a decimal, so it needs a conversion the rest of the app does not. Doing it as `c / 100`
- * puts a float between the contract and the screen, which CLAUDE.md §1.3 rules out; string
- * slicing is exact for every value the field can hold. The result goes straight to
- * `formatCurrency`, so grouping and the peso sign stay in `formatters.ts` with every other amount.
+ * `amountCentavos` was already an integer of centavos before the rest of the app moved to
+ * `/api/v2`, so it now goes through the same `formatCentavos` every other amount does. The
+ * conversion this used to do — centavos to a decimal string, then `formatCurrency` — was exact on
+ * the way out and then `parseFloat`ed back on the way in, which is the float round-trip the
+ * integer representation exists to remove.
  */
-export const centavosToAmount = (centavos: number): string => {
-  if (!Number.isFinite(centavos)) return "0.00";
-  const whole = Math.trunc(centavos);
-  const digits = String(Math.abs(whole)).padStart(3, "0");
-  return `${whole < 0 ? "-" : ""}${digits.slice(0, -2)}.${digits.slice(-2)}`;
-};
-
-/** `₱1,290.00` for a price row, or a dash when the backend sent no amount. */
 export const formatPrice = (item: PricingItem | undefined): string =>
-  item?.amountCentavos === undefined ? "—" : formatCurrency(centavosToAmount(item.amountCentavos));
+  item?.amountCentavos === undefined ? "—" : formatCentavos(item.amountCentavos);
 
 /** "per month" / "per year", for the line under the price. */
 export const PERIOD_CADENCE: Record<BillingPeriod, string> = {

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
 import {
-  centavosToAmount,
   describeSubscription,
   formatPrice,
   PERIOD_CADENCE,
@@ -232,46 +231,11 @@ describe("describeSubscription", () => {
 });
 
 /**
- * `/subscription/pricing` is the one endpoint that serves money as an int32 of centavos, so it is
- * the one place a conversion stands between the contract and the screen. `c / 100` would put a
- * float there, which CLAUDE.md §1.3 rules out — these tests exist to keep the string-slicing
- * implementation honest at the boundaries a division would quietly get wrong.
+ * `amountCentavos` is an integer, and since the app moved to `/api/v2` it is formatted by the same
+ * `formatCentavos` every other amount goes through — no decimal string in between, so no
+ * `parseFloat` on the way back. These cases are the boundaries a `c / 100` implementation would
+ * quietly get wrong.
  */
-describe("centavosToAmount", () => {
-  // The two rows the local backend actually publishes, verbatim from
-  // `GET /subscription/pricing`: ₱149.00 monthly and ₱1,290.00 annual.
-  it("converts the published prices exactly", () => {
-    expect(centavosToAmount(14900)).toBe("149.00");
-    expect(centavosToAmount(129000)).toBe("1290.00");
-  });
-
-  // Under three digits there is no whole-peso part to slice, and a naive slice yields "" before
-  // the point. Every one of these is a value the field can hold.
-  it("pads a value with no whole-peso part", () => {
-    expect(centavosToAmount(0)).toBe("0.00");
-    expect(centavosToAmount(5)).toBe("0.05");
-    expect(centavosToAmount(99)).toBe("0.99");
-    expect(centavosToAmount(100)).toBe("1.00");
-  });
-
-  // Not a price, but the contract permits the sign and a mangled negative is worse than a right
-  // one — a lost minus turns a credit into a charge.
-  it("keeps the sign in front of a negative amount", () => {
-    expect(centavosToAmount(-14900)).toBe("-149.00");
-    expect(centavosToAmount(-5)).toBe("-0.05");
-  });
-
-  it("does not produce NaN for a value that is not a number", () => {
-    expect(centavosToAmount(Number.NaN)).toBe("0.00");
-    expect(centavosToAmount(Number.POSITIVE_INFINITY)).toBe("0.00");
-  });
-
-  // The largest int32 the field can carry, where a float would start losing centavos.
-  it("stays exact at the top of the int32 range", () => {
-    expect(centavosToAmount(2147483647)).toBe("21474836.47");
-  });
-});
-
 describe("formatPrice", () => {
   const item = (over: Partial<PricingItem>): PricingItem =>
     ({ planKey: "PREMIUM", currency: "PHP", ...over }) as PricingItem;
@@ -286,6 +250,20 @@ describe("formatPrice", () => {
   it("shows a dash rather than a price it was not sent", () => {
     expect(formatPrice(undefined)).toBe("—");
     expect(formatPrice(item({ period: "MONTHLY" }))).toBe("—");
+  });
+
+  // Under three digits there is no whole-peso part at all, which is where a naive implementation
+  // renders "₱.05".
+  it("pads a price with no whole-peso part", () => {
+    expect(formatPrice(item({ amountCentavos: 0 }))).toBe("₱0.00");
+    expect(formatPrice(item({ amountCentavos: 5 }))).toBe("₱0.05");
+    expect(formatPrice(item({ amountCentavos: 99 }))).toBe("₱0.99");
+    expect(formatPrice(item({ amountCentavos: 100 }))).toBe("₱1.00");
+  });
+
+  // The largest int32 the field can carry, where a float would start losing centavos.
+  it("stays exact at the top of the int32 range", () => {
+    expect(formatPrice(item({ amountCentavos: 2147483647 }))).toBe("₱21,474,836.47");
   });
 });
 
