@@ -28,6 +28,64 @@ export const formatCurrency = (amount: number | string): string => {
   })}`;
 };
 
+/** How many centavos make a peso. The contract's v2 amounts are integers of this unit. */
+export const CENTAVOS_PER_PESO = 100;
+
+/**
+ * `15075` -> `₱150.75`. The centavo-side twin of `formatCurrency`, for contract v2 amounts.
+ *
+ * The pesos and the centavos are split by integer division and joined as text, so no step ever
+ * produces a fractional number: `amountCentavos / 100` would reintroduce exactly the binary
+ * rounding the integer representation exists to remove.
+ *
+ * A non-integer input is rounded rather than trusted — the contract types these `int64`, so a
+ * fraction here means something upstream already did float math and truncating would compound it.
+ */
+export const formatCentavos = (amountCentavos: number | null | undefined): string => {
+  if (typeof amountCentavos !== "number" || !Number.isFinite(amountCentavos)) return "₱0.00";
+  const cents = Math.round(amountCentavos);
+  const sign = cents < 0 ? "-" : "";
+  const abs = Math.abs(cents);
+  const pesos = Math.trunc(abs / CENTAVOS_PER_PESO);
+  const centavos = abs % CENTAVOS_PER_PESO;
+  return `${sign}₱${pesos.toLocaleString(PESO_LOCALE)}.${String(centavos).padStart(2, "0")}`;
+};
+
+/**
+ * `"150.75"` -> `15075`, and `null` for anything that is not an amount.
+ *
+ * Typed input is the other direction of the same rule. `parseFloat(x) * 100` is wrong for amounts
+ * a user types every day — `"0.29"` scales to 28.999999999999996 and `"1.005"` to
+ * 100.49999999999999 — and which literals survive is not visible by eye. So the peso and centavo
+ * digits are read as text and joined, and nothing is ever multiplied.
+ *
+ * Accepts what a user actually types — `₱`, thousands separators, surrounding space, a leading
+ * sign — and a third decimal place, which is rounded half-up away from zero. `null` rather than
+ * `0` on failure: a rejected amount must be able to fail validation, not silently post as free.
+ */
+export const parseAmountToCentavos = (input: string | number | null | undefined): number | null => {
+  if (input === null || input === undefined) return null;
+  // A number argument is stringified rather than multiplied: `String(150.75)` is `"150.75"`,
+  // so the float is left behind at the boundary instead of being scaled.
+  const raw = (typeof input === "number" ? (Number.isFinite(input) ? String(input) : "") : input)
+    .trim()
+    .replace(/[₱\s]/g, "")
+    .replace(/,/g, "");
+  const match = /^([+-]?)(\d*)(?:\.(\d*))?$/.exec(raw);
+  if (!match) return null;
+
+  const [, sign, whole = "", fraction = ""] = match;
+  if (!whole && !fraction) return null;
+
+  // Two digits kept, the third consulted for rounding; a longer tail cannot change the result
+  // once the third digit is known.
+  const cents = (fraction + "00").slice(0, 2);
+  const roundUp = Number(fraction[2] ?? "0") >= 5;
+  const total = Number(`${whole || "0"}${cents}`) + (roundUp ? 1 : 0);
+  if (!Number.isSafeInteger(total)) return null;
+  return sign === "-" ? -total : total;
+};
+
 /** Full date and time, in the app's timezone. */
 export const formatDate = (date: string | null | undefined): string => {
   if (!date) return "-";
