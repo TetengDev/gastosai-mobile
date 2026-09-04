@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { monthSummary, topCategoryInsight } from "../../api/insights";
-import { formatCurrency } from "../../lib/formatters";
+import { formatCentavos } from "../../lib/formatters";
 import { Body, Card, Skeleton } from "../ui";
 import { useTheme } from "../../theme/useTheme";
 
@@ -56,7 +56,7 @@ export default function InsightCard({ month }: { month: string }) {
 
       {top.data?.category ? (
         <Body dim style={{ fontSize: 12.5 }}>
-          Biggest category: {top.data.category} · {formatCurrency(top.data.total ?? 0)} ·{" "}
+          Biggest category: {top.data.category} · {formatCentavos(top.data.total ?? 0)} ·{" "}
           {Math.round(top.data.percentOfMonthTotal ?? 0)}% of the month
         </Body>
       ) : null}

@@ -5,12 +5,12 @@ import { errorMessage } from "../../src/api/client";
 import { budgetSummary } from "../../src/api/budgets";
 import { listExpenses, monthlyReport } from "../../src/api/expenses";
 import {
-  expenseAmounts,
-  formatCurrency,
+  formatCentavos,
   formatDayMonth,
   formatMonth,
   monthRange,
 } from "../../src/lib/formatters";
+import { expenseAmountText } from "../../src/components/money";
 import { useMonth } from "../../src/context/MonthContext";
 import { Body, Button, Card, ErrorText, MonthStepper, Skeleton, StatTile } from "../../src/components/ui";
 import InsightCard from "../../src/components/dashboard/InsightCard";
@@ -94,7 +94,7 @@ export default function Dashboard() {
         ) : (
           <StatTile
             label={formatMonth(month)}
-            value={formatCurrency(thisMonth?.total ?? 0)}
+            value={formatCentavos(thisMonth?.total ?? 0)}
             sub={isCurrentMonth ? "spent this month" : "spent"}
           />
         )}
@@ -129,8 +129,8 @@ export default function Dashboard() {
         <Card tone="panel">
           <StatTile
             label="Safe to spend"
-            value={formatCurrency(budgets.data.safeToSpend ?? 0)}
-            sub={`${formatCurrency(budgets.data.dailyAllowance ?? 0)} per day`}
+            value={formatCentavos(budgets.data.safeToSpend ?? 0)}
+            sub={`${formatCentavos(budgets.data.dailyAllowance ?? 0)} per day`}
           />
         </Card>
       ) : null}
@@ -173,7 +173,7 @@ export default function Dashboard() {
               </Body>
             </View>
             <Text style={{ fontFamily: t.fonts.display, fontSize: 15, color: t.colors.textHi }}>
-              {formatCurrency(expenseAmounts(e).base)}
+              {expenseAmountText(e).base}
             </Text>
           </Pressable>
         ))}

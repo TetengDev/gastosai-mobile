@@ -6,6 +6,7 @@ import { errorMessage } from "../../../src/api/client";
 import { useNavOrigin } from "../../../src/context/NavOriginContext";
 import { deleteExpense, getExpense, updateExpense } from "../../../src/api/expenses";
 import ExpenseForm from "../../../src/components/ExpenseForm";
+import { centavosToInput } from "../../../src/components/money";
 import { Button, ErrorText } from "../../../src/components/ui";
 import { useTheme } from "../../../src/theme/useTheme";
 
@@ -88,7 +89,7 @@ export default function EditExpense() {
       <Stack.Screen options={{ title: "Edit expense" }} />
       <ExpenseForm
         initial={{
-          amount: e.amount != null ? String(e.amount) : "",
+          amount: centavosToInput(e.amount),
           description: e.description ?? "",
           category: e.category ?? "",
           // Preserved so a correction does not silently re-date the expense to now.

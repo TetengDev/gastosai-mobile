@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Text, View } from "react-native";
 import { dailyReport } from "../../api/expenses";
 import { monthlyComparison } from "../../api/reports";
-import { currentMonth, formatCurrency } from "../../lib/formatters";
+import { currentMonth, formatCentavos } from "../../lib/formatters";
 import { Body, Card, MiniBars, Skeleton } from "../ui";
 import { useTheme } from "../../theme/useTheme";
 
@@ -75,8 +75,8 @@ export default function TrendCard({ month }: { month: string }) {
 
       {comparison.data ? (
         <Body dim style={{ fontSize: 12.5 }}>
-          {formatCurrency(comparison.data.currentTotal ?? 0)} this month ·{" "}
-          {formatCurrency(comparison.data.previousTotal ?? 0)} last
+          {formatCentavos(comparison.data.currentTotal ?? 0)} this month ·{" "}
+          {formatCentavos(comparison.data.previousTotal ?? 0)} last
         </Body>
       ) : null}
     </Card>

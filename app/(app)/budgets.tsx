@@ -11,7 +11,8 @@ import {
 } from "../../src/api/budgets";
 import { listCategories } from "../../src/api/categories";
 import type { BudgetSummaryItem } from "../../src/api/types";
-import { formatCurrency, formatMonth } from "../../src/lib/formatters";
+import { formatCentavos, formatMonth } from "../../src/lib/formatters";
+import { centavosToInput } from "../../src/components/money";
 import { useMonth } from "../../src/context/MonthContext";
 import BudgetSheet from "../../src/components/BudgetSheet";
 import {
@@ -148,12 +149,12 @@ export default function Budgets() {
             <Card tone="panel">
               <StatTile
                 label={formatMonth(summary.data.month ?? month)}
-                value={formatCurrency(summary.data.safeToSpend ?? 0)}
-                sub={`safe to spend · ${formatCurrency(summary.data.dailyAllowance ?? 0)} per day`}
+                value={formatCentavos(summary.data.safeToSpend ?? 0)}
+                sub={`safe to spend · ${formatCentavos(summary.data.dailyAllowance ?? 0)} per day`}
               />
               <Body dim style={{ fontSize: 12.5, marginTop: 8 }}>
-                {formatCurrency(summary.data.totalSpent ?? 0)} of{" "}
-                {formatCurrency(summary.data.totalBudgeted ?? 0)} used
+                {formatCentavos(summary.data.totalSpent ?? 0)} of{" "}
+                {formatCentavos(summary.data.totalBudgeted ?? 0)} used
               </Body>
             </Card>
 
@@ -207,8 +208,8 @@ export default function Budgets() {
                   </View>
                   <ProgressBar percent={b.percentUsed ?? 0} color={toneColor(b.status)} />
                   <Body dim style={{ fontSize: 12.5 }}>
-                    {formatCurrency(b.spent ?? 0)} of {formatCurrency(b.budgeted ?? 0)} ·{" "}
-                    {formatCurrency(b.remaining ?? 0)} left
+                    {formatCentavos(b.spent ?? 0)} of {formatCentavos(b.budgeted ?? 0)} ·{" "}
+                    {formatCentavos(b.remaining ?? 0)} left
                   </Body>
 
 
@@ -236,7 +237,7 @@ export default function Budgets() {
           visible
           title={`${editing.categoryName} budget`}
           submitLabel="Save limit"
-          initialAmount={editing.budgeted != null ? String(editing.budgeted) : ""}
+          initialAmount={centavosToInput(editing.budgeted)}
           categories={[]}
           submitting={pending}
           serverError={mutationError}

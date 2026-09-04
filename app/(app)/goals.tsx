@@ -4,7 +4,8 @@ import { Alert, RefreshControl, ScrollView, Text, View } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import { createGoal, deleteGoal, listGoals, updateGoal } from "../../src/api/goals";
 import type { GoalRequest, GoalResponse } from "../../src/api/types";
-import { formatCurrency, formatDateOnly } from "../../src/lib/formatters";
+import { formatCentavos, formatDateOnly } from "../../src/lib/formatters";
+import { centavosToInput } from "../../src/components/money";
 import AmountSheet from "../../src/components/AmountSheet";
 import {
   Body,
@@ -125,7 +126,7 @@ export default function Goals() {
         labelPlaceholder: "Emergency fund",
         submitLabel: "Save",
         initial: {
-          amount: sheet.goal.savedAmount != null ? String(sheet.goal.savedAmount) : "",
+          amount: centavosToInput(sheet.goal.savedAmount),
           label: sheet.goal.name ?? "",
         },
       };
@@ -136,7 +137,7 @@ export default function Goals() {
       labelPlaceholder: "Emergency fund",
       submitLabel: "Save changes",
       initial: {
-        amount: sheet.goal.targetAmount != null ? String(sheet.goal.targetAmount) : "",
+        amount: centavosToInput(sheet.goal.targetAmount),
         label: sheet.goal.name ?? "",
       },
     };
@@ -196,7 +197,7 @@ export default function Goals() {
             {/* progressPercent is server-computed; the client renders it as given. */}
             <ProgressBar percent={g.progressPercent ?? 0} />
             <Body dim style={{ fontSize: 12.5 }}>
-              {formatCurrency(g.savedAmount ?? 0)} of {formatCurrency(g.targetAmount ?? 0)} ·{" "}
+              {formatCentavos(g.savedAmount ?? 0)} of {formatCentavos(g.targetAmount ?? 0)} ·{" "}
               {Math.round(g.progressPercent ?? 0)}%
             </Body>
             {g.targetDate ? (
