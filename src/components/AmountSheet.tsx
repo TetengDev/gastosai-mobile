@@ -11,12 +11,14 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { parseAmountToCentavos } from "../lib/formatters";
 import { Body, Button, ErrorText, Field } from "./ui";
 import { useTheme } from "../theme/useTheme";
 
 const ACCESSORY_ID = "sheet-amount-accessory";
 
 export interface AmountSheetValues {
+  /** Peso text as typed — `"150.75"`. Read into integer centavos on submit. */
   amount: string;
   /** Doubles as the goal name or the budget's category, depending on the caller. */
   label: string;
@@ -55,6 +57,7 @@ export default function AmountSheet({
   submitLabel: string;
   submitting: boolean;
   serverError?: string | null;
+  /** `amount` is integer centavos, ready for the API. */
   onSubmit: (values: { amount: number; label: string }) => void;
   onClose: () => void;
   footer?: React.ReactNode;
@@ -66,8 +69,10 @@ export default function AmountSheet({
 
   const submit = () => {
     setError(null);
-    const parsed = Number(amount);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
+    // Integer centavos, as the v2 contract takes them — never `Number(amount)`, which puts a
+    // float between what was typed and what is saved.
+    const parsed = parseAmountToCentavos(amount);
+    if (parsed == null || parsed <= 0) {
       setError("Enter an amount greater than zero.");
       return;
     }

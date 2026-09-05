@@ -1,5 +1,6 @@
 import { Text, View } from "react-native";
-import { formatCurrency, formatDateOnly } from "../../lib/formatters";
+import { formatCentavos, formatDateOnly } from "../../lib/formatters";
+import { centavosOf } from "../money";
 import { useTheme } from "../../theme/useTheme";
 
 /**
@@ -69,7 +70,7 @@ export default function ResultView({ result }: { result: unknown }) {
                     .join(" · "),
                 )}
               </>,
-              value(formatCurrency(Number(e.amount ?? 0))),
+              value(formatCentavos(centavosOf(e.amount))),
             ),
           )}
         </View>
@@ -83,7 +84,7 @@ export default function ResultView({ result }: { result: unknown }) {
             row(
               String(c.category ?? i),
               value(String(c.category ?? "Uncategorized")),
-              value(formatCurrency(Number(c.total ?? 0))),
+              value(formatCentavos(centavosOf(c.total))),
             ),
           )}
         </View>
@@ -99,7 +100,7 @@ export default function ResultView({ result }: { result: unknown }) {
               <>
                 {value(String(g.name ?? "-"))}
                 {label(
-                  `${formatCurrency(Number(g.savedAmount ?? 0))} of ${formatCurrency(Number(g.targetAmount ?? 0))}`,
+                  `${formatCentavos(centavosOf(g.savedAmount))} of ${formatCentavos(centavosOf(g.targetAmount))}`,
                 )}
               </>,
               value(`${Math.round(Number(g.progressPercent ?? 0))}%`),
@@ -134,9 +135,9 @@ export default function ResultView({ result }: { result: unknown }) {
     if ("totalBudgeted" in r) {
       return (
         <View testID="chat-result">
-          {row("spent", label("Spent"), value(formatCurrency(Number(r.totalSpent ?? 0))))}
-          {row("budgeted", label("Budgeted"), value(formatCurrency(Number(r.totalBudgeted ?? 0))))}
-          {row("safe", label("Safe to spend"), value(formatCurrency(Number(r.safeToSpend ?? 0))))}
+          {row("spent", label("Spent"), value(formatCentavos(centavosOf(r.totalSpent))))}
+          {row("budgeted", label("Budgeted"), value(formatCentavos(centavosOf(r.totalBudgeted))))}
+          {row("safe", label("Safe to spend"), value(formatCentavos(centavosOf(r.safeToSpend))))}
         </View>
       );
     }

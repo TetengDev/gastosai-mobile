@@ -7,12 +7,12 @@ import { dailyReport, listExpenses } from "../../src/api/expenses";
 import type { ExpenseResponse } from "../../src/api/types";
 import { useMonth } from "../../src/context/MonthContext";
 import {
-  expenseAmounts,
-  formatCurrency,
+  formatCentavos,
   formatDateOnly,
   formatMonth,
   monthRange,
 } from "../../src/lib/formatters";
+import { expenseAmountText } from "../../src/components/money";
 import {
   Body,
   Button,
@@ -182,14 +182,14 @@ export default function Expenses() {
             </Text>
             {section.total != null ? (
               <Text style={{ fontFamily: t.fonts.bodyMedium, fontSize: 12.5, color: t.colors.text2 }}>
-                {formatCurrency(section.total)}
+                {formatCentavos(section.total)}
               </Text>
             ) : null}
           </View>
         )}
         renderItem={({ item }) => {
           // Peso figure from the converted field, so a row and its day header agree.
-          const { base, original } = expenseAmounts(item);
+          const { base, original } = expenseAmountText(item);
           return (
           <Pressable
             // Addressable by id, plus a stable handle on the newest row.
@@ -220,7 +220,7 @@ export default function Expenses() {
               </Body>
             </View>
             <Text style={{ fontFamily: t.fonts.display, fontSize: 15, color: t.colors.textHi }}>
-              {formatCurrency(base)}
+              {base}
             </Text>
           </Pressable>
           );

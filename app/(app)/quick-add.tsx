@@ -8,7 +8,8 @@ import { errorMessage } from "../../src/api/client";
 import { scanReceipt } from "../../src/api/ai";
 import { createExpense, parseExpense } from "../../src/api/expenses";
 import type { ParsedExpenseResult } from "../../src/api/types";
-import { formatCurrency, formatDate } from "../../src/lib/formatters";
+import { formatCentavos, formatDate } from "../../src/lib/formatters";
+import { centavosToInput } from "../../src/components/money";
 import { Body, Button, Card, ErrorText, Field, Pill } from "../../src/components/ui";
 import { useMonth } from "../../src/context/MonthContext";
 import { useNavOrigin } from "../../src/context/NavOriginContext";
@@ -163,7 +164,8 @@ export default function QuickAdd() {
     router.replace({
       pathname: "/(app)/add-expense",
       params: {
-        amount: parsed?.amount != null ? String(parsed.amount) : undefined,
+        // The form edits pesos; the parse result is centavos.
+        amount: parsed?.amount != null ? centavosToInput(parsed.amount) : undefined,
         description: parsed?.description ?? fallbackDescription(),
         category: parsed?.category ?? undefined,
         date: parsed?.date ?? undefined,
@@ -241,7 +243,7 @@ export default function QuickAdd() {
           <Card>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
               <Text style={{ fontFamily: t.fonts.display, fontSize: 28, color: t.colors.textHi }}>
-                {formatCurrency(parsed.amount ?? 0)}
+                {formatCentavos(parsed.amount ?? 0)}
               </Text>
               <Pill
                 label={parsed.confidence ?? "UNKNOWN"}

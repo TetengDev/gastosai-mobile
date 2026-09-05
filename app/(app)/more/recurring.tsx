@@ -9,7 +9,7 @@ import {
   upcomingBills,
 } from "../../../src/api/recurring";
 import type { RecurringExpenseRequest, RecurringExpenseResponse } from "../../../src/api/types";
-import { currentMonth, formatCurrency, formatDateOnly } from "../../../src/lib/formatters";
+import { currentMonth, formatCentavos, formatDateOnly } from "../../../src/lib/formatters";
 import { Body, Card, Divider, ErrorText, Pill, RowMenu, Skeleton } from "../../../src/components/ui";
 import { useTheme } from "../../../src/theme/useTheme";
 
@@ -132,7 +132,7 @@ export default function Recurring() {
               </Body>
             </View>
             <Text style={{ fontFamily: t.fonts.display, fontSize: 15, color: t.colors.textHi }}>
-              {formatCurrency(b.amount ?? 0)}
+              {formatCentavos(b.amount ?? 0)}
             </Text>
           </View>
         ))}
@@ -160,7 +160,7 @@ export default function Recurring() {
                   </Body>
                 </View>
                 <Text style={{ fontFamily: t.fonts.display, fontSize: 15, color: t.colors.textHi }}>
-                  {formatCurrency(r.amount ?? 0)}
+                  {formatCentavos(r.amount ?? 0)}
                 </Text>
               </View>
 

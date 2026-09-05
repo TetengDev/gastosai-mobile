@@ -399,6 +399,28 @@ describe("base URL resolution", () => {
   });
 });
 
+describe("contract version path", () => {
+  it("sends every request to /api/v2, whatever the base URL resolved to", () => {
+    // The v1 surface serves the same rows with decimal amounts and the v2 surface serves integer
+    // centavos, so a client on the wrong path is not broken in a visible way — it is wrong by a
+    // factor of a hundred. `formatCentavos` would render a ₱150.75 expense as ₱1.51, and a saved
+    // amount would be a hundred times too large. Nothing else in the app pins this.
+    const lan = loadClient({ dev: true, hostUri: "192.168.1.14:8081" });
+    expect(lan.API_VERSION_PATH).toBe("/api/v2");
+    expect(lan.api.defaults.baseURL).toBe("http://192.168.1.14:8080/api/v2");
+
+    const built = loadClient({ dev: false, apiUrl: "https://api.gastosai.app" });
+    expect(built.api.defaults.baseURL).toBe("https://api.gastosai.app/api/v2");
+  });
+
+  it("keeps the version out of API_BASE_URL, which names a machine", () => {
+    // The local-backend error messages print `API_BASE_URL`, and telling a developer to check
+    // "http://192.168.1.14:8080/api/v2" is telling them to check a path, not a server.
+    const { API_BASE_URL } = loadClient({ dev: true, hostUri: "192.168.1.14:8081" });
+    expect(API_BASE_URL).toBe("http://192.168.1.14:8080");
+  });
+});
+
 describe("the unreachable laptop", () => {
   it("fails fast and names the address instead of blaming the phone's connection", () => {
     // The failure this loop actually produces is a hang, not a refusal: a sleeping laptop sends

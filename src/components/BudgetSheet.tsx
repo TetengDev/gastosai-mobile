@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import type { CategoryResponse } from "../api/types";
+import { parseAmountToCentavos } from "../lib/formatters";
 import { Body, Button, ErrorText, Pill } from "./ui";
 import { useTheme } from "../theme/useTheme";
 
@@ -42,10 +43,12 @@ export default function BudgetSheet({
   visible: boolean;
   title: string;
   submitLabel: string;
+  /** Peso text the field opens with — `centavosToInput(...)`, not a raw centavo figure. */
   initialAmount: string;
   categories: CategoryResponse[];
   submitting: boolean;
   serverError?: string | null;
+  /** `amount` is integer centavos, ready for the API. */
   onSubmit: (values: { amount: number; categoryId?: number }) => void;
   onClose: () => void;
 }) {
@@ -58,8 +61,9 @@ export default function BudgetSheet({
 
   const submit = () => {
     setError(null);
-    const parsed = Number(amount);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
+    // Integer centavos, as the v2 contract takes them — see `parseAmountToCentavos`.
+    const parsed = parseAmountToCentavos(amount);
+    if (parsed == null || parsed <= 0) {
       setError("Enter an amount greater than zero.");
       return;
     }

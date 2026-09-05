@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { listCategories, listExpenses } from "../api/expenses";
 import type { ExpenseRequest } from "../api/types";
-import { nowForApi } from "../lib/formatters";
+import { nowForApi, parseAmountToCentavos } from "../lib/formatters";
 import { Body, Button, ErrorText, Field, Pill } from "./ui";
 import { useTheme } from "../theme/useTheme";
 
@@ -25,6 +25,7 @@ import { useTheme } from "../theme/useTheme";
 const AMOUNT_ACCESSORY_ID = "expense-amount-accessory";
 
 export interface ExpenseFormValues {
+  /** Peso text as typed — `"150.75"`. Turned into integer centavos on submit, never before. */
   amount: string;
   description: string;
   category: string;
@@ -91,8 +92,10 @@ export default function ExpenseForm({
 
   const submit = () => {
     setLocalError(null);
-    const parsed = Number(amount);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
+    // Centavos, read digit by digit. `Number(amount)` would hand the API a float — "0.29" becomes
+    // 28.999999999999996 the moment anything scales it — and the v2 contract takes an integer.
+    const parsed = parseAmountToCentavos(amount);
+    if (parsed == null || parsed <= 0) {
       setLocalError("Enter an amount greater than zero.");
       return;
     }

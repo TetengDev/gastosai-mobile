@@ -4,7 +4,8 @@ import { budgetSummary } from "../../api/budgets";
 import { listGoals } from "../../api/goals";
 import { upcomingBills } from "../../api/recurring";
 import { categoryReport, topExpenses } from "../../api/reports";
-import { expenseAmounts, formatCurrency, formatDateOnly } from "../../lib/formatters";
+import { formatCentavos, formatDateOnly } from "../../lib/formatters";
+import { expenseAmountText } from "../money";
 import { ProgressBar } from "../ui";
 import SummaryCard from "./SummaryCard";
 import type { SummaryRow } from "./SummaryCard";
@@ -30,7 +31,7 @@ export function UpcomingBillsCard({ month }: { month: string }) {
     key: `${b.id}-${b.dueDate}-${i}`,
     label: b.name ?? "-",
     sub: b.dueDate ? formatDateOnly(b.dueDate) : b.categoryName,
-    value: formatCurrency(b.amount ?? 0),
+    value: formatCentavos(b.amount ?? 0),
   }));
 
   return (
@@ -71,7 +72,7 @@ export function BudgetOverviewCard({ month }: { month: string }) {
     .map((b) => ({
       key: String(b.categoryId ?? b.categoryName),
       label: b.categoryName ?? "-",
-      sub: `${formatCurrency(b.spent ?? 0)} of ${formatCurrency(b.budgeted ?? 0)}`,
+      sub: `${formatCentavos(b.spent ?? 0)} of ${formatCentavos(b.budgeted ?? 0)}`,
       value: `${Math.round(b.percentUsed ?? 0)}%`,
       extra: <ProgressBar percent={b.percentUsed ?? 0} color={tone(b.status)} />,
     }));
@@ -96,13 +97,13 @@ export function TopExpensesCard({ month }: { month: string }) {
   });
 
   const rows: SummaryRow[] = (data ?? []).map((e) => {
-    const { base, original } = expenseAmounts(e);
+    const { base, original } = expenseAmountText(e);
     return {
       key: String(e.id),
       label: e.description ?? "-",
       sub: [e.category, original].filter(Boolean).join(" · ") || null,
-      // `expenseAmounts`, not raw `amount`: a ¥1,500 expense is not ₱1,500.
-      value: formatCurrency(base),
+      // `expenseAmountText`, not raw `amount`: a ¥1,500 expense is not ₱1,500.
+      value: base,
     };
   });
 
@@ -125,7 +126,7 @@ export function GoalProgressCard() {
   const rows: SummaryRow[] = (data ?? []).slice(0, 3).map((g) => ({
     key: String(g.id),
     label: g.name ?? "-",
-    sub: `${formatCurrency(g.savedAmount ?? 0)} of ${formatCurrency(g.targetAmount ?? 0)}`,
+    sub: `${formatCentavos(g.savedAmount ?? 0)} of ${formatCentavos(g.targetAmount ?? 0)}`,
     value: `${Math.round(g.progressPercent ?? 0)}%`,
     extra: <ProgressBar percent={g.progressPercent ?? 0} />,
   }));
@@ -155,7 +156,7 @@ export function CategoryBreakdownCard() {
     key: c.category ?? "-",
     label: c.category ?? "Uncategorized",
     sub: null,
-    value: formatCurrency(c.total ?? 0),
+    value: formatCentavos(c.total ?? 0),
   }));
 
   return <SummaryCard testID="card-categories" title="BY CATEGORY · ALL TIME" rows={rows} />;
