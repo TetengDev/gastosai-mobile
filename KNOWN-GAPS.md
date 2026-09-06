@@ -36,18 +36,12 @@ surfaces and stay web-only.
 
 ---
 
-## 3. Money in transit — closed as of v0.15.0
+## 3. Closed — money in transit is integer centavos (TEN-347, v0.15.0)
 
-**This is no longer a gap.** The backend published contract `3.0.0` with `/api/v2`, where every
-amount is an integer of centavos, and this client migrated to it in TEN-347: it pins `3.0.0`,
-`API_VERSION_PATH` is `/api/v2`, and amounts are rendered with `formatCentavos` and read from user
-input with `parseAmountToCentavos` — neither of which multiplies or divides. The decimal-era
-`formatCurrency` and `expenseAmounts` were deleted in TEN-355 so a centavo integer cannot be handed
-to a decimal formatter by habit.
-
-The entry is kept rather than deleted because what it used to describe is still true of the
-**unversioned** paths, which stay live for installs that shipped before v0.15.0 — see the pacing
-rule in `CONTRACT.md`. What is gone is any decimal amount reaching this code.
+Nothing here. Amounts on `/api/v2` are integers of centavos; `CONTRACT.md` describes what this
+client does with them. The number is retained rather than reclaimed because `.maestro/receipt.yaml`,
+`.maestro/config.yaml`, `.maestro/README.md` and `docs/builds.md` all cite **§5** by number, and
+renumbering to close the gap would break four cross-references to say nothing new.
 
 ---
 

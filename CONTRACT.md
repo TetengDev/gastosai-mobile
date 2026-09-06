@@ -17,7 +17,7 @@ in the backend and web repos.
 |---|---|
 | `gastosai-backend` | Spring Boot 4 / Java 25. **Owns and publishes** the contract. |
 | `gastosai-web` | React 19 + Vite. **Pins and consumes** the contract. |
-| `gastosai-mobile` | Expo / React Native. **Pins and consumes** the contract — `3.0.0`, `/api/v2`. |
+| `gastosai-mobile` | Expo / React Native. **Pins and consumes** the contract. |
 
 Independent repos, independent CI, independent deploys. The only thing binding them
 is the published contract below.
