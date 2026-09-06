@@ -39,9 +39,10 @@ surfaces and stay web-only.
 ## 3. Closed — money in transit is integer centavos (TEN-347, v0.15.0)
 
 Nothing here. Amounts on `/api/v2` are integers of centavos; `CONTRACT.md` describes what this
-client does with them. The number is retained rather than reclaimed because `.maestro/receipt.yaml`,
-`.maestro/config.yaml`, `.maestro/README.md` and `docs/builds.md` all cite **§5** by number, and
-renumbering to close the gap would break four cross-references to say nothing new.
+client does with them. The heading is kept as a numbered placeholder so that the entries below it
+keep the numbers they have: `.maestro/receipt.yaml`, `.maestro/config.yaml`, `.maestro/README.md`
+and `docs/builds.md` all cite **§5** by number, and closing the hole by renumbering would break four
+cross-references to say nothing new.
 
 ---
 
