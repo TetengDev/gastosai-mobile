@@ -36,15 +36,13 @@ surfaces and stay web-only.
 
 ---
 
-## 3. Money is a decimal number in transit, not integer centavos
+## 3. Closed — money in transit is integer centavos (TEN-347, v0.15.0)
 
-`CONTRACT.md` calls for integer centavos. The backend serves `BigDecimal` at full precision, so
-amounts arrive as JSON numbers with a fractional part. Nothing here does float arithmetic on
-money and all formatting goes through `formatters.ts`, but the representation is not the one the
-contract describes.
-
-This is a **breaking contract change owned by the backend** — major version plus `/api/v2`. This
-repo migrates only after that ships. See `gastosai-backend/KNOWN-GAPS.md`.
+Nothing here. Amounts on `/api/v2` are integers of centavos; `CONTRACT.md` describes what this
+client does with them. The heading is kept as a numbered placeholder so that the entries below it
+keep the numbers they have: `.maestro/receipt.yaml`, `.maestro/config.yaml`, `.maestro/README.md`
+and `docs/builds.md` all cite **§5** by number, and closing the hole by renumbering would break four
+cross-references to say nothing new.
 
 ---
 

@@ -18,21 +18,11 @@ export const APP_TIME_ZONE = "Asia/Manila";
 
 const PESO_LOCALE = "en-PH";
 
-/** `₱1,234.56`. The API serves decimal amounts at full precision; never do float math on them. */
-export const formatCurrency = (amount: number | string): string => {
-  const num = typeof amount === "string" ? parseFloat(amount) : amount;
-  if (!Number.isFinite(num)) return "₱0.00";
-  return `₱${num.toLocaleString(PESO_LOCALE, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-};
-
 /** How many centavos make a peso. The contract's v2 amounts are integers of this unit. */
 export const CENTAVOS_PER_PESO = 100;
 
 /**
- * `15075` -> `₱150.75`. The centavo-side twin of `formatCurrency`, for contract v2 amounts.
+ * `15075` -> `₱150.75`. The only way a contract v2 amount is rendered.
  *
  * The pesos and the centavos are split by integer division and joined as text, so no step ever
  * produces a fractional number: `amountCentavos / 100` would reintroduce exactly the binary
@@ -137,35 +127,6 @@ export const currentMonth = (): string => {
   const year = parts.find((p) => p.type === "year")?.value ?? "";
   const month = parts.find((p) => p.type === "month")?.value ?? "";
   return `${year}-${month}`;
-};
-
-/**
- * The peso figure to show for an expense, and the original amount when it was not in pesos.
- *
- * `amount` is in the expense's **own** currency, so rendering it with a peso sign is wrong the
- * moment anything foreign is recorded: a ¥1,500 meal showed as "₱1,500.00" while the day total —
- * server-computed from `amountInBaseCurrency` — correctly read ₱577.50. The two disagreed on the
- * same screen, which is how this surfaced.
- *
- * The backend has already done the conversion; this only picks the right field. Falling back to
- * `amount` covers rows the API returns without a base figure, which are PHP by definition.
- */
-export const expenseAmounts = (e: {
-  amount?: number;
-  amountInBaseCurrency?: number;
-  currency?: string;
-}): { base: number; original: string | null } => {
-  const base = e.amountInBaseCurrency ?? e.amount ?? 0;
-  const isForeign = !!e.currency && e.currency !== "PHP";
-  return {
-    base,
-    original: isForeign
-      ? `${(e.amount ?? 0).toLocaleString(PESO_LOCALE, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })} ${e.currency}`
-      : null,
-  };
 };
 
 /**
