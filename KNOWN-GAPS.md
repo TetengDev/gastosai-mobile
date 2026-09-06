@@ -36,15 +36,18 @@ surfaces and stay web-only.
 
 ---
 
-## 3. Money is a decimal number in transit, not integer centavos
+## 3. Money in transit — closed as of v0.15.0
 
-`CONTRACT.md` calls for integer centavos. The backend serves `BigDecimal` at full precision, so
-amounts arrive as JSON numbers with a fractional part. Nothing here does float arithmetic on
-money and all formatting goes through `formatters.ts`, but the representation is not the one the
-contract describes.
+**This is no longer a gap.** The backend published contract `3.0.0` with `/api/v2`, where every
+amount is an integer of centavos, and this client migrated to it in TEN-347: it pins `3.0.0`,
+`API_VERSION_PATH` is `/api/v2`, and amounts are rendered with `formatCentavos` and read from user
+input with `parseAmountToCentavos` — neither of which multiplies or divides. The decimal-era
+`formatCurrency` and `expenseAmounts` were deleted in TEN-355 so a centavo integer cannot be handed
+to a decimal formatter by habit.
 
-This is a **breaking contract change owned by the backend** — major version plus `/api/v2`. This
-repo migrates only after that ships. See `gastosai-backend/KNOWN-GAPS.md`.
+The entry is kept rather than deleted because what it used to describe is still true of the
+**unversioned** paths, which stay live for installs that shipped before v0.15.0 — see the pacing
+rule in `CONTRACT.md`. What is gone is any decimal amount reaching this code.
 
 ---
 

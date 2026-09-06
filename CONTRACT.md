@@ -17,7 +17,7 @@ in the backend and web repos.
 |---|---|
 | `gastosai-backend` | Spring Boot 4 / Java 25. **Owns and publishes** the contract. |
 | `gastosai-web` | React 19 + Vite. **Pins and consumes** the contract. |
-| `gastosai-mobile` | React Native (later). **Pins and consumes** the contract. |
+| `gastosai-mobile` | Expo / React Native. **Pins and consumes** the contract — `3.0.0`, `/api/v2`. |
 
 Independent repos, independent CI, independent deploys. The only thing binding them
 is the published contract below.
@@ -107,9 +107,11 @@ Never publish a breaking contract version before clients have a migration path.
 
 ## Cross-cutting data rules (identical in all repos)
 
-- **Money is never floating point.** Currency explicit, default `PHP`. Format to
-  `₱1,234.56` only at the display edge. See `KNOWN-GAPS.md` — the API currently serves
-  decimal amounts at full precision; the integer-centavos target is a future breaking change.
+- **Money is never floating point.** Currency explicit, default `PHP`. **On `/api/v2` an amount is
+  an integer of centavos** — `15075` is ₱150.75. The older unversioned paths remain live and still
+  serve decimal amounts at full precision, so which surface a client calls decides which
+  representation it gets: the same amount differs by a factor of a hundred between them, and the
+  two must never meet in one call path. Format to `₱1,234.56` only at the display edge.
 - **Timestamps are ISO 8601 with `+08:00`.** Store UTC, serialize with offset.
   Day/month logic in `Asia/Manila`. A naive timestamp is a bug.
 - **No AI provider key ever reaches a client.** AI runs backend-only.
@@ -130,3 +132,35 @@ Both publishing (backend) and installing (web, mobile, Vercel) use a GitHub
 `PACKAGE_TOKEN` scoped to `@tetengdev` via `npm.pkg.github.com`, supplied as an env
 var / CI secret. Never commit the token; never inline it in `.npmrc` — reference
 `${PACKAGE_TOKEN}`.
+
+---
+
+## Where this repo stands (mobile-specific — not part of the shared copy)
+
+Everything above is the shared contract text and is kept identical in the backend and web repos.
+This section is local to `gastosai-mobile`.
+
+**This client pins `@tetengdev/gastosai-api-contract@3.0.0` and calls `/api/v2`. Every amount it
+sends or receives is an integer of centavos.** Its base URL carries the version path, so a request
+built through `src/api/client.ts` is a v2 request by construction; no call site chooses.
+
+Two helpers in `src/lib/formatters.ts` are the only sanctioned crossings between a centavo integer
+and a human figure:
+
+| Direction | Helper |
+|---|---|
+| centavos → display | `formatCentavos(15075)` → `₱150.75` |
+| user input → centavos | `parseAmountToCentavos("150.75")` → `15075` |
+
+Neither `cents / 100` nor `parseFloat(x) * 100` is a substitute: both reintroduce exactly the
+binary rounding the integer representation exists to remove — `parseFloat("0.29") * 100` is
+28.999999999999996 — and which literals are affected is not visible by eye. The decimal-era
+`formatCurrency` and `expenseAmounts` were deleted in TEN-355 rather than left exported, because a
+centavo integer passed to a decimal formatter renders a hundredth of the real figure with nothing
+failing. `src/components/money.ts` holds the centavo-side choice between an expense's own currency
+and its converted base figure.
+
+Contract **3.x is the pin, not the ceiling.** Per the pacing rule above, installed apps keep
+calling whatever surface they shipped with, so the unversioned decimal paths must stay live until
+analytics show those installs have drained — this repo moving to v2 does not license removing them.
+`X-App-Version` is sent on every request precisely so that question can be answered with data.
