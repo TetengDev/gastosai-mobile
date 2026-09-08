@@ -201,7 +201,7 @@ export const UPGRADE_PROMPT = "Upgrade to Premium to unlock it.";
 /**
  * What each gated capability is called in the product.
  *
- * Wording only, in the same sense `formatCurrency` is — this decides nothing about entitlement,
+ * Wording only, in the same sense `formatCentavos` is — this decides nothing about entitlement,
  * which is the backend's alone (CLAUDE.md §1.2). The map exists because the server's default
  * message for the annotation-driven gate is `"This feature requires an upgraded plan: NL_CHATBOT"`,
  * and an enum name is not something to show a person.

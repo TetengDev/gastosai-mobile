@@ -12,7 +12,7 @@ import { formatCentavos, formatDateOnly } from "../lib/formatters";
  *
  * What this module does own is the wording. Turning `{ plan: "PREMIUM", status: "ACTIVE",
  * currentPeriodEnd }` into "Premium · Renews 12 Sep 2026" is display formatting in the same
- * sense `formatCurrency` is, and it lives beside the fetch rather than in the screen so it can
+ * sense `formatCentavos` is, and it lives beside the fetch rather than in the screen so it can
  * be tested as a pure function.
  *
  * The type is aliased from the generated schema directly instead of via `src/api/types.ts`
@@ -56,9 +56,9 @@ export const startCheckout = (period: CheckoutRequest["period"]) =>
  *
  * `amountCentavos` was already an integer of centavos before the rest of the app moved to
  * `/api/v2`, so it now goes through the same `formatCentavos` every other amount does. The
- * conversion this used to do — centavos to a decimal string, then `formatCurrency` — was exact on
- * the way out and then `parseFloat`ed back on the way in, which is the float round-trip the
- * integer representation exists to remove.
+ * conversion this used to do — centavos to a decimal string, then the decimal-era formatter
+ * TEN-355 deleted — was exact on the way out and then `parseFloat`ed back on the way in, which is
+ * the float round-trip the integer representation exists to remove.
  */
 export const formatPrice = (item: PricingItem | undefined): string =>
   item?.amountCentavos === undefined ? "—" : formatCentavos(item.amountCentavos);

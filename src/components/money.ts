@@ -43,10 +43,11 @@ export const centavosOf = (value: unknown): number => {
 /**
  * The peso figure to show for an expense, and the original amount when it was not in pesos.
  *
- * The centavo-side twin of `expenseAmounts` in `formatters.ts`: same rule — `amount` is in the
- * expense's *own* currency, so a ¥1,500 meal must not be rendered with a peso sign while the day
- * total beside it reads the server-converted figure. The backend has already converted; this only
- * picks the right field and hands both to `formatCentavos`.
+ * The centavo-side successor to the decimal-era helper `formatters.ts` used to export (deleted in
+ * TEN-355), and it keeps that helper's rule: `amount` is in the expense's *own* currency, so a
+ * ¥1,500 meal must not be rendered with a peso sign while the day total beside it reads the
+ * server-converted figure. The backend has already converted; this only picks the right field and
+ * hands both to `formatCentavos`.
  *
  * Falling back to `amount` covers rows the API returns without a base figure, which are PHP by
  * definition.

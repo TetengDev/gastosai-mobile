@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "@jest/globals";
 import { parseAmountToCentavos } from "../lib/formatters";
 import { centavosOf, centavosToInput, expenseAmountText } from "./money";
@@ -94,5 +96,43 @@ describe("expenseAmountText", () => {
   it("falls back to amount when there is no base figure", () => {
     expect(expenseAmountText({ amount: 9000 }).base).toBe("₱90.00");
     expect(expenseAmountText({}).base).toBe("₱0.00");
+  });
+});
+
+/**
+ * The prose that sends a reader to a money helper has to name one that exists.
+ *
+ * TEN-355 deleted `formatCurrency` and `expenseAmounts`, and four files kept pointing at them for a
+ * release — `docs/lessons.md` among them, which `CLAUDE.md` makes required reading before touching
+ * amount formatting. A stale pointer there costs an agent a search for a function that is gone, and
+ * nothing else in the suite notices: a comment does not type-check.
+ *
+ * `CONTRACT.md` is deliberately not in this list. It names both deleted helpers on purpose, as the
+ * historical record of why they went.
+ */
+describe("prose about the money helpers", () => {
+  const repoRoot = join(__dirname, "..", "..");
+  const read = (path: string) => readFileSync(join(repoRoot, path), "utf8");
+
+  const DELETED = ["formatCurrency", "expenseAmounts"];
+  const GUARDED = [
+    "docs/lessons.md",
+    "src/components/money.ts",
+    "src/api/subscription.ts",
+    "src/api/client.ts",
+  ];
+
+  it.each(GUARDED)("%s names no helper TEN-355 deleted", (path) => {
+    const text = read(path);
+    for (const symbol of DELETED) {
+      expect(text).not.toContain(symbol);
+    }
+  });
+
+  it("sends the reader of docs/lessons.md to the live helper", () => {
+    const lessons = read("docs/lessons.md");
+
+    expect(lessons).toContain("expenseAmountText");
+    expect(lessons).toContain("src/components/money.ts");
   });
 });
