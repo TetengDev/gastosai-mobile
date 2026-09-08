@@ -71,8 +71,9 @@ approved (`confirmingTool`) to know whether the write was an expense at all.
 server-computed day total correctly read ₱577.50 — two numbers for the same row on one screen.
 `expenseAmountText()` in `src/components/money.ts` picks the right field. Use it anywhere an expense
 figure is shown. It supersedes the decimal-era helper that used to live in `src/lib/formatters.ts`,
-deleted in TEN-355 with the rest of the pre-centavo money helpers — that file now owns only the
-`formatCentavos` / `parseAmountToCentavos` primitives.
+deleted in TEN-355 with the rest of the pre-centavo money helpers — the money side of that file is
+now only the `formatCentavos` / `parseAmountToCentavos` primitives, beside the date and timezone
+helpers it has always owned.
 
 ## Writable screens still compute nothing
 
