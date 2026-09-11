@@ -16,7 +16,8 @@ import type { ChatResponse } from "../../../src/api/types";
 import PreviewCard from "../../../src/components/chat/PreviewCard";
 import type { ActionPreview } from "../../../src/components/chat/PreviewCard";
 import ResultView from "../../../src/components/chat/ResultView";
-import { affectedQueryKeys, buildConfirmMessage } from "../../../src/components/chat/chatActions";
+import { affectedQueryKeys, confirmChatAction } from "../../../src/components/chat/chatActions";
+import type { ChatConfirmResponse } from "../../../src/components/chat/chatActions";
 import { Body, ErrorText } from "../../../src/components/ui";
 import { useMonth } from "../../../src/context/MonthContext";
 import { useTheme } from "../../../src/theme/useTheme";
@@ -69,15 +70,6 @@ export default function Chat() {
   const scroller = useRef<ScrollView>(null);
   const { resetToCurrent } = useMonth();
 
-  /**
-   * Which tool the in-flight confirmation is about to execute.
-   *
-   * The execute reply comes back as `type: "action"`, which carries no `toolName` — so once
-   * `onSuccess` runs, the only thing that still knows what the user approved is the card they
-   * tapped. Held in a ref rather than state because nothing renders from it.
-   */
-  const confirmingTool = useRef<string | undefined>(undefined);
-
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [conversationId, setConversationId] = useState<number | undefined>();
@@ -92,7 +84,12 @@ export default function Chat() {
     }
   };
 
-  const appendReply = (res: ChatResponse) => {
+  /**
+   * Both turn shapes land here. `/ai/chat` answers the v2 `ChatResponse` and `/ai/chat/confirm` the
+   * v1 one; they differ only in how money inside `result` is encoded, and nothing on this screen
+   * reads a number out of it — `ResultView` renders whatever it is given.
+   */
+  const appendReply = (res: ChatResponse | ChatConfirmResponse) => {
     setConversationId(res.conversationId ?? conversationId);
 
     const preview =
@@ -118,9 +115,16 @@ export default function Chat() {
 
   const ask = useMutation({ mutationFn: sendChat, onSuccess: appendReply });
 
+  /**
+   * Approving a proposal posts the card's own `toolName` and `params` back, so the action that runs
+   * is the one that was shown. It used to rebuild an English sentence and send it through `/ai/chat`
+   * for the backend to parse again — a tool with no phrasing here could not be confirmed at all, and
+   * a re-parse could land on a different tool than the card described (TEN-168).
+   */
   const confirm = useMutation({
-    mutationFn: sendChat,
-    onSuccess: (res) => {
+    mutationFn: (preview: ActionPreview) =>
+      confirmChatAction(preview.toolName, preview.params, conversationId),
+    onSuccess: (res, preview) => {
       // Mark the proposal as handled so its buttons cannot fire twice.
       setTurns((prev) => {
         const next = [...prev];
@@ -139,11 +143,7 @@ export default function Chat() {
       // June-scoped list that could not contain it — filed correctly, apparently lost. `quick-add`
       // and `add-expense` already guard this; the chat write path was the third way in and missed
       // it. Only an expense moves the month: a budget or a goal is not dated today.
-      if (confirmingTool.current === "create_expense") resetToCurrent();
-      confirmingTool.current = undefined;
-    },
-    onError: () => {
-      confirmingTool.current = undefined;
+      if (preview.toolName === "create_expense") resetToCurrent();
     },
   });
 
@@ -154,23 +154,6 @@ export default function Chat() {
     setInput("");
     ask.mutate({ conversationId, message });
     scrollToEnd();
-  };
-
-  const confirmPreview = (preview: ActionPreview) => {
-    const message = buildConfirmMessage(preview.toolName, preview.params);
-    if (!message) {
-      // No phrasing for this tool. Sending an empty message would be a confusing no-op, so say so.
-      setTurns((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          text: "This action can't be confirmed from the phone yet. Try it on the web app.",
-        },
-      ]);
-      return;
-    }
-    confirmingTool.current = preview.toolName;
-    confirm.mutate({ conversationId, message, mode: "execute" });
   };
 
   const cancelPreview = () => {
@@ -258,7 +241,7 @@ export default function Chat() {
                   preview={turn.preview}
                   confirmed={!!turn.previewConfirmed}
                   pending={confirm.isPending}
-                  onConfirm={() => confirmPreview(turn.preview as ActionPreview)}
+                  onConfirm={() => confirm.mutate(turn.preview as ActionPreview)}
                   onCancel={cancelPreview}
                 />
               ) : null}
