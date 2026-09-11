@@ -1,15 +1,17 @@
+import { api, API_BASE_URL } from "../../api/client";
+import type { components } from "../../api/generated/schema";
+
 /**
- * Labels and confirmation phrasing for assistant-proposed actions.
+ * Labels and the confirm call for assistant-proposed actions.
  *
- * **Ported from `gastosai-web/src/components/chat/chatActions.ts` and must stay in step with it.**
- * That is not a preference: confirming a proposed write means re-sending a *rephrased English
- * sentence* with `mode: "execute"`, and the backend parses it. If the two clients word it
- * differently, one of them silently fails to confirm.
- *
- * The right fix is a structured confirm on the API — send back the tool name and params the server
- * already proposed, rather than a sentence for it to re-parse. That is a backend change, recorded
- * in KNOWN-GAPS.md.
+ * Confirming used to mean rebuilding an English sentence from the proposal and sending it back for
+ * the backend to re-parse — phrasing this file and web's copy had to keep character-for-character
+ * identical, or one client silently failed to confirm. `POST /ai/chat/confirm` now takes the
+ * `toolName` and `params` the server itself proposed, so there is no sentence to agree on and
+ * nothing to re-parse (TEN-168; web is TEN-167).
  */
+
+type Schemas = components["schemas"];
 
 /** Human name for a tool, for the confirmation card's heading. */
 export function actionLabel(toolName: string): string {
@@ -44,40 +46,43 @@ export function actionLabel(toolName: string): string {
 }
 
 /**
- * The sentence sent back to confirm a proposed action.
+ * One assistant turn from `POST /ai/chat/confirm`.
  *
- * Character-for-character the same as web's. An empty string means "this tool has no confirmation
- * phrasing" — the caller must not send an empty message, and shows an error instead of guessing.
+ * The v1 `ChatResponse`, taken from the generated schema as-is — see `confirmChatAction` for why
+ * this one call is not on `/api/v2`. The aliases in `src/api/types.ts` all point at the centavos
+ * members, so they do not describe this turn and are not reused.
  */
-export function buildConfirmMessage(toolName: string, params: Record<string, unknown>): string {
-  switch (toolName) {
-    case "create_budget":
-      return `create a budget for ${params.categoryName} ₱${params.amountLimit} month ${params.month}`;
-    case "create_goal":
-      return `create a goal called ${params.name} target ₱${params.targetAmount}${params.savedAmount ? ` saved ₱${params.savedAmount}` : ""}`;
-    case "create_recurring":
-      return `create recurring ${params.name} ₱${params.amount} ${params.frequency}${params.categoryName ? ` ${params.categoryName}` : ""}`;
-    case "create_expense":
-      return `₱${params.amount} ${params.description}${params.category ? ` ${params.category}` : ""}`;
-    case "create_category":
-      return `create category ${params.name}${params.icon ? ` icon ${params.icon}` : ""}`;
-    case "rename_category":
-      return `rename category ${params.currentName} to ${params.newName}`;
-    case "delete_category":
-      return `delete category ${params.name}`;
-    case "update_goal":
-      return `update goal${params.id ? ` id ${params.id}` : params.name ? ` ${params.name}` : ""}${params.targetAmount !== undefined ? ` target ₱${params.targetAmount}` : ""}${params.savedAmount !== undefined ? ` saved ₱${params.savedAmount}` : ""}${params.paused !== undefined ? ` paused ${params.paused}` : ""}`;
-    case "update_recurring":
-      return `update recurring${params.id ? ` id ${params.id}` : params.name ? ` ${params.name}` : ""}${params.amount !== undefined ? ` ₱${params.amount}` : ""}${params.frequency !== undefined ? ` ${params.frequency}` : ""}${params.active !== undefined ? ` active ${params.active}` : ""}`;
-    case "update_profile":
-      return `update profile${params.name ? ` name ${params.name}` : ""}${params.nickname ? ` nickname ${params.nickname}` : ""}${params.avatar ? ` avatar ${params.avatar}` : ""}`;
-    case "delete_expenses":
-      return `delete expenses${params.category ? ` category ${params.category}` : ""}${params.from ? ` from ${params.from}` : ""}${params.to ? ` to ${params.to}` : ""}`;
-    case "recategorize_expenses":
-      return `recategorize expenses from ${params.fromCategory} to ${params.toCategory}`;
-    default:
-      return "";
-  }
+export type ChatConfirmResponse = Schemas["ChatResponse"];
+
+/**
+ * Execute the action the server proposed on a `preview` turn, by handing its `toolName` and
+ * `params` straight back. No sentence is rebuilt, so nothing is re-parsed and the action that runs
+ * is the one the card showed.
+ *
+ * Three things about this call are not like the rest of `src/api/`:
+ *
+ * - **It is posted to the unversioned surface**, overriding the client's `/api/v2` base. The
+ *   contract publishes `/ai/chat/confirm` only there, on purpose: a preview's `params` are the v1
+ *   decimal arguments, and re-reading them as centavos would confirm the amount a hundredfold.
+ *   They are echoed unchanged, and no money is parsed here.
+ * - **Its `result` carries decimal money.** Every tool reachable through a preview is a write, and
+ *   `ResultView` renders a single write result as a plain key/value list — no amount from it
+ *   reaches `formatCentavos`, which is the call that would be wrong by a hundred.
+ * - **It waits as long as a chat turn does**, for the same reason `sendChat` does: confirming runs
+ *   the tool against the database, and the CRUD-sized default aborts a request the server is still
+ *   answering.
+ */
+export async function confirmChatAction(
+  toolName: string,
+  params: Record<string, unknown>,
+  conversationId?: number,
+): Promise<ChatConfirmResponse> {
+  const body: Schemas["ChatConfirmRequest"] = { toolName, params, mode: "execute", conversationId };
+  const res = await api.post<ChatConfirmResponse>("/ai/chat/confirm", body, {
+    baseURL: API_BASE_URL,
+    timeout: 90_000,
+  });
+  return res.data;
 }
 
 /** Whether a proposed action would change data — used to colour the confirm button. */

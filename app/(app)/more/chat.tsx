@@ -16,7 +16,7 @@ import type { ChatResponse } from "../../../src/api/types";
 import PreviewCard from "../../../src/components/chat/PreviewCard";
 import type { ActionPreview } from "../../../src/components/chat/PreviewCard";
 import ResultView from "../../../src/components/chat/ResultView";
-import { affectedQueryKeys, buildConfirmMessage } from "../../../src/components/chat/chatActions";
+import { affectedQueryKeys, confirmChatAction } from "../../../src/components/chat/chatActions";
 import { Body, ErrorText } from "../../../src/components/ui";
 import { useMonth } from "../../../src/context/MonthContext";
 import { useTheme } from "../../../src/theme/useTheme";
