@@ -1,0 +1,72 @@
+# Demo: the insights and the assistant each get their own language, and the choice sticks.
+#
+# **This flow is filmed.** Written for someone who has never seen the app. Same rules as the other
+# demo flows: no housekeeping on camera, open and close on a full screen.
+#
+# The subject is TEN-381: two controls on Settings, one endpoint (`/user/ai-settings`), two
+# independent fields. What makes it worth filming is the third beat — the app is killed and
+# reopened, and the two languages come back the way they were left, because they live on the
+# account rather than on the phone.
+#
+# It writes to the demo account's AI settings and leaves them at Insights=Filipino,
+# Assistant=English. Nothing else is touched, and both values are user preferences the next run
+# overwrites, so there is no cleanup flow.
+#
+# The pills are matched by id and asserted with `selected`, not by their label text: "English"
+# appears twice on the screen, once per control.
+#
+# @watch Each control saves on its own, without touching the other
+# @watch The choice survives a relaunch, because it is stored on the account
+appId: host.exp.Exponent
+---
+- runFlow: ../launch.yaml
+
+- tapOn:
+    id: "tab-more"
+- tapOn:
+    id: "more-settings"
+    label: ">> The AI language lives with the rest of the preferences"
+
+- extendedWaitUntil:
+    visible:
+      id: "ai-language-insights-en"
+    timeout: 25000
+    label: ">> Two controls: the insight cards, and the assistant"
+
+# Insights to Filipino. Only this control's field is sent, so the assistant is untouched.
+- tapOn:
+    id: "ai-language-insights-fil"
+    label: ">> Insights, in Filipino"
+- assertVisible:
+    id: "ai-language-insights-fil"
+    selected: true
+
+# The assistant stays English — the two are independent, which is the point of the endpoint
+# accepting one field at a time.
+- tapOn:
+    id: "ai-language-assistant-en"
+- assertVisible:
+    id: "ai-language-assistant-en"
+    selected: true
+    label: ">> The assistant keeps its own, in English"
+
+# Relaunch, not a re-render: the settings are read back from the account.
+- launchApp:
+    clearState: false
+    stopApp: true
+- runFlow: ../launch.yaml
+- tapOn:
+    id: "tab-more"
+- tapOn:
+    id: "more-settings"
+- extendedWaitUntil:
+    visible:
+      id: "ai-language-insights-fil"
+    timeout: 25000
+- assertVisible:
+    id: "ai-language-insights-fil"
+    selected: true
+- assertVisible:
+    id: "ai-language-assistant-en"
+    selected: true
+    label: ">> Reopened, and both are exactly where they were left"

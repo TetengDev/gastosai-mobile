@@ -1,6 +1,6 @@
 {
   "name": "gastosai-mobile",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "main": "expo-router/entry",
   "dependencies": {
     "@expo-google-fonts/hanken-grotesk": "^0.4.3",
@@ -8,7 +8,7 @@
     "@expo-google-fonts/space-mono": "^0.4.2",
     "@expo/vector-icons": "^15.0.3",
     "@tanstack/react-query": "^5.101.4",
-    "@tetengdev/gastosai-api-contract": "3.0.0",
+    "@tetengdev/gastosai-api-contract": "3.2.0",
     "axios": "^1.18.1",
     "expo": "~54.0.36",
     "expo-constants": "~18.0.13",
