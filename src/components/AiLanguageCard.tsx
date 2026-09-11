@@ -43,10 +43,14 @@ function LanguageRow({
             testID={`ai-language-${label.toLowerCase()}-${language.code}`}
             label={language.label}
             selected={language.code === value}
-            // Re-selecting what is already stored would be a pointless request.
-            onPress={
-              disabled || language.code === value ? undefined : () => onSelect(language.code)
-            }
+            // Always a button, even for the selected option and while a save is in flight: `Pill`
+            // only reports `accessibilityState.selected` when it is pressable, so dropping the
+            // handler would hide which language is chosen from VoiceOver and from the UI tree.
+            // Re-selecting what is already stored is a no-op rather than a pointless request.
+            onPress={() => {
+              if (disabled || language.code === value) return;
+              onSelect(language.code);
+            }}
           />
         ))}
       </View>
