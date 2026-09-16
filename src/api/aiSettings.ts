@@ -1,4 +1,4 @@
-import { api } from "./client";
+import { api, API_BASE_URL } from "./client";
 import type { components } from "./generated/schema";
 
 type Schemas = components["schemas"];
@@ -9,25 +9,45 @@ type Schemas = components["schemas"];
  * and written by the same endpoint and are **independent** — a save sends only the field that
  * changed, because an omitted field leaves the stored value alone.
  *
- * Nothing here is derivation: the languages are chosen by the user and applied server-side when
- * the text is generated (CLAUDE.md §1.2). This module only names the allowed values and shapes
- * the two requests.
+ * Nothing here is derivation: the languages are chosen by the user, the set of allowed values is
+ * the server's (`GET /ai/languages`), and both are applied server-side when the text is generated
+ * (CLAUDE.md §1.2). This module only fetches the options and shapes the two requests.
  */
 
 /**
- * The contract types both language fields as bare `string` — the backend's `AiLanguage`
- * allow-list is not expressed in the spec, though it is closed on the server (anything else is a
- * 400). The domain is stated here so the picker cannot offer a value the API would reject.
+ * A language the server offers for AI prose.
+ *
+ * The set is configuration-driven on the backend and served by `GET /ai/languages`, so `code` is
+ * the contract's bare string: there is no local union to keep in step with it, which is the point.
+ * springdoc marks both properties optional; the endpoint always sends both.
  */
-export type AiLanguage = "en" | "fil";
+export type AiLanguageOption = { code: string; displayName: string };
 
 /** What the API uses for a user who has not chosen a language. */
-export const DEFAULT_AI_LANGUAGE: AiLanguage = "en";
+export const DEFAULT_AI_LANGUAGE = "en";
 
-export const AI_LANGUAGES: { code: AiLanguage; label: string }[] = [
-  { code: "en", label: "English" },
-  { code: "fil", label: "Filipino" },
-];
+/** What the picker falls back to, so a failed call still leaves a usable control. */
+const ENGLISH_ONLY: AiLanguageOption[] = [{ code: DEFAULT_AI_LANGUAGE, displayName: "English" }];
+
+/**
+ * The picker's options, in the order the server gives. A failed call returns English alone rather
+ * than throwing: a settings screen that cannot render its language control is worse than one
+ * offering only the default.
+ *
+ * The contract publishes this at `/ai/languages` and nowhere else — `/api/v2` does not mirror it —
+ * so it is read from the unversioned surface, like `/ai/chat/confirm`. Nothing money-bearing
+ * crosses it: a code and a name.
+ */
+export const fetchAiLanguages = async (): Promise<AiLanguageOption[]> => {
+  try {
+    const { data } = await api.get<AiLanguageOption[]>("/ai/languages", {
+      baseURL: API_BASE_URL,
+    });
+    return data;
+  } catch {
+    return ENGLISH_ONLY;
+  }
+};
 
 /** Which of the two settings a control writes. */
 export type AiLanguageField = "insight" | "chat";
@@ -53,8 +73,8 @@ export type AiSettingsUpdate = Omit<
   Schemas["AiSettingsRequest"],
   "insightLanguage" | "chatLanguage"
 > & {
-  insightLanguage?: AiLanguage;
-  chatLanguage?: AiLanguage;
+  insightLanguage?: string;
+  chatLanguage?: string;
 };
 
 export const getAiSettings = () => api.get<AiSettings>("/user/ai-settings").then((r) => r.data);
@@ -63,13 +83,33 @@ export const updateAiSettings = (body: AiSettingsUpdate) =>
   api.put<AiSettings>("/user/ai-settings", body).then((r) => r.data);
 
 /**
- * What the picker should show for a stored value. `null` is the unset case, and an unrecognised
- * code — a language a newer backend offers that this installed build does not list — falls back
- * to the default rather than leaving the control with nothing selected. Installed apps run old
- * versions for months (CLAUDE.md §1.5), so that case is real rather than theoretical.
+ * What the picker should show for a stored value. `null` and blank are the unset cases and mean
+ * the default, which is what the API itself would use. Any other code is kept verbatim: the
+ * allow-list now lives on the server, so a code this build has never heard of is a language the
+ * user really chose — from web, or from a newer build — and replacing it with English here would
+ * misreport their setting. `languageOptionsFor` is what makes such a code renderable.
  */
-export const resolveAiLanguage = (value: string | null | undefined): AiLanguage =>
-  AI_LANGUAGES.some((l) => l.code === value) ? (value as AiLanguage) : DEFAULT_AI_LANGUAGE;
+export const resolveAiLanguage = (value: string | null | undefined): string =>
+  value?.trim() ? value : DEFAULT_AI_LANGUAGE;
+
+/**
+ * The options a control must offer to be able to show `current`.
+ *
+ * A stored code the server no longer offers — or one added after this build shipped — must not
+ * silently select something else: it is appended, labelled with its raw code, so the user can see
+ * what is stored and change it.
+ */
+export const languageOptionsFor = (
+  options: AiLanguageOption[],
+  current: string,
+): AiLanguageOption[] =>
+  options.some((o) => o.code === current)
+    ? options
+    : [...options, { code: current, displayName: current }];
+
+/** The name to show for a stored code, falling back to the code itself. */
+export const languageLabel = (options: AiLanguageOption[], code: string): string =>
+  options.find((o) => o.code === code)?.displayName ?? code;
 
 /**
  * The body for changing one language. Sending only the changed field is what keeps the two
@@ -77,5 +117,5 @@ export const resolveAiLanguage = (value: string | null | undefined): AiLanguage 
  * whatever this screen last read, which is wrong the moment the two were changed from different
  * devices.
  */
-export const aiLanguagePatch = (field: AiLanguageField, value: AiLanguage): AiSettingsUpdate =>
+export const aiLanguagePatch = (field: AiLanguageField, value: string): AiSettingsUpdate =>
   field === "insight" ? { insightLanguage: value } : { chatLanguage: value };
