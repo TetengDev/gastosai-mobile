@@ -4,7 +4,7 @@ import { useState } from "react";
 import { FlatList, Modal, Pressable, Text, View } from "react-native";
 import {
   aiLanguagePatch,
-  DEFAULT_AI_LANGUAGE,
+  ENGLISH_ONLY,
   fetchAiLanguages,
   getAiSettings,
   languageLabel,
@@ -30,9 +30,6 @@ import { Body, Card, ErrorText, Skeleton } from "./ui";
  * Both read from and write to `/user/ai-settings`, and each writes only its own field — see
  * `aiLanguagePatch`. Saving is immediate: there is no Save button to leave un-pressed.
  */
-
-/** What the picker shows before the options arrive, and after a failed call. */
-const ENGLISH_ONLY: AiLanguageOption[] = [{ code: DEFAULT_AI_LANGUAGE, displayName: "English" }];
 
 function LanguagePicker({
   title,

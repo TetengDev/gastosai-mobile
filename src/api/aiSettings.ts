@@ -19,15 +19,22 @@ type Schemas = components["schemas"];
  *
  * The set is configuration-driven on the backend and served by `GET /ai/languages`, so `code` is
  * the contract's bare string: there is no local union to keep in step with it, which is the point.
- * springdoc marks both properties optional; the endpoint always sends both.
+ * Derived from the generated schema rather than written out, so a renamed field breaks the build
+ * (CONTRACT.md); `Required` puts back the presence springdoc drops — the endpoint always sends
+ * both properties.
  */
-export type AiLanguageOption = { code: string; displayName: string };
+export type AiLanguageOption = Required<Schemas["AiLanguageOption"]>;
 
 /** What the API uses for a user who has not chosen a language. */
 export const DEFAULT_AI_LANGUAGE = "en";
 
-/** What the picker falls back to, so a failed call still leaves a usable control. */
-const ENGLISH_ONLY: AiLanguageOption[] = [{ code: DEFAULT_AI_LANGUAGE, displayName: "English" }];
+/**
+ * What the picker falls back to, so a failed call still leaves a usable control — and what it
+ * shows before the options arrive. Exported so the card does not keep a second copy of it.
+ */
+export const ENGLISH_ONLY: AiLanguageOption[] = [
+  { code: DEFAULT_AI_LANGUAGE, displayName: "English" },
+];
 
 /**
  * The picker's options, in the order the server gives. A failed call returns English alone rather
