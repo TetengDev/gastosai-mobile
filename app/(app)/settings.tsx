@@ -3,6 +3,7 @@ import Constants from "expo-constants";
 import { View } from "react-native";
 import { useAuth } from "../../src/context/AuthContext";
 import { API_BASE_URL } from "../../src/api/client";
+import { AiLanguageCard } from "../../src/components/AiLanguageCard";
 import { Body, Button, Card, Screen, StatTile } from "../../src/components/ui";
 import { useTheme } from "../../src/theme/useTheme";
 
@@ -16,6 +17,7 @@ export default function Settings() {
       <Card>
         <StatTile label="Signed in as" value={user?.email ?? "-"} sub={user?.name ?? undefined} />
       </Card>
+      <AiLanguageCard />
       <Card>
         <Body dim style={{ fontSize: 12.5 }}>API</Body>
         <Body>{API_BASE_URL}</Body>

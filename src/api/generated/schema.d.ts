@@ -2216,12 +2216,16 @@ export interface components {
             answer?: unknown;
         };
         AiSettingsRequest: {
+            chatLanguage?: string;
             claudeApiKey?: string;
+            insightLanguage?: string;
             openaiApiKey?: string;
         };
         AiSettingsResponse: {
             aiAvailable?: boolean;
+            chatLanguage?: string;
             claudeKeySet?: boolean;
+            insightLanguage?: string;
             openaiKeySet?: boolean;
         };
         AiUsageResponse: {
@@ -3553,6 +3557,8 @@ export interface components {
             active?: boolean;
             /** Format: int64 */
             amount?: number;
+            /** Format: int64 */
+            amountInBaseCurrency?: number;
             categoryName?: string;
             currency?: string;
             /** Format: int32 */
@@ -3696,6 +3702,8 @@ export interface components {
         UpcomingBillResponseV2: {
             /** Format: int64 */
             amount?: number;
+            /** Format: int64 */
+            amountInBaseCurrency?: number;
             categoryName?: string;
             currency?: string;
             dueDate?: string;
