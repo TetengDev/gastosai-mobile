@@ -3,18 +3,20 @@
 # **This flow is filmed.** Written for someone who has never seen the app. Same rules as the other
 # demo flows: no housekeeping on camera, open and close on a full screen.
 #
-# The subject is TEN-381: two controls on Settings, one endpoint (`/user/ai-settings`), two
-# independent fields. What makes it worth filming is the third beat — the app is killed and
-# reopened, and the two languages come back the way they were left, because they live on the
-# account rather than on the phone.
+# The subject is TEN-390: the supported languages are the server's, published by `GET /ai/languages`
+# and configuration-driven, so the app lists whatever it is told rather than the two it used to
+# hardcode. Two controls on Settings write to one endpoint (`/user/ai-settings`) as two independent
+# fields. What makes it worth filming is the last beat — the app is killed and reopened, and the two
+# languages come back the way they were left, because they live on the account rather than the phone.
 #
-# It writes to the demo account's AI settings and leaves them at Insights=Filipino,
-# Assistant=English. Nothing else is touched, and both values are user preferences the next run
-# overwrites, so there is no cleanup flow.
+# It writes to the demo account's AI settings and leaves them at Insights=日本語, Assistant=English.
+# Nothing else is touched, and both values are user preferences the next run overwrites, so there is
+# no cleanup flow.
 #
-# The pills are matched by id and asserted with `selected`, not by their label text: "English"
-# appears twice on the screen, once per control.
+# Rows and options are matched by id, not by label text: "English" appears in both controls, and the
+# display names are written in their own language.
 #
+# @watch The list is whatever the server supports, not a hardcoded pair
 # @watch Each control saves on its own, without touching the other
 # @watch The choice survives a relaunch, because it is stored on the account
 appId: host.exp.Exponent
@@ -29,25 +31,29 @@ appId: host.exp.Exponent
 
 - extendedWaitUntil:
     visible:
-      id: "ai-language-insights-en"
+      id: "ai-language-insights-row"
     timeout: 25000
     label: ">> Two controls: the insight cards, and the assistant"
 
-# Insights to Filipino. Only this control's field is sent, so the assistant is untouched.
+# Insights to Japanese — a language no build of this app ever listed. Only this control's field is
+# sent, so the assistant is untouched.
 - tapOn:
-    id: "ai-language-insights-fil"
-    label: ">> Insights, in Filipino"
+    id: "ai-language-insights-row"
+    label: ">> Every language the server supports, not just two"
 - assertVisible:
-    id: "ai-language-insights-fil"
-    selected: true
+    id: "ai-language-insights-ja"
+- tapOn:
+    id: "ai-language-insights-ja"
+    label: ">> Insights, in Japanese"
+- assertVisible:
+    id: "ai-language-insights-row"
 
 # The assistant stays English — the two are independent, which is the point of the endpoint
 # accepting one field at a time.
 - tapOn:
+    id: "ai-language-assistant-row"
+- tapOn:
     id: "ai-language-assistant-en"
-- assertVisible:
-    id: "ai-language-assistant-en"
-    selected: true
     label: ">> The assistant keeps its own, in English"
 
 # Relaunch, not a re-render: the settings are read back from the account.
@@ -61,12 +67,21 @@ appId: host.exp.Exponent
     id: "more-settings"
 - extendedWaitUntil:
     visible:
-      id: "ai-language-insights-fil"
+      id: "ai-language-insights-row"
     timeout: 25000
+- tapOn:
+    id: "ai-language-insights-row"
 - assertVisible:
-    id: "ai-language-insights-fil"
+    id: "ai-language-insights-ja"
     selected: true
+    label: ">> Reopened, and the insight language is exactly where it was left"
+- tapOn:
+    id: "ai-language-insights-close"
+- tapOn:
+    id: "ai-language-assistant-row"
 - assertVisible:
     id: "ai-language-assistant-en"
     selected: true
-    label: ">> Reopened, and both are exactly where they were left"
+    label: ">> And so is the assistant's"
+- tapOn:
+    id: "ai-language-assistant-close"
