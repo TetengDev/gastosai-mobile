@@ -204,6 +204,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ai/languages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_5"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ai/query": {
         parameters: {
             query?: never;
@@ -2208,6 +2224,10 @@ export interface components {
             /** @description The per-token prices used, and when they were last checked. */
             pricing?: components["schemas"]["AiCostPricing"];
         };
+        AiLanguageOption: {
+            code?: string;
+            displayName?: string;
+        };
         AiQueryRequest: {
             mode?: string;
             question: string;
@@ -4008,6 +4028,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["TopCategoryInsightResponse"];
+                };
+            };
+        };
+    };
+    list_5: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiLanguageOption"][];
                 };
             };
         };
