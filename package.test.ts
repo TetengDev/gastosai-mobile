@@ -12,9 +12,10 @@ import pkg from './package.json';
 const jestConfig = pkg.jest;
 const coverageFrom: string[] = jestConfig.collectCoverageFrom;
 
-// Raise this alongside jest.coverageThreshold.global.lines whenever a PR raises coverage.
+// Raise this alongside jest.coverageThreshold.global.lines whenever a PR raises coverage, so the
+// guard never carries slack the real threshold could be lowered into.
 // It may only ever go up — see ../docs/coverage.md, "The ratchet".
-const FLOOR = 31;
+const FLOOR = 38;
 
 describe('coverage denominator', () => {
   it('counts every TypeScript file under src, tested or not', () => {
