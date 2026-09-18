@@ -140,10 +140,11 @@ var / CI secret. Never commit the token; never inline it in `.npmrc` — referen
 Everything above is the shared contract text and is kept identical in the backend and web repos.
 This section is local to `gastosai-mobile`.
 
-**This client pins `@tetengdev/gastosai-api-contract@3.2.0` and calls `/api/v2`. Every amount it
+**This client pins `@tetengdev/gastosai-api-contract@3.3.0` and calls `/api/v2`. Every amount it
 sends or receives is an integer of centavos.** Its base URL carries the version path, so a request
 built through `src/api/client.ts` is a v2 request by construction; no call site chooses. `3.2.0`
-publishes `insightLanguage` and `chatLanguage`.
+published `insightLanguage` and `chatLanguage`; `3.3.0` additionally adds `GET /ai/languages` and
+its `AiLanguageOption` schema.
 
 Two helpers in `src/lib/formatters.ts` are the only sanctioned crossings between a centavo integer
 and a human figure:
