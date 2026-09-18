@@ -46,15 +46,30 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "jest",
-    "test:run": "jest --ci"
+    "test:run": "jest --ci --coverage"
   },
   "private": true,
   "jest": {
     "preset": "jest-expo",
     "testMatch": [
       "**/src/**/*.test.ts",
-      "**/src/**/*.test.tsx"
+      "**/src/**/*.test.tsx",
+      "<rootDir>/package.test.ts"
     ],
-    "globalSetup": "<rootDir>/jest.globalSetup.js"
+    "globalSetup": "<rootDir>/jest.globalSetup.js",
+    "coverageDirectory": "<rootDir>/node_modules/.cache/coverage",
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "!src/**/*.test.ts",
+      "!src/**/*.test.tsx",
+      "!src/**/*.d.ts",
+      "!src/api/generated/**"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "lines": 31
+      }
+    }
   }
 }
