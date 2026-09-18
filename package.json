@@ -1,6 +1,6 @@
 {
   "name": "gastosai-mobile",
-  "version": "0.19.1",
+  "version": "0.19.2",
   "main": "expo-router/entry",
   "dependencies": {
     "@expo-google-fonts/hanken-grotesk": "^0.4.3",
@@ -73,7 +73,7 @@
     ],
     "coverageThreshold": {
       "global": {
-        "lines": 38
+        "lines": 43
       }
     }
   }
