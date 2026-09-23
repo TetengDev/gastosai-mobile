@@ -34,7 +34,10 @@ appId: host.exp.Exponent
       - assertVisible: "Edit expense"
       # Checked before deleting: the demo created a ₱177 expense, and anything else on this row is
       # not ours to remove.
-      - assertVisible: "177"
+      #
+      # Wrapped in `.*` for the same reason as the chat cleanup: Maestro matches the whole text,
+      # and the amount field renders `177.00`.
+      - assertVisible: "(?i).*177.*"
       - tapOn: "Delete expense"
       - assertVisible: "Delete expense?"
       - tapOn: "Delete"
