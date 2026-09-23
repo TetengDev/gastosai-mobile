@@ -28,9 +28,33 @@ Be terse: run each command once, report the table, do not re-explain checks that
    Blocker if non-empty. `--porcelain`, not `git diff` — untracked files are invisible to diff.
 5. **Secrets** — `git status --porcelain` and `git diff --staged`. Blocker on any `.env`, key or
    token. Also confirm no JWT handling moved from SecureStore to AsyncStorage.
-6. **Version** — if anything under `src/` or `app/` changed, bump **both** `package.json` and
-   `app.json` (`expo.version`); they must not drift. `feat:`→MINOR, `fix:`/`perf:`→PATCH,
-   `!`→MAJOR, `docs:`/`chore:`/`ci:`→none.
+6. **Version** — **a comparison, not a reading.** Finding a version in the manifests proves
+   nothing: the values on `main` are also versions. Run these and report the numbers you saw.
+
+   ```bash
+   git fetch origin main --tags --quiet
+   pkg() { python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])'; }
+   expo() { python3 -c 'import json,sys; print(json.load(sys.stdin)["expo"]["version"])'; }
+   base=$(git show origin/main:package.json | pkg)
+   head=$(pkg < package.json); head_app=$(expo < app.json)
+   echo "base=$base head=$head app.json=$head_app"
+   git ls-remote --tags origin "v$head"   # any output => already released on the remote
+   ```
+
+   Blocker when any of these holds, and the note must name **the versions found and the version
+   expected**, never a bare PASS:
+
+   - anything under `src/` or `app/` changed and `head` equals `base` — never bumped
+   - `head` and `app.json`'s `expo.version` disagree — the two manifests must not drift
+   - `v<head>` already exists on the remote. This repo has no tags today, so an empty result is
+     the normal case here; treat a non-empty one as a blocker rather than assuming it cannot happen
+   - the bump does not match the commit types: `feat:`→MINOR, `fix:`/`perf:`→PATCH, `!`→MAJOR,
+     `docs:`/`chore:`/`ci:`→none
+
+   **Why this is spelled out.** The backend gate twice reported this check passing while its
+   manifest still read the value already on `main` and already tagged (TEN-409). A session that
+   trusts a passing gate stops looking, so a check that reports a pass it did not perform is worse
+   than no check at all.
 7. **Branch lane** — must not be `main`. `meta/*` must not touch `src/`, `app/`, or the version.
 8. **Simulator execution** — the check that is usually skipped, and the reason this agent exists.
 
@@ -69,7 +93,7 @@ Be terse: run each command once, report the table, do not re-explain checks that
 | Tests                | ✅ PASS  | 13 passed                                |
 | Contract drift       | ✅ PASS  | matches the pin                          |
 | Secrets              | ✅ PASS  | JWT still in SecureStore                 |
-| Version bump         | ✅ PASS  | 0.2.0 → 0.3.0, package.json + app.json   |
+| Version bump         | ✅ PASS  | base 0.2.0 → head 0.3.0, package.json = app.json |
 | Branch lane          | ✅ PASS  | release/0.3.0                            |
 | Simulator execution  | ⚠️ WARN  | rendered light+dark; taps unavailable (-1719) |
 | Contract pacing      | ➖ SKIP  | pin unchanged                            |
@@ -78,4 +102,9 @@ Be terse: run each command once, report the table, do not re-explain checks that
 Overall: PASS — ready to open the PR.
 ```
 
-Any blocker → `Overall: FAIL` plus exactly what must be fixed.
+Any blocker → `Overall: FAIL` plus exactly what must be fixed. A failed version check reads like
+this — the numbers, not an adjective:
+
+```
+| Version bump         | ❌ FAIL  | base 0.19.2 = head 0.19.2 (app.json 0.19.2); expected 0.19.3 (fix: PATCH) |
+```
