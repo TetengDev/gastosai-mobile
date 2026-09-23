@@ -9,8 +9,12 @@
 #      Watching someone tidy up is not a demo.
 #   2. **It opens and closes on the dashboard** — a full, attractive screen rather than whatever
 #      the previous run happened to leave behind.
-#   3. **June, not the current month.** The demo account's data ends in June; opening on an empty
-#      month would be honest and useless.
+#   3. **Last month, not the current one, and asked of the backend rather than written down.**
+#      The demo account's data does not reliably cover the current month, and neither does any
+#      single figure in it stay true for long — a literal month name or peso amount rots on the
+#      same schedule `.maestro/month.yaml` and `.maestro/dashboard.yaml` already solved for. This
+#      flow derives `prevMonth`/`prevKey` the way `launch.yaml` does, and asks the backend what a
+#      figure should be rather than naming one.
 #
 # The assertions here are for pacing and safety, not coverage. What actually guards this behaviour
 # is `.maestro/chat.yaml`.
@@ -35,6 +39,35 @@ appId: host.exp.Exponent
 ---
 - runFlow: ../launch.yaml
 
+# What last month's insight percentage and the flow's own question-and-answer figure are,
+# according to the endpoints the screens and the chat model both read. Written down, these expire
+# on the calendar the way `.maestro/dashboard.yaml`'s header describes — the insight moved from
+# 38.71% to 19.43% between two runs, and the demo account no longer even has a Food category.
+- evalScript: |
+    ${output.cmp = json(http.get('http://localhost:8080/expenses/report/monthly-comparison?month=' + output.prevKey, {headers: {'Authorization': 'Bearer ' + output.token}}).body)}
+- evalScript: |
+    ${output.changePct = Math.abs(Number(output.cmp.changePercent)).toFixed(2)}
+# The category the demo account actually spent the most on last month, and that total — asked of
+# the same endpoint the chat's own answer is computed from, so the flow never has to guess a
+# category or a figure that happens to exist today.
+- evalScript: |
+    ${output.catTotal = (function(){
+      var y = Number(output.prevKey.slice(0, 4)), m = Number(output.prevKey.slice(5, 7));
+      var lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      var from = output.prevKey + '-01';
+      var to = output.prevKey + '-' + (lastDay < 10 ? '0' : '') + lastDay;
+      var rows = json(http.get('http://localhost:8080/expenses?from=' + from + '&to=' + to, {headers: {'Authorization': 'Bearer ' + output.token}}).body);
+      var totals = {};
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        var amt = Number((r.amountInBaseCurrency === null || r.amountInBaseCurrency === undefined) ? r.amount : r.amountInBaseCurrency);
+        totals[r.category] = (totals[r.category] || 0) + amt;
+      }
+      var best = null, bestAmt = -1;
+      for (var cat in totals) { if (totals[cat] > bestAmt) { bestAmt = totals[cat]; best = cat; } }
+      return {category: best, amount: '₱' + bestAmt.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')};
+    })()}
+
 # ── Open on the dashboard, on a month with something to show ────────────────────────────────────
 - tapOn:
     id: "tab-home"
@@ -42,14 +75,14 @@ appId: host.exp.Exponent
     id: "month-prev"
     label: ">> A month with something to show"
 - extendedWaitUntil:
-    visible: "(?i).*june 2026.*"
+    visible: "(?i).*${output.prevMonth}.*"
     timeout: 25000
 # Let the cards settle and be seen: the insight sentence is the first thing worth reading.
 #
 # The percentage only. The sentence around it is written by a model and its wording moves between
 # runs — "38.71% lower" one day, "down 38.71% from" the next. See `.maestro/dashboard.yaml`.
 - extendedWaitUntil:
-    visible: "(?i).*38.71%.*"
+    visible: "(?i).*${output.changePct}%.*"
     timeout: 30000
 
 # Scroll the dashboard so the viewer sees there is substance here, then return to the top.
@@ -73,7 +106,7 @@ appId: host.exp.Exponent
 
 - tapOn:
     id: "chat-input"
-- inputText: "How much did I spend on food in June 2026?"
+- inputText: "How much did I spend on ${output.catTotal.category} in ${output.prevMonth}?"
 - hideKeyboard
 - tapOn:
     id: "chat-send"
@@ -90,7 +123,7 @@ appId: host.exp.Exponent
     timeout: 120000
     label: ">> The answer is a table, not a sentence"
 - extendedWaitUntil:
-    visible: "₱3,347.50"
+    visible: "(?i).*${output.catTotal.amount}.*"
     timeout: 20000
 
 # ── Ask it to record an expense, and approve what it proposes ───────────────────────────────────
@@ -107,6 +140,15 @@ appId: host.exp.Exponent
       id: "chat-preview"
     timeout: 120000
     label: ">> It asks first - nothing is written yet"
+# The new message pushes the chat list into its own scroll-to-bottom animation. Tapping
+# `chat-confirm` before that settles hits the bounds the list had *before* it moved — the tap
+# lands, nothing under it does, and no request reaches the backend. Silent because the flow still
+# "passes": the confirm step has no assertion of its own, and `ai_usage` is the only place this
+# ever showed up (two calls where a completed run makes three). Waiting for the animation to end
+# is what a hand-run probe could not reproduce fixing, since a short list settles fast enough that
+# a manual tap never lands mid-scroll.
+- waitForAnimationToEnd:
+    timeout: 5000
 - tapOn:
     id: "chat-confirm"
     label: ">> Approved"
