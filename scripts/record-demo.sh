@@ -44,11 +44,23 @@ FLOW_FILE=".maestro/demo/${FLOW}.yaml"
 [[ -f "$FLOW_FILE" ]] || { echo "no such demo flow: $FLOW_FILE" >&2; exit 2; }
 
 # Fail before recording rather than after, so a missing prerequisite does not waste a run.
-ATTACH="../scripts/attach_evidence.py"
-[[ -f "$ATTACH" ]] || {
-  echo "cannot find $ATTACH — the workspace repo must be checked out beside this one" >&2
+#
+# `..` finds the workspace from an ordinary checkout, but not from a dispatch worktree — there
+# this repo sits one level deeper (`gastosai-app/.worktrees/<branch>/`, itself the mobile repo
+# root), so the workspace is `../..`. Rather than hard-code either depth, walk up looking for the
+# workspace's own marker files, so this keeps working whatever the nesting turns out to be.
+WORKSPACE=""
+for up in .. ../.. ../../.. ../../../..; do
+  if [[ -f "$up/scripts/attach_evidence.py" && -f "$up/docs/ROADMAP.md" ]]; then
+    WORKSPACE="$up"
+    break
+  fi
+done
+[[ -n "$WORKSPACE" ]] || {
+  echo "cannot find the workspace repo (scripts/attach_evidence.py) above $(pwd) — checked .. through ../../../.." >&2
   exit 2
 }
+ATTACH="$WORKSPACE/scripts/attach_evidence.py"
 
 command -v maestro >/dev/null || { echo "maestro not on PATH" >&2; exit 127; }
 # Also written without `| grep -q`, for the pipefail/SIGPIPE reason described below.
