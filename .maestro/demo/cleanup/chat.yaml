@@ -31,7 +31,11 @@ appId: host.exp.Exponent
       - assertVisible: "Edit expense"
       # Checked before deleting: the demo created a ₱150 expense, and anything else on this row
       # is not ours to remove.
-      - assertVisible: "150"
+      #
+      # Wrapped in `.*` because Maestro matches the pattern against an element's whole text, not a
+      # substring: the amount field renders `150.00`, so the bare literal `150` never matched and
+      # this step failed every run, leaving the demo's expense in the account.
+      - assertVisible: "(?i).*150.*"
       - tapOn: "Delete expense"
       - assertVisible: "Delete expense?"
       - tapOn: "Delete"
