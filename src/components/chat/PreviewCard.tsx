@@ -100,17 +100,31 @@ function scalarListText(items: unknown[]): string {
 interface Rows {
   fields: PreviewField[];
   elided: number;
+  /** Set when `MAX_COUNTED` stopped the walk, so the count is a floor and not a total. */
+  capped: boolean;
 }
+
+/**
+ * How many leaves are visited before the walk itself stops.
+ *
+ * Capping rows alone throttles the cost rather than bounding it: counting a leaf is O(1), but a
+ * payload with a million of them still costs a million calls on the main thread before the capped
+ * card appears. Past this the walk stops and the disclosure says "or more" — a count that is a
+ * floor is honest, and the card refuses the confirm either way, so nothing hangs on it being exact.
+ */
+const MAX_COUNTED = 5_000;
 
 function emit(out: Rows, key: string, value: string): void {
   if (out.fields.length >= MAX_ROWS) {
     out.elided += 1;
+    if (out.elided >= MAX_COUNTED) out.capped = true;
     return;
   }
   out.fields.push({ key, value: clampText(value) });
 }
 
 function flatten(value: unknown, key: string, depth: number, out: Rows): void {
+  if (out.capped) return;
   // `String(value)` is only ever reached for a non-object, so "[object Object]" cannot be produced.
   if (isScalar(value)) {
     emit(out, key, scalarText(value));
@@ -130,9 +144,12 @@ function flatten(value: unknown, key: string, depth: number, out: Rows): void {
       emit(out, key, scalarListText(value));
       return;
     }
-    // Traversal continues past the cap so the disclosure row can say how many rows are missing;
-    // counting a leaf is cheap, rendering one is not.
-    value.forEach((item, i) => flatten(item, `${key}[${i}]`, depth + 1, out));
+    // The walk continues past the row cap so the disclosure row can say how many rows are missing
+    // — counting a leaf is cheap, rendering one is not — but it stops at `MAX_COUNTED`, so a
+    // pathological length costs a bounded number of iterations and not one per element.
+    for (let i = 0; i < value.length && !out.capped; i += 1) {
+      flatten(value[i], `${key}[${i}]`, depth + 1, out);
+    }
     return;
   }
   const entries = Object.entries(value as Record<string, unknown>);
@@ -140,7 +157,10 @@ function flatten(value: unknown, key: string, depth: number, out: Rows): void {
     emit(out, key, "(none)");
     return;
   }
-  for (const [k, v] of entries) flatten(v, `${key}.${k}`, depth + 1, out);
+  for (const [k, v] of entries) {
+    if (out.capped) return;
+    flatten(v, `${key}.${k}`, depth + 1, out);
+  }
 }
 
 /**
@@ -162,13 +182,19 @@ function flatten(value: unknown, key: string, depth: number, out: Rows): void {
  * missing, and `… (+N more …)` inside a value — never dropped quietly, because the payload is
  * still sent whole. The trailing row also carries `elided`, which makes `PreviewCard` refuse the
  * confirm: a row the user cannot read is a parameter they cannot approve.
+ *
+ * The walk is bounded too (`MAX_COUNTED`), so the work is bounded and not merely the output; past
+ * that the trailing row reads `+N or more`.
  */
 export function previewFields(params: Record<string, unknown>): PreviewField[] {
-  const out: Rows = { fields: [], elided: 0 };
-  for (const [k, v] of Object.entries(params)) flatten(v, k, 0, out);
+  const out: Rows = { fields: [], elided: 0, capped: false };
+  for (const [k, v] of Object.entries(params)) {
+    if (out.capped) break;
+    flatten(v, k, 0, out);
+  }
   if (out.elided > 0) {
     out.fields.push({
-      key: `+${out.elided} more`,
+      key: out.capped ? `+${out.elided} or more` : `+${out.elided} more`,
       value: "not shown",
       elided: true,
     });

@@ -79,6 +79,28 @@ describe("previewFields", () => {
     expect(fields[0]).toEqual({ key: "rules[0].category", value: "c0" });
   });
 
+  it("stops walking a payload far past the cap, and says the count is a floor", () => {
+    // Capping rows alone only throttles the cost — a million leaves still cost a million calls on
+    // the main thread. 400k here: the walk must stop, not merely stop rendering.
+    const rules = Array.from({ length: 400_000 }, (_, i) => ({ category: `c${i}` }));
+
+    const started = Date.now();
+    const fields = previewFields({ rules });
+    const elapsed = Date.now() - started;
+
+    expect(fields.length).toBeLessThanOrEqual(41);
+    // 5000 leaves visited, 40 of them rendered — and the count is disclosed as a floor, because
+    // the rest were never visited.
+    expect(fields[fields.length - 1]).toEqual({
+      key: "+5000 or more",
+      value: "not shown",
+      elided: true,
+    });
+    // Generous, so the assertion is about the bound and not about this machine: 400k leaves walked
+    // would not come close.
+    expect(elapsed).toBeLessThan(500);
+  });
+
   it("bounds the length of a single value and says how much it cut", () => {
     const note = "x".repeat(5000);
 
