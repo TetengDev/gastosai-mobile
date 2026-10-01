@@ -64,6 +64,43 @@ describe("previewFields", () => {
     ]);
   });
 
+  it("bounds the number of rows and counts the ones it left out", () => {
+    // One row per leaf with no ceiling is what froze the confirm screen (TEN-422).
+    const rules = Array.from({ length: 3000 }, (_, i) => ({ category: `c${i}` }));
+
+    const fields = previewFields({ rules });
+
+    expect(fields.length).toBeLessThanOrEqual(41);
+    const last = fields[fields.length - 1];
+    expect(last.elided).toBe(true);
+    // 3000 leaves, 40 of them rendered.
+    expect(last.key).toBe("+2960 more");
+    // The rows that are shown are still real rows, not a placeholder list.
+    expect(fields[0]).toEqual({ key: "rules[0].category", value: "c0" });
+  });
+
+  it("bounds the length of a single value and says how much it cut", () => {
+    const note = "x".repeat(5000);
+
+    const [field] = previewFields({ note });
+
+    expect(field.value.length).toBeLessThan(260);
+    expect(field.value).toContain("(+4800 more characters)");
+  });
+
+  it("bounds a long list of scalars without joining the whole thing first", () => {
+    const expenseIds = Array.from({ length: 4000 }, (_, i) => i);
+
+    const fields = previewFields({ expenseIds });
+
+    expect(fields).toHaveLength(1);
+    // Bounded, and bounded by the list builder itself — not cut again afterwards, which would
+    // have taken the disclosure off the end of the row carrying it.
+    expect(fields[0].value.length).toBeLessThanOrEqual(200);
+    expect(fields[0].value).toContain("of 4000 not shown");
+    expect(fields[0].value).not.toContain("more characters");
+  });
+
   it("falls back to JSON past the depth cap instead of [object Object]", () => {
     const deep = { a: { b: { c: { d: { e: { f: 1 } } } } } };
 
@@ -98,6 +135,19 @@ describe("PreviewCard", () => {
     renderCard({ filter: { merchant: "Jollibee", nested: { deep: { deeper: { x: 1 } } } } });
 
     expect(renderedText()).not.toContain("[object Object]");
+  });
+
+  it("discloses an over-wide payload and offers no confirm for it", () => {
+    renderCard({ rules: Array.from({ length: 3000 }, (_, i) => ({ category: `c${i}` })) });
+
+    // Bounded: 40 param rows, each two Text nodes, plus the disclosure row.
+    expect(screen.getAllByText(/^rules\[/)).toHaveLength(40);
+    // Visible: the user can see the card is not showing everything it would send.
+    expect(screen.getByText("+2960 more")).toBeOnTheScreen();
+    expect(screen.getByTestId("chat-preview-incomplete")).toBeOnTheScreen();
+    // And cannot approve what they were not shown — only Cancel is left.
+    expect(screen.queryByTestId("chat-confirm")).toBeNull();
+    expect(screen.getByTestId("chat-cancel")).toBeOnTheScreen();
   });
 
   it("still confirms the action it displayed", async () => {
