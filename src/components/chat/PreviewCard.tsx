@@ -13,8 +13,9 @@ export interface PreviewField {
   key: string;
   value: string;
   /**
-   * Set only on the disclosure row the breadth cap appends. The card keys off it to refuse the
-   * confirm, so it is the one row that is not a path into `params`.
+   * Set on a row that stands for something the user is **not** being shown: the trailing row the
+   * breadth cap appends, and a depth-capped subtree too large to render as JSON. The card keys off
+   * it to refuse the confirm, since a parameter that cannot be read cannot be approved.
    */
   elided?: true;
 }
@@ -74,6 +75,35 @@ function jsonText(value: unknown): string {
 }
 
 /**
+ * How much of a depth-capped subtree is inspected before it is called too large to show.
+ *
+ * `JSON.stringify` has no length limit and no incremental form, so serialising a subtree and then
+ * clamping it to 200 characters materialises the whole thing first — megabytes built to throw all
+ * but 200 characters away. A node count is the cheap probe that avoids that, and it stops at the
+ * budget rather than measuring the true size, which is the part that has to stay bounded.
+ */
+const MAX_JSON_NODES = 400;
+
+/** `budget` minus the nodes in `value`, or -1 as soon as the budget runs out. */
+function spendOnNodes(value: unknown, budget: number): number {
+  if (budget <= 0) return -1;
+  if (isScalar(value)) return budget - 1;
+  let left = budget - 1;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      left = spendOnNodes(item, left);
+      if (left < 0) return -1;
+    }
+    return left;
+  }
+  for (const k in value as Record<string, unknown>) {
+    left = spendOnNodes((value as Record<string, unknown>)[k], left);
+    if (left < 0) return -1;
+  }
+  return left;
+}
+
+/**
  * A list of scalars as one row, built up to the value cap rather than joined and then cut.
  *
  * Joining first would materialise the whole list — a megabyte of text for the payload this cap
@@ -114,13 +144,31 @@ interface Rows {
  */
 const MAX_COUNTED = 5_000;
 
-function emit(out: Rows, key: string, value: string): void {
+function emit(out: Rows, key: string, value: string, elided?: true): void {
   if (out.fields.length >= MAX_ROWS) {
     out.elided += 1;
     if (out.elided >= MAX_COUNTED) out.capped = true;
     return;
   }
-  out.fields.push({ key, value: clampText(value) });
+  // Written as two pushes so an ordinary row carries no `elided` key at all, rather than
+  // `elided: undefined` — the rows are compared by value in tests and read by `some(f => f.elided)`.
+  if (elided) out.fields.push({ key, value: clampText(value), elided });
+  else out.fields.push({ key, value: clampText(value) });
+}
+
+/**
+ * Whether an array should render as one joined row — decided on a bounded prefix.
+ *
+ * `every(isScalar)` reads the whole array, which is one unbounded pass before any cap engages, and
+ * an array of plain ids is the easiest wide payload of all to propose. Only the prefix is tested,
+ * which is sound because `scalarListText` spends its 200 characters long before it reaches the end
+ * of that prefix: three characters minimum per element puts the last element it can render at
+ * roughly 67, so no element it stringifies is ever one this check did not look at.
+ */
+function isScalarList(items: unknown[]): boolean {
+  const checked = Math.min(items.length, MAX_VALUE_CHARS);
+  for (let i = 0; i < checked; i += 1) if (!isScalar(items[i])) return false;
+  return true;
 }
 
 function flatten(value: unknown, key: string, depth: number, out: Rows): void {
@@ -131,7 +179,12 @@ function flatten(value: unknown, key: string, depth: number, out: Rows): void {
     return;
   }
   if (depth >= MAX_DEPTH) {
-    emit(out, key, jsonText(value));
+    // A subtree past the depth cap is one row, so its size is invisible to `MAX_ROWS` — the probe
+    // is what keeps a huge one from being serialised whole. Too large to show means not shown,
+    // which is an elided row: the card will refuse the confirm rather than imply it was read.
+    if (spendOnNodes(value, MAX_JSON_NODES) >= 0) emit(out, key, jsonText(value));
+    else if (Array.isArray(value)) emit(out, key, `(${value.length} items, too large to show)`, true);
+    else emit(out, key, "(too large to show)", true);
     return;
   }
   if (Array.isArray(value)) {
@@ -140,7 +193,7 @@ function flatten(value: unknown, key: string, depth: number, out: Rows): void {
       return;
     }
     // A list of ids or dates reads better as one row than as one row per index.
-    if (value.every(isScalar)) {
+    if (isScalarList(value)) {
       emit(out, key, scalarListText(value));
       return;
     }
@@ -152,15 +205,16 @@ function flatten(value: unknown, key: string, depth: number, out: Rows): void {
     }
     return;
   }
-  const entries = Object.entries(value as Record<string, unknown>);
-  if (entries.length === 0) {
-    emit(out, key, "(none)");
-    return;
-  }
-  for (const [k, v] of entries) {
+  // `for…in` rather than `Object.entries`, which materialises an array of every key and value in
+  // the object before the loop's own `capped` check can stop anything — the one allocation a wide
+  // object makes that no cap below it can undo.
+  let seen = 0;
+  for (const k in value as Record<string, unknown>) {
     if (out.capped) return;
-    flatten(v, `${key}.${k}`, depth + 1, out);
+    seen += 1;
+    flatten((value as Record<string, unknown>)[k], `${key}.${k}`, depth + 1, out);
   }
+  if (seen === 0) emit(out, key, "(none)");
 }
 
 /**
@@ -183,8 +237,10 @@ function flatten(value: unknown, key: string, depth: number, out: Rows): void {
  * still sent whole. The trailing row also carries `elided`, which makes `PreviewCard` refuse the
  * confirm: a row the user cannot read is a parameter they cannot approve.
  *
- * The walk is bounded too (`MAX_COUNTED`), so the work is bounded and not merely the output; past
- * that the trailing row reads `+N or more`.
+ * The walk is bounded too, so the work is bounded and not merely the output: it stops after
+ * `MAX_COUNTED` leaves (past which the trailing row reads `+N or more`), it decides an array's
+ * shape on a prefix (`isScalarList`), it enumerates an object lazily, and it probes a depth-capped
+ * subtree (`MAX_JSON_NODES`) rather than serialising it to find out how big it was.
  */
 export function previewFields(params: Record<string, unknown>): PreviewField[] {
   const out: Rows = { fields: [], elided: 0, capped: false };

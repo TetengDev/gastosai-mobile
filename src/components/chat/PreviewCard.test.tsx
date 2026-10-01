@@ -101,6 +101,57 @@ describe("previewFields", () => {
     expect(elapsed).toBeLessThan(500);
   });
 
+  it("decides an array's shape on a prefix rather than reading all of it", () => {
+    // `every(isScalar)` was one unbounded pass before any cap engaged, and a list of ids is the
+    // easiest wide payload to propose — the row cap never saw it because it renders as one row.
+    const expenseIds = Array.from({ length: 500_000 }, (_, i) => i);
+
+    const started = Date.now();
+    const fields = previewFields({ expenseIds });
+    const elapsed = Date.now() - started;
+
+    expect(fields).toHaveLength(1);
+    expect(fields[0].value).toContain("of 500000 not shown");
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it("enumerates a very wide object lazily instead of materialising its entries", () => {
+    const filters: Record<string, unknown> = {};
+    for (let i = 0; i < 200_000; i += 1) filters[`k${i}`] = i;
+
+    const started = Date.now();
+    const fields = previewFields({ filters });
+    const elapsed = Date.now() - started;
+
+    expect(fields.length).toBeLessThanOrEqual(41);
+    expect(fields[fields.length - 1].key).toBe("+5000 or more");
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it("refuses to serialise a huge subtree past the depth cap, and says it is not shown", () => {
+    // One row, so `MAX_ROWS` cannot see its size: `JSON.stringify` would have built the whole
+    // thing to have 200 characters of it clamped back out.
+    const huge = Array.from({ length: 300_000 }, (_, i) => ({ i }));
+    const deep = { a: { b: { c: { d: { e: huge } } } } };
+
+    const started = Date.now();
+    const fields = previewFields(deep);
+    const elapsed = Date.now() - started;
+
+    expect(fields).toEqual([
+      { key: "a.b.c.d.e", value: "(300000 items, too large to show)", elided: true },
+    ]);
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it("still shows a small depth-capped subtree as JSON", () => {
+    // The probe must not turn every depth-capped value into "not shown" — an ordinary one is
+    // readable, which is the whole reason the JSON fallback exists.
+    expect(previewFields({ a: { b: { c: { d: { e: { f: 1 } } } } } })).toEqual([
+      { key: "a.b.c.d.e", value: '{"f":1}' },
+    ]);
+  });
+
   it("bounds the length of a single value and says how much it cut", () => {
     const note = "x".repeat(5000);
 
