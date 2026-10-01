@@ -144,6 +144,36 @@ describe("previewFields", () => {
     expect(elapsed).toBeLessThan(500);
   });
 
+  it("walks a very wide params object lazily too, not only the nested ones", () => {
+    // The top level is as wide as a payload can make it, and it was the one level still reading
+    // every key up front.
+    const params: Record<string, unknown> = {};
+    for (let i = 0; i < 200_000; i += 1) params[`k${i}`] = i;
+
+    const started = Date.now();
+    const fields = previewFields(params);
+    const elapsed = Date.now() - started;
+
+    expect(fields.length).toBeLessThanOrEqual(41);
+    expect(fields[fields.length - 1].key).toBe("+5000 or more");
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it("does not probe a depth-capped subtree it has already decided not to render", () => {
+    // 5000 depth-capped leaves ahead of the counter, each of which used to pay up to
+    // MAX_JSON_NODES visits before `emit` discarded the row.
+    const leaf = { x: Array.from({ length: 400 }, (_, i) => i) };
+    const rules = Array.from({ length: 6000 }, () => ({ a: { b: { c: leaf } } }));
+
+    const started = Date.now();
+    const fields = previewFields({ rules });
+    const elapsed = Date.now() - started;
+
+    expect(fields.length).toBeLessThanOrEqual(41);
+    expect(fields[fields.length - 1].elided).toBe(true);
+    expect(elapsed).toBeLessThan(500);
+  });
+
   it("still shows a small depth-capped subtree as JSON", () => {
     // The probe must not turn every depth-capped value into "not shown" — an ordinary one is
     // readable, which is the whole reason the JSON fallback exists.
@@ -221,6 +251,17 @@ describe("PreviewCard", () => {
     // And cannot approve what they were not shown — only Cancel is left.
     expect(screen.queryByTestId("chat-confirm")).toBeNull();
     expect(screen.getByTestId("chat-cancel")).toBeOnTheScreen();
+  });
+
+  it("refuses the confirm for a subtree too large to show, not only for a capped row count", () => {
+    // The second cap reaches the same `elided` flag by a different path, and that path is what a
+    // card-level assertion pins: one row, no row cap hit, and still no confirm.
+    renderCard({ a: { b: { c: { d: { e: Array.from({ length: 300_000 }, (_, i) => ({ i })) } } } } });
+
+    expect(screen.getByText("a.b.c.d.e")).toBeOnTheScreen();
+    expect(screen.getByText("(300000 items, too large to show)")).toBeOnTheScreen();
+    expect(screen.getByTestId("chat-preview-incomplete")).toBeOnTheScreen();
+    expect(screen.queryByTestId("chat-confirm")).toBeNull();
   });
 
   it("still confirms the action it displayed", async () => {

@@ -162,8 +162,10 @@ function emit(out: Rows, key: string, value: string, elided?: true): void {
  * `every(isScalar)` reads the whole array, which is one unbounded pass before any cap engages, and
  * an array of plain ids is the easiest wide payload of all to propose. Only the prefix is tested,
  * which is sound because `scalarListText` spends its 200 characters long before it reaches the end
- * of that prefix: three characters minimum per element puts the last element it can render at
- * roughly 67, so no element it stringifies is ever one this check did not look at.
+ * of that prefix: at least two characters are charged per element (an empty string still costs its
+ * two separators), which stops it by roughly element 90 at the very worst, so no element it
+ * stringifies is ever one this check did not look at. Do not shrink the prefix towards that number
+ * without redoing the arithmetic — the margin is the point.
  */
 function isScalarList(items: unknown[]): boolean {
   const checked = Math.min(items.length, MAX_VALUE_CHARS);
@@ -179,6 +181,13 @@ function flatten(value: unknown, key: string, depth: number, out: Rows): void {
     return;
   }
   if (depth >= MAX_DEPTH) {
+    // Past the row cap this text is never rendered, so neither the probe nor the serialisation is
+    // worth paying for. Without this, 5,000 depth-capped leaves ahead of the counter would each
+    // pay up to `MAX_JSON_NODES` visits — bounded, but by the product of two constants.
+    if (out.fields.length >= MAX_ROWS) {
+      emit(out, key, "");
+      return;
+    }
     // A subtree past the depth cap is one row, so its size is invisible to `MAX_ROWS` — the probe
     // is what keeps a huge one from being serialised whole. Too large to show means not shown,
     // which is an elided row: the card will refuse the confirm rather than imply it was read.
@@ -244,9 +253,12 @@ function flatten(value: unknown, key: string, depth: number, out: Rows): void {
  */
 export function previewFields(params: Record<string, unknown>): PreviewField[] {
   const out: Rows = { fields: [], elided: 0, capped: false };
-  for (const [k, v] of Object.entries(params)) {
+  // `for…in`, for the reason the object branch of `flatten` uses it: `Object.entries` materialises
+  // every key and value before the `capped` check can stop anything, and the top level of `params`
+  // is as wide as a payload can make it.
+  for (const k in params) {
     if (out.capped) break;
-    flatten(v, k, 0, out);
+    flatten(params[k], k, 0, out);
   }
   if (out.elided > 0) {
     out.fields.push({
