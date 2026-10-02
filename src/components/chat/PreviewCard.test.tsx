@@ -64,6 +64,146 @@ describe("previewFields", () => {
     ]);
   });
 
+  it("bounds the number of rows and counts the ones it left out", () => {
+    // One row per leaf with no ceiling is what froze the confirm screen (TEN-422).
+    const rules = Array.from({ length: 3000 }, (_, i) => ({ category: `c${i}` }));
+
+    const fields = previewFields({ rules });
+
+    expect(fields.length).toBeLessThanOrEqual(41);
+    const last = fields[fields.length - 1];
+    expect(last.elided).toBe(true);
+    // 3000 leaves, 40 of them rendered.
+    expect(last.key).toBe("+2960 more");
+    // The rows that are shown are still real rows, not a placeholder list.
+    expect(fields[0]).toEqual({ key: "rules[0].category", value: "c0" });
+  });
+
+  it("stops walking a payload far past the cap, and says the count is a floor", () => {
+    // Capping rows alone only throttles the cost — a million leaves still cost a million calls on
+    // the main thread. 400k here: the walk must stop, not merely stop rendering.
+    const rules = Array.from({ length: 400_000 }, (_, i) => ({ category: `c${i}` }));
+
+    const started = Date.now();
+    const fields = previewFields({ rules });
+    const elapsed = Date.now() - started;
+
+    expect(fields.length).toBeLessThanOrEqual(41);
+    // 5000 leaves visited, 40 of them rendered — and the count is disclosed as a floor, because
+    // the rest were never visited.
+    expect(fields[fields.length - 1]).toEqual({
+      key: "+5000 or more",
+      value: "not shown",
+      elided: true,
+    });
+    // Generous, so the assertion is about the bound and not about this machine: 400k leaves walked
+    // would not come close.
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it("decides an array's shape on a prefix rather than reading all of it", () => {
+    // `every(isScalar)` was one unbounded pass before any cap engaged, and a list of ids is the
+    // easiest wide payload to propose — the row cap never saw it because it renders as one row.
+    const expenseIds = Array.from({ length: 500_000 }, (_, i) => i);
+
+    const started = Date.now();
+    const fields = previewFields({ expenseIds });
+    const elapsed = Date.now() - started;
+
+    expect(fields).toHaveLength(1);
+    expect(fields[0].value).toContain("of 500000 not shown");
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it("enumerates a very wide object lazily instead of materialising its entries", () => {
+    const filters: Record<string, unknown> = {};
+    for (let i = 0; i < 200_000; i += 1) filters[`k${i}`] = i;
+
+    const started = Date.now();
+    const fields = previewFields({ filters });
+    const elapsed = Date.now() - started;
+
+    expect(fields.length).toBeLessThanOrEqual(41);
+    expect(fields[fields.length - 1].key).toBe("+5000 or more");
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it("refuses to serialise a huge subtree past the depth cap, and says it is not shown", () => {
+    // One row, so `MAX_ROWS` cannot see its size: `JSON.stringify` would have built the whole
+    // thing to have 200 characters of it clamped back out.
+    const huge = Array.from({ length: 300_000 }, (_, i) => ({ i }));
+    const deep = { a: { b: { c: { d: { e: huge } } } } };
+
+    const started = Date.now();
+    const fields = previewFields(deep);
+    const elapsed = Date.now() - started;
+
+    expect(fields).toEqual([
+      { key: "a.b.c.d.e", value: "(300000 items, too large to show)", elided: true },
+    ]);
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it("walks a very wide params object lazily too, not only the nested ones", () => {
+    // The top level is as wide as a payload can make it, and it was the one level still reading
+    // every key up front.
+    const params: Record<string, unknown> = {};
+    for (let i = 0; i < 200_000; i += 1) params[`k${i}`] = i;
+
+    const started = Date.now();
+    const fields = previewFields(params);
+    const elapsed = Date.now() - started;
+
+    expect(fields.length).toBeLessThanOrEqual(41);
+    expect(fields[fields.length - 1].key).toBe("+5000 or more");
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it("does not probe a depth-capped subtree it has already decided not to render", () => {
+    // 5000 depth-capped leaves ahead of the counter, each of which used to pay up to
+    // MAX_JSON_NODES visits before `emit` discarded the row.
+    const leaf = { x: Array.from({ length: 400 }, (_, i) => i) };
+    const rules = Array.from({ length: 6000 }, () => ({ a: { b: { c: leaf } } }));
+
+    const started = Date.now();
+    const fields = previewFields({ rules });
+    const elapsed = Date.now() - started;
+
+    expect(fields.length).toBeLessThanOrEqual(41);
+    expect(fields[fields.length - 1].elided).toBe(true);
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it("still shows a small depth-capped subtree as JSON", () => {
+    // The probe must not turn every depth-capped value into "not shown" — an ordinary one is
+    // readable, which is the whole reason the JSON fallback exists.
+    expect(previewFields({ a: { b: { c: { d: { e: { f: 1 } } } } } })).toEqual([
+      { key: "a.b.c.d.e", value: '{"f":1}' },
+    ]);
+  });
+
+  it("bounds the length of a single value and says how much it cut", () => {
+    const note = "x".repeat(5000);
+
+    const [field] = previewFields({ note });
+
+    expect(field.value.length).toBeLessThan(260);
+    expect(field.value).toContain("(+4800 more characters)");
+  });
+
+  it("bounds a long list of scalars without joining the whole thing first", () => {
+    const expenseIds = Array.from({ length: 4000 }, (_, i) => i);
+
+    const fields = previewFields({ expenseIds });
+
+    expect(fields).toHaveLength(1);
+    // Bounded, and bounded by the list builder itself — not cut again afterwards, which would
+    // have taken the disclosure off the end of the row carrying it.
+    expect(fields[0].value.length).toBeLessThanOrEqual(200);
+    expect(fields[0].value).toContain("of 4000 not shown");
+    expect(fields[0].value).not.toContain("more characters");
+  });
+
   it("falls back to JSON past the depth cap instead of [object Object]", () => {
     const deep = { a: { b: { c: { d: { e: { f: 1 } } } } } };
 
@@ -98,6 +238,30 @@ describe("PreviewCard", () => {
     renderCard({ filter: { merchant: "Jollibee", nested: { deep: { deeper: { x: 1 } } } } });
 
     expect(renderedText()).not.toContain("[object Object]");
+  });
+
+  it("discloses an over-wide payload and offers no confirm for it", () => {
+    renderCard({ rules: Array.from({ length: 3000 }, (_, i) => ({ category: `c${i}` })) });
+
+    // Bounded: 40 param rows, each two Text nodes, plus the disclosure row.
+    expect(screen.getAllByText(/^rules\[/)).toHaveLength(40);
+    // Visible: the user can see the card is not showing everything it would send.
+    expect(screen.getByText("+2960 more")).toBeOnTheScreen();
+    expect(screen.getByTestId("chat-preview-incomplete")).toBeOnTheScreen();
+    // And cannot approve what they were not shown — only Cancel is left.
+    expect(screen.queryByTestId("chat-confirm")).toBeNull();
+    expect(screen.getByTestId("chat-cancel")).toBeOnTheScreen();
+  });
+
+  it("refuses the confirm for a subtree too large to show, not only for a capped row count", () => {
+    // The second cap reaches the same `elided` flag by a different path, and that path is what a
+    // card-level assertion pins: one row, no row cap hit, and still no confirm.
+    renderCard({ a: { b: { c: { d: { e: Array.from({ length: 300_000 }, (_, i) => ({ i })) } } } } });
+
+    expect(screen.getByText("a.b.c.d.e")).toBeOnTheScreen();
+    expect(screen.getByText("(300000 items, too large to show)")).toBeOnTheScreen();
+    expect(screen.getByTestId("chat-preview-incomplete")).toBeOnTheScreen();
+    expect(screen.queryByTestId("chat-confirm")).toBeNull();
   });
 
   it("still confirms the action it displayed", async () => {
