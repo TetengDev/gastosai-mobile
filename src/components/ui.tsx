@@ -86,7 +86,7 @@ export function StatTile({ label, value, sub }: { label: string; value: string; 
       <Text
         style={{
           fontFamily: t.fonts.mono,
-          fontSize: 11,
+          fontSize: t.fontSizes.micro,
           letterSpacing: 1.3, // web: tracking-[0.12em] at 11px
           textTransform: "uppercase",
           color: t.colors.text3,
@@ -97,7 +97,7 @@ export function StatTile({ label, value, sub }: { label: string; value: string; 
       <Text
         style={{
           fontFamily: t.fonts.display,
-          fontSize: 32,
+          fontSize: t.fontSizes.display,
           letterSpacing: -0.5,
           color: t.colors.textHi,
           marginTop: 8,
@@ -107,7 +107,12 @@ export function StatTile({ label, value, sub }: { label: string; value: string; 
       </Text>
       {sub ? (
         <Text
-          style={{ fontFamily: t.fonts.body, fontSize: 12.5, color: t.colors.text2, marginTop: 4 }}
+          style={{
+            fontFamily: t.fonts.body,
+            fontSize: t.fontSizes.caption,
+            color: t.colors.text2,
+            marginTop: 4,
+          }}
         >
           {sub}
         </Text>
@@ -123,7 +128,7 @@ export function PageHeader({ title, subtitle }: { title: string; subtitle?: stri
       <Text
         style={{
           fontFamily: t.fonts.display,
-          fontSize: 30,
+          fontSize: t.fontSizes.heading,
           letterSpacing: -0.6,
           color: t.colors.textHi,
         }}
@@ -131,7 +136,7 @@ export function PageHeader({ title, subtitle }: { title: string; subtitle?: stri
         {title}
       </Text>
       {subtitle ? (
-        <Text style={{ fontFamily: t.fonts.body, fontSize: 15, color: t.colors.text2 }}>
+        <Text style={{ fontFamily: t.fonts.body, fontSize: t.fontSizes.body, color: t.colors.text2 }}>
           {subtitle}
         </Text>
       ) : null}
@@ -143,7 +148,9 @@ export function Field({ label, style, ...props }: { label: string } & TextInputP
   const t = useTheme();
   return (
     <View style={{ gap: 6 }}>
-      <Text style={{ fontFamily: t.fonts.body, fontSize: 13, color: t.colors.text2 }}>{label}</Text>
+      <Text style={{ fontFamily: t.fonts.body, fontSize: t.fontSizes.caption, color: t.colors.text2 }}>
+        {label}
+      </Text>
       <TextInput
         placeholderTextColor={t.colors.text3}
         autoCapitalize="none"
@@ -155,7 +162,7 @@ export function Field({ label, style, ...props }: { label: string } & TextInputP
             borderRadius: t.radii.input,
             color: t.colors.textHi,
             fontFamily: t.fonts.body,
-            fontSize: 16,
+            fontSize: t.fontSizes.content,
             paddingHorizontal: 14,
             paddingVertical: 12,
           },
@@ -227,7 +234,11 @@ export function Button({
         <ActivityIndicator color={v.fg} />
       ) : (
         <Text
-          style={{ color: v.fg, fontFamily: t.fonts.bodyMedium, fontSize: size === "sm" ? 13 : 14 }}
+          style={{
+            color: v.fg,
+            fontFamily: t.fonts.bodyMedium,
+            fontSize: size === "sm" ? t.fontSizes.caption : t.fontSizes.control,
+          }}
         >
           {title}
         </Text>
@@ -283,7 +294,7 @@ export function Pill({
       <Text
         style={{
           fontFamily: t.fonts.body,
-          fontSize: 13,
+          fontSize: t.fontSizes.caption,
           color: selected ? t.colors.ctaFg : t.colors.text,
         }}
       >
@@ -327,7 +338,11 @@ export function Body({
   return (
     <Text
       style={[
-        { fontFamily: t.fonts.body, fontSize: 15, color: dim ? t.colors.text2 : t.colors.text },
+        {
+          fontFamily: t.fonts.body,
+          fontSize: t.fontSizes.body,
+          color: dim ? t.colors.text2 : t.colors.text,
+        },
         style,
       ]}
       {...rest}
@@ -378,7 +393,14 @@ export function FloatingAddButton({
         elevation: 6,
       })}
     >
-      <Text style={{ color: t.colors.ctaFg, fontSize: 30, lineHeight: 34, fontFamily: t.fonts.display }}>
+      <Text
+        style={{
+          color: t.colors.ctaFg,
+          fontSize: t.fontSizes.heading,
+          lineHeight: 34,
+          fontFamily: t.fonts.display,
+        }}
+      >
         +
       </Text>
     </Pressable>
@@ -390,8 +412,10 @@ export function FloatingAddButton({
  *
  * This is the standard iOS list-hub row, chosen because it is the pattern every phone user
  * already knows — the whole point of the More tab is that nothing about reaching a secondary
- * screen should need learning. Height is set by padding rather than a fixed value so it grows
- * with the user's text size instead of clipping.
+ * screen should need learning. Height is set by padding, not a fixed value, so it grows with the
+ * user's text size instead of clipping — `minHeight: 44` on the pressable below is a floor under
+ * that padding, not a replacement for it, so the 44pt touch target holds even if a future change
+ * to the type scale shrinks the label.
  */
 export function ListRow({
   icon,
@@ -422,18 +446,28 @@ export function ListRow({
         flexDirection: "row",
         alignItems: "center",
         gap: 14,
-        // 14 + 14 + a ~20pt line comfortably exceeds the 44pt minimum target.
         paddingVertical: 14,
         paddingHorizontal: 4,
+        // Explicit, rather than relying on padding plus a text line's natural height: the type
+        // scale that sizes the label and sub-line below is free to change without silently
+        // shrinking this row under the 44pt touch target.
+        minHeight: 44,
         opacity: pressed ? 0.6 : 1,
       })}
     >
       <Ionicons name={icon} size={21} color={destructive ? t.colors.danger : t.colors.text2} />
       <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: t.fonts.body, fontSize: 16, color: fg }}>{label}</Text>
+        <Text style={{ fontFamily: t.fonts.body, fontSize: t.fontSizes.content, color: fg }}>
+          {label}
+        </Text>
         {sub ? (
           <Text
-            style={{ fontFamily: t.fonts.body, fontSize: 12.5, color: t.colors.text2, marginTop: 2 }}
+            style={{
+              fontFamily: t.fonts.body,
+              fontSize: t.fontSizes.caption,
+              color: t.colors.text2,
+              marginTop: 2,
+            }}
           >
             {sub}
           </Text>
@@ -463,7 +497,7 @@ export function Badge({ count }: { count: number }) {
         justifyContent: "center",
       }}
     >
-      <Text style={{ color: "#ffffff", fontFamily: t.fonts.bodyMedium, fontSize: 11 }}>
+      <Text style={{ color: "#ffffff", fontFamily: t.fonts.bodyMedium, fontSize: t.fontSizes.micro }}>
         {count > 99 ? "99+" : count}
       </Text>
     </View>
@@ -533,7 +567,7 @@ export function MonthStepper({
           flex: 1,
           textAlign: "center",
           fontFamily: t.fonts.display,
-          fontSize: 16,
+          fontSize: t.fontSizes.content,
           color: t.colors.textHi,
         }}
       >
@@ -583,7 +617,7 @@ export function SearchField({
           flex: 1,
           color: t.colors.textHi,
           fontFamily: t.fonts.body,
-          fontSize: 15,
+          fontSize: t.fontSizes.body,
           paddingVertical: 10,
         }}
       />
@@ -758,7 +792,7 @@ function PaywallNotice({ message }: { message: string }) {
   const router = useRouter();
   return (
     <Card testID="paywall-notice" tone="panel">
-      <Text style={{ fontFamily: t.fonts.body, fontSize: 14, color: t.colors.textHi }}>
+      <Text style={{ fontFamily: t.fonts.body, fontSize: t.fontSizes.control, color: t.colors.textHi }}>
         {message}
       </Text>
       <Button
@@ -788,7 +822,7 @@ export function ErrorText({ children }: { children?: string | null }) {
   if (!children) return null;
   if (isPaywallMessage(children)) return <PaywallNotice message={children} />;
   return (
-    <Text style={{ fontFamily: t.fonts.body, fontSize: 14, color: t.colors.danger }}>
+    <Text style={{ fontFamily: t.fonts.body, fontSize: t.fontSizes.control, color: t.colors.danger }}>
       {children}
     </Text>
   );
