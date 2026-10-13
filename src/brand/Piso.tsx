@@ -7,7 +7,7 @@ import { useTheme } from "../theme/useTheme";
  * decision: this is not the place to redesign it, make it a pig, or add ears, a snout or a peso
  * glyph.
  *
- * Mirrors the web component being built in parallel: same five states, same 32px mark/face
+ * Mirrors the web component being built in parallel: same seven states, same 32px mark/face
  * threshold, same rule that Piso is never the only signal for a state — the text next to it always
  * stays. There is deliberately no motion here: no Reanimated, no Animated, nothing. If a later
  * change makes this animate, it is a different issue.
@@ -34,12 +34,21 @@ import { useTheme } from "../theme/useTheme";
  * (`greenHi`, via the `line` variable below) — not `colors.amber` either, which a stale version
  * of this comment once claimed while the code already used the line colour correctly.
  */
-export type PisoState = "resting" | "saved" | "empty" | "overBudget" | "thinking";
+export type PisoState =
+  | "resting"
+  | "saved"
+  | "empty"
+  | "overBudget"
+  | "thinking"
+  | "worried"
+  | "cheer";
 
 const STATE_LABEL: Partial<Record<PisoState, string>> = {
   saved: "Expense saved",
   overBudget: "Over budget",
   thinking: "Thinking",
+  worried: "Close to budget",
+  cheer: "Celebrating",
 };
 
 /** Below this, a scaled-down face would be illegible — render the faceless mark instead. */
@@ -92,6 +101,8 @@ export function Piso({
     saved: "M54 76q10 7 20 0",
     empty: "M57 78h14",
     overBudget: "M57 80q7-5 14 0",
+    worried: "M56 79q3.5-3 7 0t7 0",
+    cheer: "M52 75q12 10 24 0",
   }[state];
 
   return (
@@ -102,15 +113,18 @@ export function Piso({
       <Rect x={50} y={31} width={28} height={7} rx={3.5} fill={line} />
 
       {state === "saved" ? (
+        <Circle
+          cx={64}
+          cy={12}
+          r={9}
+          fill={t.colors.warnBorder}
+          stroke={t.colors.warnText}
+          strokeWidth={3}
+        />
+      ) : null}
+
+      {state === "saved" || state === "cheer" ? (
         <>
-          <Circle
-            cx={64}
-            cy={12}
-            r={9}
-            fill={t.colors.warnBorder}
-            stroke={t.colors.warnText}
-            strokeWidth={3}
-          />
           <Path d="M47 69q5-6 10 0" stroke={line} strokeWidth={3.6} fill="none" strokeLinecap="round" />
           <Path d="M71 69q5-6 10 0" stroke={line} strokeWidth={3.6} fill="none" strokeLinecap="round" />
         </>
