@@ -5,9 +5,14 @@ import { Piso } from "../brand/Piso";
 import { hasCelebrated, markCelebrated } from "../lib/celebrateStore";
 import { useTheme } from "../theme/useTheme";
 
+// Events claimed this session. The stored flag is async, so two mounts can both read "unseen";
+// this synchronous claim is what lets only one of them play.
+const claimed = new Set<string>();
+
 /**
- * Mount it only when the trigger holds. It marks the event seen before playing, so a remount
- * cannot play it twice. The coin is the only motion in the Piso family; Piso itself stays static.
+ * Mount it only when the trigger holds. The event is spent only at the moment it plays, so an
+ * unmount mid-check leaves it for the next mount. The coin is the only motion in the Piso family;
+ * Piso itself stays static.
  */
 export function Celebrate({ event, size = 96 }: { event: string; size?: number }) {
   const t = useTheme();
@@ -19,9 +24,10 @@ export function Celebrate({ event, size = 96 }: { event: string; size?: number }
     let live = true;
     (async () => {
       if (await hasCelebrated(event)) return;
-      await markCelebrated(event);
       const reduce = await AccessibilityInfo.isReduceMotionEnabled().catch(() => true);
-      if (!live) return;
+      if (!live || claimed.has(event)) return;
+      claimed.add(event);
+      void markCelebrated(event);
       setPlaying(true);
       setWithCoin(!reduce);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
