@@ -1,10 +1,11 @@
 import { useColorScheme } from "react-native";
-import { accents, fonts, palettes, radii, spacing, type Palette } from "./index";
+import { accents, fontSizes, fonts, palettes, radii, spacing, type Palette } from "./index";
 
 export interface Theme {
   scheme: "light" | "dark";
   colors: Palette & typeof accents;
   fonts: typeof fonts;
+  fontSizes: typeof fontSizes;
   radii: typeof radii;
   spacing: typeof spacing;
 }
@@ -25,6 +26,7 @@ export function useTheme(): Theme {
     scheme,
     colors: { ...palettes[scheme], ...accents },
     fonts,
+    fontSizes,
     radii,
     spacing,
   };
