@@ -5,6 +5,7 @@ import { errorMessage } from "../../src/api/client";
 import { createGoal, deleteGoal, listGoals, updateGoal } from "../../src/api/goals";
 import type { GoalRequest, GoalResponse } from "../../src/api/types";
 import { formatCentavos, formatDateOnly } from "../../src/lib/formatters";
+import { goalTone } from "../../src/lib/pisoMood";
 import { centavosToInput } from "../../src/components/money";
 import AmountSheet from "../../src/components/AmountSheet";
 import {
@@ -13,7 +14,7 @@ import {
   Card,
   ErrorText,
   Pill,
-  ProgressBar,
+  ProgressMeter,
   RowMenu,
   Skeleton,
 } from "../../src/components/ui";
@@ -195,7 +196,11 @@ export default function Goals() {
               {g.paused ? <Pill label="Paused" /> : null}
             </View>
             {/* progressPercent is server-computed; the client renders it as given. */}
-            <ProgressBar percent={g.progressPercent ?? 0} />
+            <ProgressMeter
+              percent={g.progressPercent ?? 0}
+              tone={g.paused ? "paused" : goalTone(g.status ?? "ON_TRACK")}
+              label={g.name ?? "Goal"}
+            />
             <Body dim style={{ fontSize: 12.5 }}>
               {formatCentavos(g.savedAmount ?? 0)} of {formatCentavos(g.targetAmount ?? 0)} ·{" "}
               {Math.round(g.progressPercent ?? 0)}%
