@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { AccessibilityInfo } from "react-native";
 import { render, screen, waitFor } from "@testing-library/react-native";
+import * as Haptics from "expo-haptics";
+import { Celebrate } from "./Celebrate";
 
 const mockStore = new Map<string, string>();
 jest.mock("expo-secure-store", () => ({
@@ -13,9 +15,6 @@ jest.mock("expo-haptics", () => ({
   notificationAsync: jest.fn(async () => undefined),
   NotificationFeedbackType: { Success: "success" },
 }));
-
-import * as Haptics from "expo-haptics";
-import { Celebrate } from "./Celebrate";
 
 describe("Celebrate", () => {
   beforeEach(() => {

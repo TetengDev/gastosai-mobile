@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import * as SecureStore from "expo-secure-store";
+import { hasCelebrated, markCelebrated } from "./celebrateStore";
 
 const mockStore = new Map<string, string>();
 jest.mock("expo-secure-store", () => ({
@@ -7,9 +9,6 @@ jest.mock("expo-secure-store", () => ({
     mockStore.set(k, v);
   }),
 }));
-
-import * as SecureStore from "expo-secure-store";
-import { hasCelebrated, markCelebrated } from "./celebrateStore";
 
 describe("celebrateStore", () => {
   beforeEach(() => mockStore.clear());
