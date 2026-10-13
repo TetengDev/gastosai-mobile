@@ -174,4 +174,5 @@ phone without editing env files.
 | `.claude/agents/pre-pr.md` | preparing a PR, or running the gate by hand |
 | `../docs/ship-loop.md` | running `/ship`, or changing the review process |
 | `../docs/agent-workflow.md` | tracked work, issue state, PRs, evidence, cross-repo |
+| `docs/bugs.md` | a bug is found or fixed: add or update its row, if its cause is in this repo |
 
