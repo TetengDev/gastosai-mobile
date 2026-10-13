@@ -41,9 +41,20 @@ let mockPathname = "/";
 jest.mock("expo-router", () => {
   const { createElement } = jest.requireActual<typeof import("react")>("react");
   const { Text, View } = jest.requireActual<typeof import("react-native")>("react-native");
-  const Tabs = ({ children }: { children: unknown }) => createElement(View, null, children as never);
-  Tabs.Screen = ({ name, options }: { name: string; options?: { title?: string; href?: null } }) =>
-    options?.href === null ? null : createElement(Text, { testID: `tab-screen-${name}` }, options?.title);
+  function Tabs({ children }: { children: unknown }) {
+    return createElement(View, null, children as never);
+  }
+  Tabs.Screen = function Screen({
+    name,
+    options,
+  }: {
+    name: string;
+    options?: { title?: string; href?: null };
+  }) {
+    return options?.href === null
+      ? null
+      : createElement(Text, { testID: `tab-screen-${name}` }, options?.title);
+  };
   return {
     Tabs,
     Redirect: () => null,

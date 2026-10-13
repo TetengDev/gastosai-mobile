@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import type { TextInputProps, TextProps, TextStyle, ViewStyle } from "react-native";
 import { useRouter } from "expo-router";
+import { Circle, Rect, Svg } from "react-native-svg";
 import { isPaywallMessage } from "../api/client";
 import { Piso } from "../brand/Piso";
 import { formatCentavos } from "../lib/formatters";
@@ -447,6 +448,13 @@ export function Body({
  *
  * Kept out of the tab bar on purpose: that bar is for destinations, and mixing an action into it
  * is the most consistently warned-against tab-bar mistake.
+ *
+ * Drawn as a coin about to drop into Piso (TEN-443): a gold rim — `warnBorder`, the same gold as
+ * Piso's `saved` coin — around a plus built from two of Piso's own slot bars (4:1, fully rounded).
+ * Authored SVG rather than a text "+", which sat on font metrics and needed a hand-tuned
+ * lineHeight to centre. The disc stays `cta`, so the primary action is still the darkest thing
+ * on screen. Pressing sinks it 2pt and flattens its shadow, as if it went in the slot — a static
+ * pressed style, not an animation, so there is nothing for reduced motion to switch off.
  */
 export function FloatingAddButton({
   onPress,
@@ -472,25 +480,26 @@ export function FloatingAddButton({
         backgroundColor: t.colors.cta,
         alignItems: "center",
         justifyContent: "center",
-        opacity: pressed ? 0.8 : 1,
+        transform: [{ translateY: pressed ? 2 : 0 }],
         // Lifts it off the content beneath, so it reads as floating rather than inline.
         shadowColor: "#000",
-        shadowOpacity: 0.25,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 6,
+        shadowOpacity: pressed ? 0.15 : 0.25,
+        shadowRadius: pressed ? 6 : 12,
+        shadowOffset: { width: 0, height: pressed ? 2 : 4 },
+        elevation: pressed ? 3 : 6,
       })}
     >
-      <Text
-        style={{
-          color: t.colors.ctaFg,
-          fontSize: t.fontSizes.heading,
-          lineHeight: 34,
-          fontFamily: t.fonts.display,
-        }}
+      <Svg
+        width={56}
+        height={56}
+        viewBox="0 0 56 56"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
       >
-        +
-      </Text>
+        <Circle cx={28} cy={28} r={23} fill="none" stroke={t.colors.warnBorder} strokeWidth={2} />
+        <Rect x={16} y={25} width={24} height={6} rx={3} fill={t.colors.ctaFg} />
+        <Rect x={25} y={16} width={6} height={24} rx={3} fill={t.colors.ctaFg} />
+      </Svg>
     </Pressable>
   );
 }
