@@ -2,11 +2,13 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { ActionSheetIOS } from "react-native";
 import { render, screen, userEvent } from "@testing-library/react-native";
 import {
+  Amount,
   Badge,
   Body,
   Button,
   Card,
   Divider,
+  EmptyState,
   ErrorText,
   Field,
   FloatingAddButton,
@@ -15,7 +17,7 @@ import {
   MonthStepper,
   PageHeader,
   Pill,
-  ProgressBar,
+  ProgressMeter,
   RowMenu,
   Screen,
   SearchField,
@@ -75,11 +77,6 @@ describe("ui primitives render", () => {
   it("Pill renders its label", () => {
     render(<Pill label="Food" />);
     expect(screen.getByText("Food")).toBeOnTheScreen();
-  });
-
-  it("ProgressBar renders without crashing at an over-100 percent", () => {
-    const { toJSON } = render(<ProgressBar percent={130} />);
-    expect(toJSON()).toBeTruthy();
   });
 
   it("Badge renders nothing at zero and the count otherwise", () => {
@@ -245,5 +242,59 @@ describe("MiniBars stays drawn from plain views", () => {
     // absence here is the guard that MiniBars was not quietly rewritten onto the library added
     // for Piso in this same issue.
     expect(json).not.toMatch(/RNSVG/);
+  });
+});
+
+describe("ProgressMeter", () => {
+  it("is a named progressbar carrying the true figure", () => {
+    render(<ProgressMeter percent={130} tone="over" label="Food budget" />);
+    const bar = screen.getByLabelText("Food budget");
+    expect(bar.props.accessibilityValue).toEqual({ min: 0, max: 130, now: 130, text: "130%" });
+  });
+
+  it("draws the overflow share only when over", () => {
+    render(<ProgressMeter percent={125} tone="over" label="Food budget" />);
+    expect(screen.getByTestId("meter-overflow")).toHaveStyle({ width: "20%" });
+    expect(screen.getByTestId("meter-fill")).toHaveStyle({ width: "80%" });
+  });
+
+  it("draws no overflow for a goal past 100", () => {
+    render(<ProgressMeter percent={120} tone="goal" label="Trip fund" />);
+    expect(screen.queryByTestId("meter-overflow")).toBeNull();
+    expect(screen.getByTestId("meter-fill")).toHaveStyle({ width: "100%" });
+  });
+});
+
+describe("Amount", () => {
+  it("formats pesos from centavos", () => {
+    render(<Amount centavos={175050} />);
+    expect(screen.getByText("₱1,750.50")).toBeOnTheScreen();
+  });
+
+  it("keeps the minus sign", () => {
+    render(<Amount centavos={-25000} tone="danger" />);
+    expect(screen.getByText("-₱250.00")).toBeOnTheScreen();
+  });
+
+  it("renders a foreign amount the way expenseAmountText does", () => {
+    render(<Amount centavos={150000} currency="JPY" />);
+    expect(screen.getByText("1,500.00 JPY")).toBeOnTheScreen();
+  });
+});
+
+describe("EmptyState", () => {
+  it("shows the copy and exactly one action", async () => {
+    const onPress = jest.fn();
+    render(
+      <EmptyState
+        title="No expenses yet"
+        body="Log one and Piso starts keeping count."
+        action={{ label: "Log your first expense", onPress }}
+      />,
+    );
+    expect(screen.getByText("No expenses yet")).toBeOnTheScreen();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    await userEvent.setup().press(screen.getByRole("button", { name: "Log your first expense" }));
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 });
