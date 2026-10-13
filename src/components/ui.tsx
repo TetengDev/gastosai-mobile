@@ -451,6 +451,8 @@ export function Body({
  *
  * Drawn as a coin about to drop into Piso (TEN-443): a gold rim — `warnBorder`, the same gold as
  * Piso's `saved` coin — around a plus built from two of Piso's own slot bars (4:1, fully rounded).
+ * In dark mode the disc turns near-white and `warnBorder` is only a 20% wash, so the rim takes
+ * `warnText` there, the same gold family at a weight that still shows.
  * Authored SVG rather than a text "+", which sat on font metrics and needed a hand-tuned
  * lineHeight to centre. The disc stays `cta`, so the primary action is still the darkest thing
  * on screen. Pressing sinks it 2pt and flattens its shadow, as if it went in the slot — a static
@@ -496,7 +498,14 @@ export function FloatingAddButton({
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        <Circle cx={28} cy={28} r={23} fill="none" stroke={t.colors.warnBorder} strokeWidth={2} />
+        <Circle
+          cx={28}
+          cy={28}
+          r={23}
+          fill="none"
+          stroke={t.scheme === "dark" ? t.colors.warnText : t.colors.warnBorder}
+          strokeWidth={2}
+        />
         <Rect x={16} y={25} width={24} height={6} rx={3} fill={t.colors.ctaFg} />
         <Rect x={25} y={16} width={6} height={24} rx={3} fill={t.colors.ctaFg} />
       </Svg>

@@ -1,4 +1,5 @@
 import { describe, expect, it, jest } from "@jest/globals";
+import * as ReactNative from "react-native";
 import { ActionSheetIOS, processColor } from "react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, userEvent } from "@testing-library/react-native";
@@ -213,6 +214,23 @@ describe("FloatingAddButton is a coin dropping into Piso's slot (TEN-443)", () =
     expect((rims[0].props!.stroke as { payload?: unknown }).payload).toBe(
       processColor(palettes.light.warnBorder),
     );
+  });
+
+  it("keeps the rim visible in dark mode, where warnBorder is a 20% wash on a near-white disc", () => {
+    // app.json ships `userInterfaceStyle: automatic`, so the dark palette is live. There the disc
+    // is #f0f0f0 and warnBorder is rgba(240,220,160,0.2) — the rim would vanish. warnText is the
+    // same gold family at a weight that survives on a light disc.
+    const scheme = jest.spyOn(ReactNative, "useColorScheme").mockReturnValue("dark");
+    try {
+      const { toJSON } = render(<FloatingAddButton onPress={() => {}} bottomOffset={24} />);
+
+      const [rim] = findAll(toJSON() as SvgNode, (n) => n.type === "RNSVGCircle");
+      expect((rim.props!.stroke as { payload?: unknown }).payload).toBe(
+        processColor(palettes.dark.warnText),
+      );
+    } finally {
+      scheme.mockRestore();
+    }
   });
 
   it("hides the artwork from screen readers so the button reads once, as 'Add expense'", () => {
