@@ -35,6 +35,36 @@ describe("Celebrate", () => {
     expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
   });
 
+  it("does not spend the event when it unmounts before it could play", async () => {
+    let resolveReduce: (v: boolean) => void = () => {};
+    jest
+      .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
+      .mockReturnValueOnce(new Promise<boolean>((r) => (resolveReduce = r)));
+    const early = render(<Celebrate event="first-budget" />);
+    await waitFor(() => expect(AccessibilityInfo.isReduceMotionEnabled).toHaveBeenCalled());
+    early.unmount();
+    resolveReduce(false);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(mockStore.get("ga.celebrate.first-budget")).toBeUndefined();
+
+    render(<Celebrate event="first-budget" />);
+    expect(await screen.findByLabelText("Celebrating")).toBeOnTheScreen();
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("plays once when two mounts race for the same event", async () => {
+    render(
+      <>
+        <Celebrate event="goal-1" />
+        <Celebrate event="goal-1" />
+      </>,
+    );
+    expect(await screen.findByLabelText("Celebrating")).toBeOnTheScreen();
+    await waitFor(() => expect(mockStore.get("ga.celebrate.goal-1")).toBe("1"));
+    expect(screen.getAllByLabelText("Celebrating")).toHaveLength(1);
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+  });
+
   it("still cheers under reduced motion, without the coin", async () => {
     jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
     render(<Celebrate event="goal-3" />);
