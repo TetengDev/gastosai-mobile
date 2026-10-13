@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { ActionSheetIOS } from "react-native";
+import { ActionSheetIOS, processColor } from "react-native";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, userEvent } from "@testing-library/react-native";
 import {
   Amount,
@@ -24,6 +25,39 @@ import {
   Skeleton,
   StatTile,
 } from "./ui";
+import { palettes } from "../theme";
+import AppLayout from "../../app/(app)/_layout";
+
+/**
+ * The tab layout's tests live here, not beside it: anything under `app/` is a route to
+ * expo-router (its context regex takes every `.tsx`), so a test file there would ship in the
+ * bundle as a screen — and jest's `testMatch` only looks under `src/` anyway.
+ *
+ * `Tabs` is replaced by a stand-in that renders each visible tab's title in declaration order,
+ * which is the only part of React Navigation these tests are about.
+ */
+const mockPush = jest.fn();
+let mockPathname = "/";
+jest.mock("expo-router", () => {
+  const { createElement } = jest.requireActual<typeof import("react")>("react");
+  const { Text, View } = jest.requireActual<typeof import("react-native")>("react-native");
+  const Tabs = ({ children }: { children: unknown }) => createElement(View, null, children as never);
+  Tabs.Screen = ({ name, options }: { name: string; options?: { title?: string; href?: null } }) =>
+    options?.href === null ? null : createElement(Text, { testID: `tab-screen-${name}` }, options?.title);
+  return {
+    Tabs,
+    Redirect: () => null,
+    usePathname: () => mockPathname,
+    useRouter: () => ({ push: mockPush, navigate: jest.fn() }),
+  };
+});
+jest.mock("../context/AuthContext", () => ({
+  useAuth: () => ({ user: { email: "demo@example.com" }, ready: true }),
+}));
+jest.mock("../api/alerts", () => ({ listAlerts: async () => [], unreadCount: () => 0 }));
+jest.mock("react-native-safe-area-context", () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
+}));
 
 /**
  * First test file for `ui.tsx` (TEN-434). Covers the key primitives rendering, plus the six
@@ -118,6 +152,105 @@ describe("FloatingAddButton stays out of the tab bar", () => {
 
     await user.press(button);
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+});
+
+type SvgNode = { type?: string; props?: Record<string, unknown>; children?: SvgNode[] | null };
+
+function findAll(node: SvgNode | null, predicate: (n: SvgNode) => boolean): SvgNode[] {
+  if (!node) return [];
+  const self = predicate(node) ? [node] : [];
+  const kids = node.children ?? [];
+  return self.concat(kids.flatMap((k) => findAll(k, predicate)));
+}
+
+describe("FloatingAddButton is a coin dropping into Piso's slot (TEN-443)", () => {
+  it("keeps its 56pt target, testID and accessible name", () => {
+    render(<FloatingAddButton onPress={() => {}} bottomOffset={24} />);
+
+    const button = screen.getByTestId("fab-add");
+    expect(button).toHaveStyle({ width: 56, height: 56 });
+    expect(button.props.accessibilityLabel).toBe("Add expense");
+    expect(button.props.accessibilityRole).toBe("button");
+  });
+
+  it("draws its plus as two of Piso's slot bars, not a font glyph", () => {
+    // A text "+" sat on font metrics (it needed a hand-tuned lineHeight to centre) and could be
+    // anything; the slot bar is Piso's own: four times as long as it is tall, ends fully rounded.
+    const { toJSON } = render(<FloatingAddButton onPress={() => {}} bottomOffset={24} />);
+
+    expect(screen.queryByText("+")).toBeNull();
+    const bars = findAll(toJSON() as SvgNode, (n) => n.type === "RNSVGRect");
+    expect(bars).toHaveLength(2);
+    for (const bar of bars) {
+      const { width, height, rx } = bar.props as { width: number; height: number; rx: number };
+      expect(Math.max(width, height) / Math.min(width, height)).toBe(4);
+      expect(rx).toBe(Math.min(width, height) / 2);
+    }
+    // One lies across, one stands up — together a plus, not two parallel slots.
+    expect(bars.map((b) => (b.props!.width as number) > (b.props!.height as number))).toEqual([
+      true,
+      false,
+    ]);
+  });
+
+  it("carries a gold coin rim, the same gold as Piso's saved coin", () => {
+    const { toJSON } = render(<FloatingAddButton onPress={() => {}} bottomOffset={24} />);
+
+    const rims = findAll(toJSON() as SvgNode, (n) => n.type === "RNSVGCircle");
+    expect(rims).toHaveLength(1);
+    expect((rims[0].props!.stroke as { payload?: unknown }).payload).toBe(
+      processColor(palettes.light.warnBorder),
+    );
+  });
+
+  it("hides the artwork from screen readers so the button reads once, as 'Add expense'", () => {
+    const { toJSON } = render(<FloatingAddButton onPress={() => {}} bottomOffset={24} />);
+
+    const [svg] = findAll(toJSON() as SvgNode, (n) => n.type === "RNSVGSvgView");
+    expect(svg.props!.importantForAccessibility).toBe("no-hide-descendants");
+    expect(svg.props!.accessibilityElementsHidden).toBe(true);
+  });
+});
+
+describe("the app shell around the coin-slot button (TEN-443)", () => {
+  function renderLayout(pathname: string) {
+    mockPathname = pathname;
+    mockPush.mockClear();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={client}>
+        <AppLayout />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("keeps the tab set Home, Expenses, Budgets, Goals, More, in that order", () => {
+    renderLayout("/");
+
+    const titles = screen.getAllByTestId(/^tab-screen-/).map((el) => el.props.children);
+    expect(titles).toEqual(["Home", "Expenses", "Budgets", "Goals", "More"]);
+  });
+
+  it("opens quick-add when the coin is dropped", async () => {
+    const user = userEvent.setup();
+    renderLayout("/expenses");
+
+    await user.press(screen.getByTestId("fab-add"));
+    expect(mockPush).toHaveBeenCalledWith("/(app)/quick-add");
+  });
+
+  it("sits above the tab bar and the home indicator", () => {
+    renderLayout("/");
+
+    // 56 tab bar + 34 inset + 16 breathing room.
+    expect(screen.getByTestId("fab-add")).toHaveStyle({ bottom: 106 });
+  });
+
+  it.each(["/more", "/quick-add", "/add-expense"])("is not offered on %s", (pathname) => {
+    renderLayout(pathname);
+
+    expect(screen.queryByTestId("fab-add")).toBeNull();
   });
 });
 
