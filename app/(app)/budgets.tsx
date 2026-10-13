@@ -13,6 +13,7 @@ import { listCategories } from "../../src/api/categories";
 import type { BudgetSummaryItem } from "../../src/api/types";
 import { formatCentavos, formatMonth } from "../../src/lib/formatters";
 import { centavosToInput } from "../../src/components/money";
+import { budgetTone, toBand } from "../../src/lib/pisoMood";
 import { useMonth } from "../../src/context/MonthContext";
 import BudgetSheet from "../../src/components/BudgetSheet";
 import {
@@ -22,7 +23,7 @@ import {
   ErrorText,
   MonthStepper,
   Pill,
-  ProgressBar,
+  ProgressMeter,
   RowMenu,
   Skeleton,
   StatTile,
@@ -206,7 +207,11 @@ export default function Budgets() {
                       ]}
                     />
                   </View>
-                  <ProgressBar percent={b.percentUsed ?? 0} color={toneColor(b.status)} />
+                  <ProgressMeter
+                    percent={b.percentUsed ?? 0}
+                    tone={budgetTone(toBand(b.status))}
+                    label={`${b.categoryName ?? "Budget"} budget`}
+                  />
                   <Body dim style={{ fontSize: 12.5 }}>
                     {formatCentavos(b.spent ?? 0)} of {formatCentavos(b.budgeted ?? 0)} ·{" "}
                     {formatCentavos(b.remaining ?? 0)} left

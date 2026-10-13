@@ -13,6 +13,9 @@ import {
 import type { TextInputProps, TextProps, TextStyle, ViewStyle } from "react-native";
 import { useRouter } from "expo-router";
 import { isPaywallMessage } from "../api/client";
+import { Piso } from "../brand/Piso";
+import { formatCentavos } from "../lib/formatters";
+import type { MeterTone } from "../lib/pisoMood";
 import { useTheme } from "../theme/useTheme";
 
 /**
@@ -305,24 +308,109 @@ export function Pill({
 }
 
 /**
- * Renders a percentage the backend already computed. Clamped only for drawing — callers still
- * show the true figure, so an over-budget 130% reads as 130% rather than being hidden.
+ * A meter whose colour comes from the server's status, through `budgetTone` or `goalTone` —
+ * never from the number. The bar clamps at 100; the reported value does not. Past 100 on a
+ * budget, the overflow share is a lighter amber segment: React Native has no repeating gradient,
+ * so web's hatching becomes a second tone here. Static on purpose; see `Piso`.
  */
-export function ProgressBar({ percent, color }: { percent: number; color?: string }) {
+export function ProgressMeter({
+  percent,
+  tone,
+  label,
+}: {
+  percent: number;
+  tone: MeterTone;
+  label: string;
+}) {
   const t = useTheme();
-  const width = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
+  const value = Number.isFinite(percent) ? percent : 0;
+  const width = Math.max(0, Math.min(100, value));
+  const shown = Math.round(value);
+  const overflowShare = tone === "over" && value > 100 ? ((value - 100) / value) * 100 : 0;
+  const fill = {
+    onTrack: t.colors.brand,
+    goal: t.colors.brand,
+    warning: t.colors.warnText,
+    over: t.colors.warnText,
+    paused: t.colors.text3,
+  }[tone];
+
   return (
     <View
-      style={{ height: 8, borderRadius: 999, backgroundColor: t.colors.track, overflow: "hidden" }}
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={label}
+      accessibilityValue={{ min: 0, max: Math.max(100, shown), now: shown, text: `${shown}%` }}
+      style={{
+        height: 8,
+        borderRadius: 999,
+        backgroundColor: t.colors.track,
+        overflow: "hidden",
+        flexDirection: "row",
+      }}
     >
-      <View
-        style={{
-          height: 8,
-          borderRadius: 999,
-          width: `${width}%`,
-          backgroundColor: color ?? t.colors.brand,
-        }}
-      />
+      <View testID="meter-fill" style={{ width: `${width - overflowShare}%`, backgroundColor: fill }} />
+      {overflowShare > 0 ? (
+        <View
+          testID="meter-overflow"
+          style={{ width: `${overflowShare}%`, backgroundColor: t.colors.warnBorder }}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+/** The one way money is shown. Never reformats: it hands centavos to `formatCentavos`. */
+export function Amount({
+  centavos,
+  currency = "PHP",
+  size = "row",
+  tone = "neutral",
+}: {
+  centavos: number;
+  currency?: string;
+  size?: "hero" | "row" | "inline";
+  tone?: "neutral" | "positive" | "danger";
+}) {
+  const t = useTheme();
+  // Same rule as `expenseAmountText`: a foreign figure drops the peso sign and names its currency.
+  const text =
+    currency === "PHP"
+      ? formatCentavos(centavos)
+      : `${formatCentavos(centavos).replace("₱", "")} ${currency}`;
+  const font = {
+    hero: { fontFamily: t.fonts.display, fontSize: t.fontSizes.display },
+    row: { fontFamily: t.fonts.mono, fontSize: t.fontSizes.body },
+    inline: { fontFamily: t.fonts.mono, fontSize: t.fontSizes.content },
+  }[size];
+  const color = { neutral: t.colors.text, positive: t.colors.greenHi, danger: t.colors.danger }[tone];
+  return <Text style={{ ...font, color, fontVariant: ["tabular-nums"] }}>{text}</Text>;
+}
+
+/** Empty Piso, one line, one action — an empty screen has exactly one next step. */
+export function EmptyState({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  action: { label: string; onPress: () => void };
+}) {
+  const t = useTheme();
+  return (
+    <View style={{ alignItems: "center", gap: 12, paddingVertical: 40, paddingHorizontal: 16 }}>
+      <Piso state="empty" size={96} />
+      <Text
+        accessibilityRole="header"
+        style={{ fontFamily: t.fonts.display, fontSize: t.fontSizes.content, color: t.colors.text }}
+      >
+        {title}
+      </Text>
+      <Body dim style={{ textAlign: "center" }}>
+        {body}
+      </Body>
+      <Button title={action.label} onPress={action.onPress} />
     </View>
   );
 }

@@ -6,10 +6,10 @@ import { upcomingBills } from "../../api/recurring";
 import { categoryReport, topExpenses } from "../../api/reports";
 import { formatCentavos, formatDateOnly } from "../../lib/formatters";
 import { expenseAmountText } from "../money";
-import { ProgressBar } from "../ui";
+import { budgetTone, goalTone, toBand } from "../../lib/pisoMood";
+import { ProgressMeter } from "../ui";
 import SummaryCard from "./SummaryCard";
 import type { SummaryRow } from "./SummaryCard";
-import { accents } from "../../theme";
 
 /**
  * The list-shaped dashboard cards, mirroring web's `UpcomingBillsCard`, `BudgetOverviewCard`,
@@ -59,13 +59,6 @@ export function BudgetOverviewCard({ month }: { month: string }) {
     queryFn: () => budgetSummary(month),
   });
 
-  const tone = (status?: string) =>
-    status === "OVER" || status === "EXCEEDED"
-      ? accents.danger
-      : status === "NEAR" || status === "WARNING"
-        ? accents.amber
-        : accents.brand;
-
   const rows: SummaryRow[] = [...(data?.items ?? [])]
     .sort((a, b) => (b.percentUsed ?? 0) - (a.percentUsed ?? 0))
     .slice(0, 3)
@@ -74,7 +67,13 @@ export function BudgetOverviewCard({ month }: { month: string }) {
       label: b.categoryName ?? "-",
       sub: `${formatCentavos(b.spent ?? 0)} of ${formatCentavos(b.budgeted ?? 0)}`,
       value: `${Math.round(b.percentUsed ?? 0)}%`,
-      extra: <ProgressBar percent={b.percentUsed ?? 0} color={tone(b.status)} />,
+      extra: (
+        <ProgressMeter
+          percent={b.percentUsed ?? 0}
+          tone={budgetTone(toBand(b.status))}
+          label={`${b.categoryName ?? "Budget"} budget`}
+        />
+      ),
     }));
 
   return (
@@ -128,7 +127,13 @@ export function GoalProgressCard() {
     label: g.name ?? "-",
     sub: `${formatCentavos(g.savedAmount ?? 0)} of ${formatCentavos(g.targetAmount ?? 0)}`,
     value: `${Math.round(g.progressPercent ?? 0)}%`,
-    extra: <ProgressBar percent={g.progressPercent ?? 0} />,
+    extra: (
+      <ProgressMeter
+        percent={g.progressPercent ?? 0}
+        tone={goalTone(g.status ?? "ON_TRACK")}
+        label={g.name ?? "Goal"}
+      />
+    ),
   }));
 
   return (
