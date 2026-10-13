@@ -43,8 +43,8 @@ function tree() {
   return JSON.stringify(screen.toJSON());
 }
 
-describe("Piso renders all five states", () => {
-  it.each(["resting", "saved", "empty", "overBudget", "thinking"] as const)(
+describe("Piso renders all seven states", () => {
+  it.each(["resting", "saved", "empty", "overBudget", "thinking", "worried", "cheer"] as const)(
     "renders %s without throwing",
     (state) => {
       const { toJSON } = render(<Piso state={state} />);
@@ -53,7 +53,7 @@ describe("Piso renders all five states", () => {
   );
 });
 
-describe("the three announced states expose their label", () => {
+describe("the five announced states expose their label", () => {
   it("saved reads as 'Expense saved'", () => {
     render(<Piso state="saved" testID="piso" />);
     const el = screen.getByTestId("piso");
@@ -76,6 +76,22 @@ describe("the three announced states expose their label", () => {
     expect(el.props.accessible).toBe(true);
     expect(el.props.accessibilityRole).toBe("image");
     expect(el.props.accessibilityLabel).toBe("Thinking");
+  });
+
+  it("worried reads as 'Close to budget'", () => {
+    render(<Piso state="worried" testID="piso" />);
+    const el = screen.getByTestId("piso");
+    expect(el.props.accessible).toBe(true);
+    expect(el.props.accessibilityRole).toBe("image");
+    expect(el.props.accessibilityLabel).toBe("Close to budget");
+  });
+
+  it("cheer reads as 'Celebrating'", () => {
+    render(<Piso state="cheer" testID="piso" />);
+    const el = screen.getByTestId("piso");
+    expect(el.props.accessible).toBe(true);
+    expect(el.props.accessibilityRole).toBe("image");
+    expect(el.props.accessibilityLabel).toBe("Celebrating");
   });
 });
 
@@ -162,6 +178,12 @@ describe("colour roles meet contrast, not just availability", () => {
     expect(fillPayload(coin)).toBe(colorPayload(palettes.light.warnBorder));
     expect(strokePayload(coin)).toBe(colorPayload(palettes.light.warnText));
     expect(fillPayload(coin)).not.toBe(colorPayload(accents.amber));
+  });
+
+  it("cheer shares saved's crescent eyes but not its coin", () => {
+    const { toJSON } = render(<Piso state="cheer" />);
+    expect(findAll(toJSON(), (n) => n.type === "RNSVGCircle" && n.props?.r === 9)).toHaveLength(0);
+    expect(findAll(toJSON(), (n) => n.type === "RNSVGCircle" && n.props?.r === 4.2)).toHaveLength(0);
   });
 
   it("thinking's dots are coloured with the line token, not a hardcoded accent", () => {
