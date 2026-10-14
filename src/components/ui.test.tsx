@@ -41,7 +41,8 @@ const mockPush = jest.fn();
 let mockPathname = "/";
 jest.mock("expo-router", () => {
   const { createElement } = jest.requireActual<typeof import("react")>("react");
-  const { Text, View } = jest.requireActual<typeof import("react-native")>("react-native");
+  const { Text, View } =
+    jest.requireActual<typeof import("react-native")>("react-native");
   function Tabs({ children }: { children: unknown }) {
     return createElement(View, null, children as never);
   }
@@ -66,7 +67,10 @@ jest.mock("expo-router", () => {
 jest.mock("../context/AuthContext", () => ({
   useAuth: () => ({ user: { email: "demo@example.com" }, ready: true }),
 }));
-jest.mock("../api/alerts", () => ({ listAlerts: async () => [], unreadCount: () => 0 }));
+jest.mock("../api/alerts", () => ({
+  listAlerts: async () => [],
+  unreadCount: () => 0,
+}));
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
 }));
@@ -139,7 +143,13 @@ describe("ui primitives render", () => {
   });
 
   it("SearchField renders its placeholder and value", () => {
-    render(<SearchField value="coffee" onChangeText={() => {}} placeholder="Search" />);
+    render(
+      <SearchField
+        value="coffee"
+        onChangeText={() => {}}
+        placeholder="Search"
+      />,
+    );
     expect(screen.getByDisplayValue("coffee")).toBeOnTheScreen();
   });
 
@@ -167,9 +177,16 @@ describe("FloatingAddButton stays out of the tab bar", () => {
   });
 });
 
-type SvgNode = { type?: string; props?: Record<string, unknown>; children?: SvgNode[] | null };
+type SvgNode = {
+  type?: string;
+  props?: Record<string, unknown>;
+  children?: SvgNode[] | null;
+};
 
-function findAll(node: SvgNode | null, predicate: (n: SvgNode) => boolean): SvgNode[] {
+function findAll(
+  node: SvgNode | null,
+  predicate: (n: SvgNode) => boolean,
+): SvgNode[] {
   if (!node) return [];
   const self = predicate(node) ? [node] : [];
   const kids = node.children ?? [];
@@ -189,25 +206,32 @@ describe("FloatingAddButton is a coin dropping into Piso's slot (TEN-443)", () =
   it("draws its plus as two of Piso's slot bars, not a font glyph", () => {
     // A text "+" sat on font metrics (it needed a hand-tuned lineHeight to centre) and could be
     // anything; the slot bar is Piso's own: four times as long as it is tall, ends fully rounded.
-    const { toJSON } = render(<FloatingAddButton onPress={() => {}} bottomOffset={24} />);
+    const { toJSON } = render(
+      <FloatingAddButton onPress={() => {}} bottomOffset={24} />,
+    );
 
     expect(screen.queryByText("+")).toBeNull();
     const bars = findAll(toJSON() as SvgNode, (n) => n.type === "RNSVGRect");
     expect(bars).toHaveLength(2);
     for (const bar of bars) {
-      const { width, height, rx } = bar.props as { width: number; height: number; rx: number };
+      const { width, height, rx } = bar.props as {
+        width: number;
+        height: number;
+        rx: number;
+      };
       expect(Math.max(width, height) / Math.min(width, height)).toBe(4);
       expect(rx).toBe(Math.min(width, height) / 2);
     }
     // One lies across, one stands up — together a plus, not two parallel slots.
-    expect(bars.map((b) => (b.props!.width as number) > (b.props!.height as number))).toEqual([
-      true,
-      false,
-    ]);
+    expect(
+      bars.map((b) => (b.props!.width as number) > (b.props!.height as number)),
+    ).toEqual([true, false]);
   });
 
   it("carries a gold coin rim, the same gold as Piso's saved coin", () => {
-    const { toJSON } = render(<FloatingAddButton onPress={() => {}} bottomOffset={24} />);
+    const { toJSON } = render(
+      <FloatingAddButton onPress={() => {}} bottomOffset={24} />,
+    );
 
     const rims = findAll(toJSON() as SvgNode, (n) => n.type === "RNSVGCircle");
     expect(rims).toHaveLength(1);
@@ -220,11 +244,18 @@ describe("FloatingAddButton is a coin dropping into Piso's slot (TEN-443)", () =
     // app.json ships `userInterfaceStyle: automatic`, so the dark palette is live. There the disc
     // is #f0f0f0 and warnBorder is rgba(240,220,160,0.2) — the rim would vanish. warnText is the
     // same gold family at a weight that survives on a light disc.
-    const scheme = jest.spyOn(ReactNative, "useColorScheme").mockReturnValue("dark");
+    const scheme = jest
+      .spyOn(ReactNative, "useColorScheme")
+      .mockReturnValue("dark");
     try {
-      const { toJSON } = render(<FloatingAddButton onPress={() => {}} bottomOffset={24} />);
+      const { toJSON } = render(
+        <FloatingAddButton onPress={() => {}} bottomOffset={24} />,
+      );
 
-      const [rim] = findAll(toJSON() as SvgNode, (n) => n.type === "RNSVGCircle");
+      const [rim] = findAll(
+        toJSON() as SvgNode,
+        (n) => n.type === "RNSVGCircle",
+      );
       expect((rim.props!.stroke as { payload?: unknown }).payload).toBe(
         processColor(palettes.dark.warnText),
       );
@@ -234,11 +265,44 @@ describe("FloatingAddButton is a coin dropping into Piso's slot (TEN-443)", () =
   });
 
   it("hides the artwork from screen readers so the button reads once, as 'Add expense'", () => {
-    const { toJSON } = render(<FloatingAddButton onPress={() => {}} bottomOffset={24} />);
+    const { toJSON } = render(
+      <FloatingAddButton onPress={() => {}} bottomOffset={24} />,
+    );
 
-    const [svg] = findAll(toJSON() as SvgNode, (n) => n.type === "RNSVGSvgView");
+    const [svg] = findAll(
+      toJSON() as SvgNode,
+      (n) => n.type === "RNSVGSvgView",
+    );
     expect(svg.props!.importantForAccessibility).toBe("no-hide-descendants");
     expect(svg.props!.accessibilityElementsHidden).toBe(true);
+  });
+
+  it("sinks into the slot when pressed rather than fading", () => {
+    // A 20% opacity fade barely shows on a near-black disc. Pressing moves it down 2pt and flattens
+    // its shadow instead — static styles, so reduced motion has nothing to switch off.
+    render(<FloatingAddButton onPress={() => {}} bottomOffset={24} />);
+    // Pressable is memoised, so it is found by its style callback rather than by type.
+    const [pressable] = screen.UNSAFE_root.findAll(
+      (n: { props: { style?: unknown } }) =>
+        typeof n.props.style === "function",
+    );
+    const style = pressable.props.style as (state: {
+      pressed: boolean;
+    }) => Record<string, unknown>;
+    const resting = style({ pressed: false });
+    const pressed = style({ pressed: true });
+
+    expect(resting).toMatchObject({
+      transform: [{ translateY: 0 }],
+      elevation: 6,
+    });
+    expect(pressed).toMatchObject({
+      transform: [{ translateY: 2 }],
+      elevation: 3,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+    });
+    expect(pressed).not.toHaveProperty("opacity");
   });
 });
 
@@ -246,7 +310,9 @@ describe("the app shell around the coin-slot button (TEN-443)", () => {
   function renderLayout(pathname: string) {
     mockPathname = pathname;
     mockPush.mockClear();
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     return render(
       <QueryClientProvider client={client}>
         <AppLayout />
@@ -257,7 +323,9 @@ describe("the app shell around the coin-slot button (TEN-443)", () => {
   it("keeps the tab set Home, Expenses, Budgets, Goals, More, in that order", () => {
     renderLayout("/");
 
-    const titles = screen.getAllByTestId(/^tab-screen-/).map((el) => el.props.children);
+    const titles = screen
+      .getAllByTestId(/^tab-screen-/)
+      .map((el) => el.props.children);
     expect(titles).toEqual(["Home", "Expenses", "Budgets", "Goals", "More"]);
   });
 
@@ -276,16 +344,26 @@ describe("the app shell around the coin-slot button (TEN-443)", () => {
     expect(screen.getByTestId("fab-add")).toHaveStyle({ bottom: 106 });
   });
 
-  it.each(["/more", "/quick-add", "/add-expense"])("is not offered on %s", (pathname) => {
-    renderLayout(pathname);
+  it.each(["/more", "/quick-add", "/add-expense"])(
+    "is not offered on %s",
+    (pathname) => {
+      renderLayout(pathname);
 
-    expect(screen.queryByTestId("fab-add")).toBeNull();
-  });
+      expect(screen.queryByTestId("fab-add")).toBeNull();
+    },
+  );
 });
 
 describe("ListRow keeps a minimum touch height of 44", () => {
   it("sets minHeight 44 on the rendered pressable, independent of the type scale", () => {
-    render(<ListRow testID="row" icon="pricetag" label="Groceries" onPress={() => {}} />);
+    render(
+      <ListRow
+        testID="row"
+        icon="pricetag"
+        label="Groceries"
+        onPress={() => {}}
+      />,
+    );
 
     // Reads the rendered style, not a constant declared in this file: the type-scale refactor
     // moved every fontSize in this component onto theme tokens, and a shrunk label/sub pairing
@@ -311,7 +389,13 @@ describe("ListRow keeps a minimum touch height of 44", () => {
 
   it("hides the chevron and tints the label for a destructive row", () => {
     render(
-      <ListRow testID="row" icon="log-out" label="Sign out" destructive onPress={() => {}} />,
+      <ListRow
+        testID="row"
+        icon="log-out"
+        label="Sign out"
+        destructive
+        onPress={() => {}}
+      />,
     );
     expect(screen.queryByTestId("chevron-forward")).toBeNull();
   });
@@ -352,7 +436,12 @@ describe("RowMenu keeps ActionSheetIOS with its destructiveButtonIndex", () => {
 describe("MonthStepper stays disabled rather than hidden at the boundary", () => {
   it("renders a disabled, visible next-month control rather than removing it", () => {
     render(
-      <MonthStepper label="October 2026" onPrev={() => {}} onNext={() => {}} canGoNext={false} />,
+      <MonthStepper
+        label="October 2026"
+        onPrev={() => {}}
+        onNext={() => {}}
+        canGoNext={false}
+      />,
     );
 
     const next = screen.getByTestId("month-next");
@@ -363,20 +452,33 @@ describe("MonthStepper stays disabled rather than hidden at the boundary", () =>
 
   it("enables next when a later month exists", () => {
     render(
-      <MonthStepper label="June 2026" onPrev={() => {}} onNext={() => {}} canGoNext={true} />,
+      <MonthStepper
+        label="June 2026"
+        onPrev={() => {}}
+        onNext={() => {}}
+        canGoNext={true}
+      />,
     );
-    expect(screen.getByTestId("month-next").props.accessibilityState?.disabled).toBe(false);
+    expect(
+      screen.getByTestId("month-next").props.accessibilityState?.disabled,
+    ).toBe(false);
   });
 });
 
 describe("PaywallNotice still reads as an offer, not an error", () => {
   it("renders through ErrorText as a panel card with a View plans action, not danger-coloured text", () => {
-    render(<ErrorText>{"Add a second account. Upgrade to Premium to unlock it."}</ErrorText>);
+    render(
+      <ErrorText>
+        {"Add a second account. Upgrade to Premium to unlock it."}
+      </ErrorText>,
+    );
 
     expect(screen.getByTestId("paywall-notice")).toBeOnTheScreen();
     expect(screen.getByTestId("paywall-view-plans")).toBeOnTheScreen();
     expect(
-      screen.getByText("Add a second account. Upgrade to Premium to unlock it."),
+      screen.getByText(
+        "Add a second account. Upgrade to Premium to unlock it.",
+      ),
     ).toBeOnTheScreen();
   });
 
@@ -411,7 +513,12 @@ describe("ProgressMeter", () => {
   it("is a named progressbar carrying the true figure", () => {
     render(<ProgressMeter percent={130} tone="over" label="Food budget" />);
     const bar = screen.getByLabelText("Food budget");
-    expect(bar.props.accessibilityValue).toEqual({ min: 0, max: 130, now: 130, text: "130%" });
+    expect(bar.props.accessibilityValue).toEqual({
+      min: 0,
+      max: 130,
+      now: 130,
+      text: "130%",
+    });
   });
 
   it("draws the overflow share only when over", () => {
@@ -456,7 +563,9 @@ describe("EmptyState", () => {
     );
     expect(screen.getByText("No expenses yet")).toBeOnTheScreen();
     expect(screen.getAllByRole("button")).toHaveLength(1);
-    await userEvent.setup().press(screen.getByRole("button", { name: "Log your first expense" }));
+    await userEvent
+      .setup()
+      .press(screen.getByRole("button", { name: "Log your first expense" }));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });
