@@ -1,9 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useRef, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 import {
+  AccessibilityInfo,
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
+  Animated,
   Platform,
   Pressable,
   Text,
@@ -11,6 +14,7 @@ import {
   View,
 } from "react-native";
 import type { TextInputProps, TextProps, TextStyle, ViewStyle } from "react-native";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Circle, Rect, Svg } from "react-native-svg";
 import { isPaywallMessage } from "../api/client";
@@ -449,15 +453,22 @@ export function Body({
  * Kept out of the tab bar on purpose: that bar is for destinations, and mixing an action into it
  * is the most consistently warned-against tab-bar mistake.
  *
- * Drawn as a coin about to drop into Piso (TEN-443): a gold rim — `warnBorder`, the same gold as
- * Piso's `saved` coin — around a plus built from two of Piso's own slot bars (4:1, fully rounded).
- * In dark mode the disc turns near-white and `warnBorder` is only a 20% wash, so the rim takes
- * `warnText` there, the same gold family at a weight that still shows.
- * Authored SVG rather than a text "+", which sat on font metrics and needed a hand-tuned
- * lineHeight to centre. The disc stays `cta`, so the primary action is still the darkest thing
- * on screen. Pressing sinks it 2pt and flattens its shadow, as if it went in the slot — a static
- * pressed style, not an animation, so there is nothing for reduced motion to switch off.
+ * Drawn as a coin going into Piso's slot (TEN-443). The crossbar is Piso's own slot — 28:7, fully
+ * rounded — in the disc's foreground; the upright is the coin's edge in gold, drawn *behind* the
+ * slot so that it reads as going in. Together they are still a plain "+". The disc is rimmed in
+ * the same gold at coin weight, so the whole button is the coin.
+ *
+ * One gold, `COIN_GOLD`, in both schemes: the disc flips from near-black to near-white, and this
+ * holds 5.1:1 on the first and 3.05:1 on the second. Each `warn*` gold fails on one of them, and
+ * the palette mirrors gastosai-web's CSS exactly, so a mobile-only token does not belong there.
+ *
+ * Pressing gives a light haptic and drops the coin 4pt into the slot (160 ms); the disc itself
+ * sinks 2pt and flattens its shadow. Under reduced motion the coin does not move — the haptic and
+ * the static sink stay. The disc stays `cta`, so the primary action is still the
+ * highest-contrast thing on screen.
  */
+const COIN_GOLD = "#ad8318";
+
 export function FloatingAddButton({
   onPress,
   bottomOffset,
@@ -466,12 +477,44 @@ export function FloatingAddButton({
   bottomOffset: number;
 }) {
   const t = useTheme();
+  const drop = useRef(new Animated.Value(0)).current;
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((on) => live && setReduceMotion(on))
+      .catch(() => {});
+    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => {
+      live = false;
+      sub.remove();
+    };
+  }, []);
+
+  const settle = (toValue: 0 | 1) => {
+    if (reduceMotion) return;
+    Animated.timing(drop, { toValue, duration: 160, useNativeDriver: true }).start();
+  };
+
+  const artwork = {
+    accessibilityElementsHidden: true,
+    importantForAccessibility: "no-hide-descendants",
+  } as const;
+  const layer = { position: "absolute", top: 0, left: 0 } as const;
+  const coinDrop = drop.interpolate({ inputRange: [0, 1], outputRange: [0, 4] });
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Add expense"
       testID="fab-add"
       onPress={onPress}
+      onPressIn={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        settle(1);
+      }}
+      onPressOut={() => settle(0)}
       style={({ pressed }) => ({
         position: "absolute",
         right: 20,
@@ -491,23 +534,16 @@ export function FloatingAddButton({
         elevation: pressed ? 3 : 6,
       })}
     >
-      <Svg
-        width={56}
-        height={56}
-        viewBox="0 0 56 56"
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        <Circle
-          cx={28}
-          cy={28}
-          r={23}
-          fill="none"
-          stroke={t.scheme === "dark" ? t.colors.warnText : t.colors.warnBorder}
-          strokeWidth={2}
-        />
-        <Rect x={16} y={25} width={24} height={6} rx={3} fill={t.colors.ctaFg} />
-        <Rect x={25} y={16} width={6} height={24} rx={3} fill={t.colors.ctaFg} />
+      <Svg width={56} height={56} viewBox="0 0 56 56" style={layer} {...artwork}>
+        <Circle cx={28} cy={28} r={22} fill="none" stroke={COIN_GOLD} strokeWidth={4.5} />
+      </Svg>
+      <Animated.View style={[layer, { transform: [{ translateY: coinDrop }] }]} {...artwork}>
+        <Svg width={56} height={56} viewBox="0 0 56 56" {...artwork}>
+          <Rect x={24.5} y={16} width={7} height={25} rx={3.5} fill={COIN_GOLD} />
+        </Svg>
+      </Animated.View>
+      <Svg width={56} height={56} viewBox="0 0 56 56" style={layer} {...artwork}>
+        <Rect x={14} y={25} width={28} height={7} rx={3.5} fill={t.colors.ctaFg} />
       </Svg>
     </Pressable>
   );
