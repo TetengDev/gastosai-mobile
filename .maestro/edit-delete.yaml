@@ -4,7 +4,7 @@
 # asserts the hole is closed from the user's side, and cleans up after itself so the flow can be
 # re-run against a shared dev database.
 #
-# Depends on quick-add.yaml having created the ₱177.00 expense.
+# Creates its own ₱177.00 expense through the API first (see below).
 #
 # **Entered from the Expenses tab, not Home's Recent card.** Home became a dashboard in v0.7, so
 # Recent now sits below seven cards: reaching it needs a scroll, and how far depends on how many
@@ -19,17 +19,37 @@
 # a mistargeted row cannot be destroyed silently. Matching loosely on a round ₱175.00 is how a
 # seeded expense was lost during the original Maestro bring-up.
 appId: host.exp.Exponent
----
-- runFlow: launch.yaml
+env:
+  GASTOSAI_EMAIL: demo@gastosai.dev
+  GASTOSAI_PASSWORD: demo123
 
-# Create the expense this flow edits, rather than assuming it is already there.
+# The scripts here and in quick-add.yaml call the legacy unversioned surface (decimal amounts), as
+# launch.yaml does; they break if those paths are retired. Keep the cleanup script in sync with
+# quick-add.yaml's.
 #
-# The header used to say this "depends on quick-add.yaml having created the ₱177.00 expense", but
-# Maestro runs a directory alphabetically: edit-delete is third and quick-add eleventh, so the
-# dependency ran backwards on every suite run. It only ever passed on an expense left behind by an
-# earlier run — and failed the moment it was run against a clean account, which is exactly when a
-# suite should be trustworthy. quick-add ends on Home in the current month, where this starts.
-- runFlow: quick-add.yaml
+# Runs whether the flow passed or failed. An assertion that fails after quick-add has saved the
+# expense used to leave a ₱177 (or ₱226.53, once edited) row in the demo account for every failed
+# run. This deletes any such row through the API, matching on amount alone because the AI parse
+# rewrites the description — logging in itself, because a failure at
+# launch means `output.token` was never set. On a passing run the UI delete has already removed the
+# row and this finds nothing.
+onFlowComplete:
+  - evalScript: |
+      ${(function(){var h={'Content-Type': 'application/json'}; var t=json(http.post('http://localhost:8080/auth/login', {headers: h, body: JSON.stringify({email: GASTOSAI_EMAIL, password: GASTOSAI_PASSWORD})}).body).token; var a={'Authorization': 'Bearer ' + t}; var body=json(http.get('http://localhost:8080/expenses', {headers: a}).body); var rows=body.content ? body.content : body; for (var i=0;i<rows.length;i++){var r=rows[i]; var amt=Number(r.amount); if (amt===177 || amt===226.53) { http.delete('http://localhost:8080/expenses/' + r.id, {headers: a}); } } return 'cleaned';})()}
+---
+# Create the expense this flow edits through the API, rather than assuming it is already there.
+#
+# It used to rely on quick-add.yaml: first on a row an earlier run had left behind (Maestro runs a
+# directory alphabetically, so edit-delete ran before quick-add and the dependency ran backwards),
+# then by running quick-add.yaml itself. Neither holds now that quick-add deletes its own row when
+# it completes, which it also does when run nested from here. A direct create also keeps this
+# flow's subject, edit and delete, independent of the AI parse that quick-add exists to test.
+- evalScript: |
+    ${(function(){var h={'Content-Type': 'application/json'}; var t=json(http.post('http://localhost:8080/auth/login', {headers: h, body: JSON.stringify({email: GASTOSAI_EMAIL, password: GASTOSAI_PASSWORD})}).body).token; if (!t) { throw new Error('login failed: no token'); } http.post('http://localhost:8080/expenses', {headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t}, body: JSON.stringify({amount: 177, category: 'Meal Plan', description: 'lunch at Jollibee'})}); return 'created';})()}
+
+# After the create, so the app's first load of the month already includes the row: the Expenses
+# tab does not refetch when it is opened, so a row created after launch never appears.
+- runFlow: launch.yaml
 
 - tapOn:
     id: "tab-expenses"
@@ -41,8 +61,9 @@ appId: host.exp.Exponent
 - tapOn:
     id: "expense-row-first"
 - assertVisible: "Edit expense"
-# Confirm this is the row quick-add created before touching it.
-- assertVisible: "177"
+# Confirm this is the row created above before touching it. The edit field is filled by
+# centavosToInput, so it reads "177.00" — not "177".
+- assertVisible: "177.00"
 
 - tapOn:
     id: "expense-amount"
