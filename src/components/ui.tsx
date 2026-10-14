@@ -1,9 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useRef, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 import {
+  AccessibilityInfo,
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
+  Animated,
   Platform,
   Pressable,
   Text,
@@ -11,7 +14,9 @@ import {
   View,
 } from "react-native";
 import type { TextInputProps, TextProps, TextStyle, ViewStyle } from "react-native";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
+import { Circle, Rect, Svg } from "react-native-svg";
 import { isPaywallMessage } from "../api/client";
 import { Piso } from "../brand/Piso";
 import { formatCentavos } from "../lib/formatters";
@@ -440,6 +445,9 @@ export function Body({
   );
 }
 
+/** The coin's gold, the same in both schemes — see FloatingAddButton. */
+const COIN_GOLD = "#ad8318";
+
 /**
  * The primary capture action, floating above the tab bar in the bottom-right — the easiest place
  * to reach one-handed, which matters because logging an expense should take seconds and often
@@ -447,6 +455,20 @@ export function Body({
  *
  * Kept out of the tab bar on purpose: that bar is for destinations, and mixing an action into it
  * is the most consistently warned-against tab-bar mistake.
+ *
+ * Drawn as a coin going into Piso's slot (TEN-443). The crossbar is Piso's own slot — 28:7, fully
+ * rounded — in the disc's foreground; the upright is the coin's edge in gold, drawn *behind* the
+ * slot so that it reads as going in. Together they are still a plain "+". The disc is rimmed in
+ * the same gold at coin weight, so the whole button is the coin.
+ *
+ * One gold, `COIN_GOLD`, in both schemes: the disc flips from near-black to near-white, and this
+ * holds 5.1:1 on the first and 3.05:1 on the second. Each `warn*` gold fails on one of them, and
+ * the palette mirrors gastosai-web's CSS exactly, so a mobile-only token does not belong there.
+ *
+ * Pressing gives a light haptic and drops the coin 4pt into the slot (160 ms); the disc itself
+ * sinks 2pt and flattens its shadow. Under reduced motion the coin does not move — the haptic and
+ * the static sink stay. The disc stays `cta`, so the primary action is still the
+ * highest-contrast thing on screen.
  */
 export function FloatingAddButton({
   onPress,
@@ -456,12 +478,46 @@ export function FloatingAddButton({
   bottomOffset: number;
 }) {
   const t = useTheme();
+  const drop = useRef(new Animated.Value(0)).current;
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((on) => live && setReduceMotion(on))
+      .catch(() => {});
+    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => {
+      live = false;
+      sub.remove();
+    };
+  }, []);
+
+  const settle = (toValue: 0 | 1) => {
+    // Under reduced motion the coin never drops, but it still comes back up: reduced motion can be
+    // switched on while it is down.
+    if (reduceMotion) return drop.setValue(0);
+    Animated.timing(drop, { toValue, duration: 160, useNativeDriver: true }).start();
+  };
+
+  const artwork = {
+    accessibilityElementsHidden: true,
+    importantForAccessibility: "no-hide-descendants",
+  } as const;
+  const layer = { position: "absolute", top: 0, left: 0 } as const;
+  const coinDrop = drop.interpolate({ inputRange: [0, 1], outputRange: [0, 4] });
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Add expense"
       testID="fab-add"
       onPress={onPress}
+      onPressIn={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        settle(1);
+      }}
+      onPressOut={() => settle(0)}
       style={({ pressed }) => ({
         position: "absolute",
         right: 20,
@@ -472,25 +528,26 @@ export function FloatingAddButton({
         backgroundColor: t.colors.cta,
         alignItems: "center",
         justifyContent: "center",
-        opacity: pressed ? 0.8 : 1,
+        transform: [{ translateY: pressed ? 2 : 0 }],
         // Lifts it off the content beneath, so it reads as floating rather than inline.
         shadowColor: "#000",
-        shadowOpacity: 0.25,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 6,
+        shadowOpacity: pressed ? 0.15 : 0.25,
+        shadowRadius: pressed ? 6 : 12,
+        shadowOffset: { width: 0, height: pressed ? 2 : 4 },
+        elevation: pressed ? 3 : 6,
       })}
     >
-      <Text
-        style={{
-          color: t.colors.ctaFg,
-          fontSize: t.fontSizes.heading,
-          lineHeight: 34,
-          fontFamily: t.fonts.display,
-        }}
-      >
-        +
-      </Text>
+      <Svg width={56} height={56} viewBox="0 0 56 56" style={layer} {...artwork}>
+        <Circle cx={28} cy={28} r={22} fill="none" stroke={COIN_GOLD} strokeWidth={4.5} />
+      </Svg>
+      <Animated.View style={[layer, { transform: [{ translateY: coinDrop }] }]} {...artwork}>
+        <Svg width={56} height={56} viewBox="0 0 56 56" {...artwork}>
+          <Rect x={24.5} y={16} width={7} height={25} rx={3.5} fill={COIN_GOLD} />
+        </Svg>
+      </Animated.View>
+      <Svg width={56} height={56} viewBox="0 0 56 56" style={layer} {...artwork}>
+        <Rect x={14} y={25} width={28} height={7} rx={3.5} fill={t.colors.ctaFg} />
+      </Svg>
     </Pressable>
   );
 }

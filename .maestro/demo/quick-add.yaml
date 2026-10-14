@@ -25,8 +25,15 @@ appId: host.exp.Exponent
 
 - tapOn:
     id: "tab-home"
-- tapOn:
-    id: "month-prev"
+# Step back until June rather than a fixed number of taps: one tap only reached June while today
+# was July, and the flow broke the month that stopped being true.
+- repeat:
+    while:
+      notVisible: "(?i).*june 2026.*"
+    times: 12
+    commands:
+      - tapOn:
+          id: "month-prev"
 - extendedWaitUntil:
     visible: "(?i).*june 2026.*"
     timeout: 25000
@@ -64,7 +71,8 @@ appId: host.exp.Exponent
     visible: "(?i).*spent this month.*"
     timeout: 25000
     label: ">> And the month follows the expense"
-- extendedWaitUntil:
-    visible: "₱177.00"
+# Recent sits below the insight and daily-spend cards, so it has to be scrolled to.
+- scrollUntilVisible:
+    element: "₱177.00"
     timeout: 25000
     label: ">> There it is, under Recent"

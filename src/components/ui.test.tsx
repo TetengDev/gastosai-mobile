@@ -1,6 +1,9 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { ActionSheetIOS } from "react-native";
-import { render, screen, userEvent } from "@testing-library/react-native";
+import * as ReactNative from "react-native";
+import { ActionSheetIOS, processColor } from "react-native";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, fireEvent, render, screen, userEvent } from "@testing-library/react-native";
+import * as Haptics from "expo-haptics";
 import {
   Amount,
   Badge,
@@ -24,6 +27,57 @@ import {
   Skeleton,
   StatTile,
 } from "./ui";
+import { palettes } from "../theme";
+import AppLayout from "../../app/(app)/_layout";
+
+/**
+ * The tab layout's tests live here, not beside it: anything under `app/` is a route to
+ * expo-router (its context regex takes every `.tsx`), so a test file there would ship in the
+ * bundle as a screen — and jest's `testMatch` only looks under `src/` anyway.
+ *
+ * `Tabs` is replaced by a stand-in that renders each visible tab's title in declaration order,
+ * which is the only part of React Navigation these tests are about.
+ */
+const mockPush = jest.fn();
+let mockPathname = "/";
+jest.mock("expo-router", () => {
+  const { createElement } = jest.requireActual<typeof import("react")>("react");
+  const { Text, View } = jest.requireActual<typeof import("react-native")>("react-native");
+  function Tabs({ children }: { children: unknown }) {
+    return createElement(View, null, children as never);
+  }
+  Tabs.Screen = function Screen({
+    name,
+    options,
+  }: {
+    name: string;
+    options?: { title?: string; href?: null };
+  }) {
+    return options?.href === null
+      ? null
+      : createElement(Text, { testID: `tab-screen-${name}` }, options?.title);
+  };
+  return {
+    Tabs,
+    Redirect: () => null,
+    usePathname: () => mockPathname,
+    useRouter: () => ({ push: mockPush, navigate: jest.fn() }),
+  };
+});
+jest.mock("expo-haptics", () => ({
+  impactAsync: jest.fn(async () => {}),
+  ImpactFeedbackStyle: { Light: "light" },
+}));
+jest.mock("../context/AuthContext", () => ({
+  useAuth: () => ({ user: { email: "demo@example.com" }, ready: true }),
+}));
+jest.mock("../api/alerts", () => ({
+  listAlerts: async () => [],
+  unreadCount: () => 0,
+}));
+jest.mock("react-native-safe-area-context", () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
+}));
 
 /**
  * First test file for `ui.tsx` (TEN-434). Covers the key primitives rendering, plus the six
@@ -118,6 +172,196 @@ describe("FloatingAddButton stays out of the tab bar", () => {
 
     await user.press(button);
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+});
+
+type SvgNode = { type?: string; props?: Record<string, unknown>; children?: SvgNode[] | null };
+
+function findAll(node: SvgNode | null, predicate: (n: SvgNode) => boolean): SvgNode[] {
+  if (!node) return [];
+  const self = predicate(node) ? [node] : [];
+  const kids = node.children ?? [];
+  return self.concat(kids.flatMap((k) => findAll(k, predicate)));
+}
+
+describe("FloatingAddButton is a coin dropping into Piso's slot (TEN-443)", () => {
+  // One gold for both schemes: 5.1:1 on the near-black light-mode disc and 3.05:1 on the
+  // near-white dark-mode disc. The `warn*` golds each fail on one of the two.
+  const COIN_GOLD = processColor("#ad8318");
+
+  const render56 = () => render(<FloatingAddButton onPress={() => {}} bottomOffset={24} />);
+
+  it("keeps its 56pt target, testID and accessible name", () => {
+    render56();
+
+    const button = screen.getByTestId("fab-add");
+    expect(button).toHaveStyle({ width: 56, height: 56 });
+    expect(button.props.accessibilityLabel).toBe("Add expense");
+    expect(button.props.accessibilityRole).toBe("button");
+  });
+
+  it("draws its plus as Piso's slot with a gold coin edge going into it", () => {
+    // The crossbar is Piso's slot (4:1, fully rounded, in the disc's foreground); the upright is
+    // the coin's edge, in the coin's gold. Together they still read as "+".
+    const { toJSON } = render56();
+
+    expect(screen.queryByText("+")).toBeNull();
+    const rects = findAll(toJSON() as SvgNode, (n) => n.type === "RNSVGRect");
+    expect(rects).toHaveLength(2);
+    const bars = rects.map(
+      (r) =>
+        r.props as {
+          width: number;
+          height: number;
+          rx: number;
+          fill: { payload?: unknown };
+        },
+    );
+    // Found by shape, not order: the slot is drawn over the coin edge, so the coin goes in behind it.
+    const slot = bars.find((b) => b.width > b.height)!;
+    const coinEdge = bars.find((b) => b.height > b.width)!;
+
+    expect(slot.width / slot.height).toBe(4);
+    expect(slot.rx).toBe(slot.height / 2);
+    expect(slot.fill.payload).toBe(processColor(palettes.light.ctaFg));
+
+    expect(coinEdge.rx).toBe(coinEdge.width / 2);
+    expect(coinEdge.fill.payload).toBe(COIN_GOLD);
+  });
+
+  it.each(["light", "dark"] as const)(
+    "rims the disc in the coin's gold at coin weight (%s)",
+    (scheme) => {
+      // Piso's coin rim is a third of its radius; a 2pt hairline read as decoration, not a coin.
+      const spy = jest.spyOn(ReactNative, "useColorScheme").mockReturnValue(scheme);
+      try {
+        const { toJSON } = render56();
+
+        const rims = findAll(toJSON() as SvgNode, (n) => n.type === "RNSVGCircle");
+        expect(rims).toHaveLength(1);
+        expect((rims[0].props!.stroke as { payload?: unknown }).payload).toBe(COIN_GOLD);
+        expect(rims[0].props!.strokeWidth).toBeGreaterThanOrEqual(4);
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
+
+  it("hides the artwork from screen readers so the button reads once, as 'Add expense'", () => {
+    const { toJSON } = render56();
+
+    const svgs = findAll(toJSON() as SvgNode, (n) => n.type === "RNSVGSvgView");
+    expect(svgs.length).toBeGreaterThan(0);
+    for (const svg of svgs) {
+      expect(svg.props!.importantForAccessibility).toBe("no-hide-descendants");
+      expect(svg.props!.accessibilityElementsHidden).toBe(true);
+    }
+  });
+
+  it("sinks into the slot when pressed rather than fading", () => {
+    render56();
+
+    // Pressable is memoised, so it is found by its style callback rather than by type.
+    const [pressable] = screen.UNSAFE_root.findAll(
+      (n: { props: { style?: unknown } }) => typeof n.props.style === "function",
+    );
+    const style = pressable.props.style as (state: { pressed: boolean }) => Record<string, unknown>;
+
+    expect(style({ pressed: false })).toMatchObject({
+      transform: [{ translateY: 0 }],
+      elevation: 6,
+    });
+    const pressed = style({ pressed: true });
+    expect(pressed).toMatchObject({
+      transform: [{ translateY: 2 }],
+      elevation: 3,
+      shadowRadius: 6,
+    });
+    expect(pressed).not.toHaveProperty("opacity");
+  });
+
+  it("drops the coin into the slot with a light haptic when pressed", async () => {
+    // Once, not restored: the preset already mocks this, and restoring it leaves it returning
+    // undefined for every later test.
+    jest.spyOn(ReactNative.AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValueOnce(false);
+    const timing = jest.spyOn(ReactNative.Animated, "timing");
+    try {
+      render56();
+      await act(async () => {});
+
+      fireEvent(screen.getByTestId("fab-add"), "pressIn");
+
+      expect(Haptics.impactAsync).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Light);
+      expect(timing).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ toValue: 1, useNativeDriver: true }),
+      );
+    } finally {
+      timing.mockRestore();
+    }
+  });
+
+  it("keeps the haptic but drops no coin when reduced motion is on", async () => {
+    // Once, not restored: the preset already mocks this, and restoring it leaves it returning
+    // undefined for every later test.
+    jest.spyOn(ReactNative.AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValueOnce(true);
+    const timing = jest.spyOn(ReactNative.Animated, "timing");
+    try {
+      (Haptics.impactAsync as jest.Mock).mockClear();
+      render56();
+      await act(async () => {});
+
+      fireEvent(screen.getByTestId("fab-add"), "pressIn");
+
+      expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
+      expect(timing).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ toValue: 1 }),
+      );
+    } finally {
+      timing.mockRestore();
+    }
+  });
+});
+
+describe("the app shell around the coin-slot button (TEN-443)", () => {
+  function renderLayout(pathname: string) {
+    mockPathname = pathname;
+    mockPush.mockClear();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={client}>
+        <AppLayout />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("keeps the tab set Home, Expenses, Budgets, Goals, More, in that order", () => {
+    renderLayout("/");
+
+    const titles = screen.getAllByTestId(/^tab-screen-/).map((el) => el.props.children);
+    expect(titles).toEqual(["Home", "Expenses", "Budgets", "Goals", "More"]);
+  });
+
+  it("opens quick-add when the coin is dropped", async () => {
+    const user = userEvent.setup();
+    renderLayout("/expenses");
+
+    await user.press(screen.getByTestId("fab-add"));
+    expect(mockPush).toHaveBeenCalledWith("/(app)/quick-add");
+  });
+
+  it("sits above the tab bar and the home indicator", () => {
+    renderLayout("/");
+
+    // 56 tab bar + 34 inset + 16 breathing room.
+    expect(screen.getByTestId("fab-add")).toHaveStyle({ bottom: 106 });
+  });
+
+  it.each(["/more", "/quick-add", "/add-expense"])("is not offered on %s", (pathname) => {
+    renderLayout(pathname);
+
+    expect(screen.queryByTestId("fab-add")).toBeNull();
   });
 });
 
