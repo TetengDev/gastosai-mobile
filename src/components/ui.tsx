@@ -445,6 +445,9 @@ export function Body({
   );
 }
 
+/** The coin's gold, the same in both schemes — see FloatingAddButton. */
+const COIN_GOLD = "#ad8318";
+
 /**
  * The primary capture action, floating above the tab bar in the bottom-right — the easiest place
  * to reach one-handed, which matters because logging an expense should take seconds and often
@@ -467,8 +470,6 @@ export function Body({
  * the static sink stay. The disc stays `cta`, so the primary action is still the
  * highest-contrast thing on screen.
  */
-const COIN_GOLD = "#ad8318";
-
 export function FloatingAddButton({
   onPress,
   bottomOffset,
@@ -493,7 +494,9 @@ export function FloatingAddButton({
   }, []);
 
   const settle = (toValue: 0 | 1) => {
-    if (reduceMotion) return;
+    // Under reduced motion the coin never drops, but it still comes back up: reduced motion can be
+    // switched on while it is down.
+    if (reduceMotion) return drop.setValue(0);
     Animated.timing(drop, { toValue, duration: 160, useNativeDriver: true }).start();
   };
 
