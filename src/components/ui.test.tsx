@@ -307,12 +307,13 @@ describe("FloatingAddButton is a coin dropping into Piso's slot (TEN-443)", () =
     jest.spyOn(ReactNative.AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValueOnce(true);
     const timing = jest.spyOn(ReactNative.Animated, "timing");
     try {
+      (Haptics.impactAsync as jest.Mock).mockClear();
       render56();
       await act(async () => {});
 
       fireEvent(screen.getByTestId("fab-add"), "pressIn");
 
-      expect(Haptics.impactAsync).toHaveBeenCalled();
+      expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
       expect(timing).not.toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ toValue: 1 }),
