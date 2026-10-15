@@ -18,13 +18,15 @@ env:
   GASTOSAI_PASSWORD: demo123
 
 # Matches on amount alone (177 is chosen not to collide with seeded data) because the AI parse
-# rewrites the description. Keep in sync with edit-delete.yaml's cleanup script.
+# rewrites the description. The script is shared with edit-delete.yaml.
 #
 # Deletes the expense this flow saved, pass or fail. Run on its own in the suite, nothing else
 # removed it, so every full run left one ₱177 Jollibee row in the demo account (TEN-450).
 onFlowComplete:
-  - evalScript: |
-      ${(function(){var h={'Content-Type': 'application/json'}; var t=json(http.post('http://localhost:8080/auth/login', {headers: h, body: JSON.stringify({email: GASTOSAI_EMAIL, password: GASTOSAI_PASSWORD})}).body).token; var a={'Authorization': 'Bearer ' + t}; var body=json(http.get('http://localhost:8080/expenses', {headers: a}).body); var rows=body.content ? body.content : body; for (var i=0;i<rows.length;i++){var r=rows[i]; if (Number(r.amount)===177) { http.delete('http://localhost:8080/expenses/' + r.id, {headers: a}); } } return 'cleaned';})()}
+  - runScript:
+      file: scripts/cleanup-expenses.js
+      env:
+        AMOUNTS: "177"
 ---
 - runFlow: launch.yaml
 
