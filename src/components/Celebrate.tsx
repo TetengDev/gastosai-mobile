@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { Piso } from "../brand/Piso";
-import { hasCelebrated, markCelebrated } from "../lib/celebrateStore";
+import { useAuth } from "../context/AuthContext";
+import { celebrationKey, hasCelebrated, markCelebrated } from "../lib/celebrateStore";
 import { useTheme } from "../theme/useTheme";
 
 // Events claimed this session. The stored flag is async, so two mounts can both read "unseen";
@@ -20,14 +21,19 @@ export function Celebrate({ event, size = 96 }: { event: string; size?: number }
   const [withCoin, setWithCoin] = useState(false);
   const drop = useRef(new Animated.Value(0)).current;
 
+  const account = useAuth().user?.email;
+
   useEffect(() => {
+    // The seen flag is per account; with no account there is nothing to scope it to.
+    if (!account) return;
     let live = true;
     (async () => {
-      if (await hasCelebrated(event)) return;
+      if (await hasCelebrated(account, event)) return;
       const reduce = await AccessibilityInfo.isReduceMotionEnabled().catch(() => true);
-      if (!live || claimed.has(event)) return;
-      claimed.add(event);
-      void markCelebrated(event);
+      const claim = celebrationKey(account, event);
+      if (!live || claimed.has(claim)) return;
+      claimed.add(claim);
+      void markCelebrated(account, event);
       setPlaying(true);
       setWithCoin(!reduce);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -38,7 +44,7 @@ export function Celebrate({ event, size = 96 }: { event: string; size?: number }
     return () => {
       live = false;
     };
-  }, [event, drop]);
+  }, [account, event, drop]);
 
   if (!playing) return null;
 
