@@ -37,6 +37,13 @@ export default function InsightCard({ month }: { month: string }) {
   if (summary.isLoading) return <Skeleton height={96} />;
   if (!summary.data?.summary) return null;
 
+  // The line needs a real category with real spending behind it. `top-category` shares the
+  // per-user `/ai/**` rate limit with the summary, so it can fail (or answer 429, which
+  // `insights.ts` turns into `null`) while the sentence succeeded; and a month with no spending
+  // comes back as the placeholder `{category: "None", total: 0}`, which is not a category.
+  const topCategory = top.data;
+  const showTop = !!topCategory?.category && (topCategory.total ?? 0) > 0;
+
   return (
     <Card>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -54,10 +61,10 @@ export default function InsightCard({ month }: { month: string }) {
 
       <Body>{summary.data.summary}</Body>
 
-      {top.data?.category ? (
+      {showTop ? (
         <Body dim style={{ fontSize: 12.5 }}>
-          Biggest category: {top.data.category} · {formatCentavos(top.data.total ?? 0)} ·{" "}
-          {Math.round(top.data.percentOfMonthTotal ?? 0)}% of the month
+          Biggest category: {topCategory?.category} · {formatCentavos(topCategory?.total)} ·{" "}
+          {Math.round(topCategory?.percentOfMonthTotal ?? 0)}% of the month
         </Body>
       ) : null}
 
