@@ -17,7 +17,17 @@
 const base = 'http://localhost:8080';
 const jsonHeaders = { 'Content-Type': 'application/json' };
 
-const wanted = AMOUNTS.split(',').map(Number);
+// An empty entry would become Number('') === 0 and delete every ₱0 row, so blanks and non-numbers
+// are dropped, and a list with nothing left in it is a caller's mistake, not a no-op.
+const wanted = String(AMOUNTS)
+  .split(',')
+  .filter(function (a) {
+    return a.trim() !== '' && !isNaN(Number(a));
+  })
+  .map(Number);
+if (wanted.length === 0) {
+  throw new Error('cleanup needs AMOUNTS, e.g. "177,226.53"; got "' + AMOUNTS + '"');
+}
 
 const login = http.post(base + '/auth/login', {
   headers: jsonHeaders,
