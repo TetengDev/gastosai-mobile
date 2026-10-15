@@ -23,9 +23,9 @@ env:
   GASTOSAI_EMAIL: demo@gastosai.dev
   GASTOSAI_PASSWORD: demo123
 
-# The scripts here and in quick-add.yaml call the legacy unversioned surface (decimal amounts), as
-# launch.yaml does; they break if those paths are retired. Keep the cleanup script in sync with
-# quick-add.yaml's.
+# The cleanup script (scripts/cleanup-expenses.js, shared with quick-add.yaml) and the create step
+# below call the legacy unversioned surface (decimal amounts), as launch.yaml does; they break if
+# those paths are retired.
 #
 # Runs whether the flow passed or failed. An assertion that fails after quick-add has saved the
 # expense used to leave a ₱177 (or ₱226.53, once edited) row in the demo account for every failed
@@ -34,8 +34,10 @@ env:
 # launch means `output.token` was never set. On a passing run the UI delete has already removed the
 # row and this finds nothing.
 onFlowComplete:
-  - evalScript: |
-      ${(function(){var h={'Content-Type': 'application/json'}; var t=json(http.post('http://localhost:8080/auth/login', {headers: h, body: JSON.stringify({email: GASTOSAI_EMAIL, password: GASTOSAI_PASSWORD})}).body).token; var a={'Authorization': 'Bearer ' + t}; var body=json(http.get('http://localhost:8080/expenses', {headers: a}).body); var rows=body.content ? body.content : body; for (var i=0;i<rows.length;i++){var r=rows[i]; var amt=Number(r.amount); if (amt===177 || amt===226.53) { http.delete('http://localhost:8080/expenses/' + r.id, {headers: a}); } } return 'cleaned';})()}
+  - runScript:
+      file: scripts/cleanup-expenses.js
+      env:
+        AMOUNTS: "177,226.53"
 ---
 # Create the expense this flow edits through the API, rather than assuming it is already there.
 #
