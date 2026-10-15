@@ -2,8 +2,14 @@
 #
 # **This flow is filmed.** Written for someone who has never seen the app — a client, not a
 # reviewer. The rules are the same as `chat.yaml`: no housekeeping on camera, open and close on a
-# full screen, and use June rather than the current month, because the demo account's data ends
-# there and an empty month is honest but useless.
+# full screen, and use last month rather than the current one, because the current month is only
+# partly spent and a thin month is honest but says little.
+#
+# **No figure is written down here.** This flow asserted June's ₱9,049.50 and 38.71% until the demo
+# seed began generating expenses relative to today (backend `b02d467`): from then on June held
+# different numbers every month and the recorder refused every take. The figures are asked of the
+# same endpoints the screen reads, the way `.maestro/dashboard.yaml` does — still numbers the client
+# cannot invent.
 #
 # Read-only. It creates nothing, so there is no cleanup flow for it.
 #
@@ -21,25 +27,35 @@ appId: host.exp.Exponent
     id: "tab-home"
 - tapOn:
     id: "month-prev"
-    label: ">> A month with something to show"
 - extendedWaitUntil:
-    visible: "(?i).*june 2026.*"
+    visible: "(?i).*${output.prevMonth}.*"
     timeout: 25000
-- extendedWaitUntil:
-    visible: "₱9,049.50"
-    timeout: 25000
-    label: ">> What June actually cost"
+    label: ">> Last month, with something to show"
+
+# Off camera: what the server says last month was. `changePercent` is signed, the prose around it
+# never is — hence the magnitude. See `.maestro/dashboard.yaml` for both.
+- evalScript: |
+    ${output.cmp = json(http.get('http://localhost:8080/expenses/report/monthly-comparison?month=' + output.prevKey, {headers: {'Authorization': 'Bearer ' + output.token}}).body)}
+- evalScript: |
+    ${output.changePct = Math.abs(Number(output.cmp.changePercent)).toFixed(2)}
+- evalScript: |
+    ${output.topCatRes = http.get('http://localhost:8080/ai/insights/top-category?month=' + output.prevKey, {headers: {'Authorization': 'Bearer ' + output.token}})}
+- assertTrue:
+    condition: ${output.topCatRes.status == 200}
+    label: "top-category answered ${output.topCatRes.status}: ${output.topCatRes.body}"
+- evalScript: |
+    ${output.topCat = json(output.topCatRes.body)}
 
 # The insight sentence: the figure the client cannot invent.
 #
 # The percentage only, never the prose around it — that is a model's wording and it moves between
 # runs. `Biggest category:` is app-rendered, so it is the safe way to prove the card resolved rather
-# than still showing a spinner. See `.maestro/dashboard.yaml`.
+# than still showing a spinner.
 - extendedWaitUntil:
-    visible: "(?i).*38.71%.*"
+    visible: "(?i).*${output.changePct}%.*"
     timeout: 30000
     label: ">> Written by the server, not the phone"
-- assertVisible: "(?i).*biggest category: meal plan.*"
+- assertVisible: "(?i).*biggest category: ${output.topCat.category}.*"
 
 # A dashboard you read by scrolling — the deliberate trade for keeping the glance intact up top.
 - scrollUntilVisible:
@@ -65,5 +81,5 @@ appId: host.exp.Exponent
     direction: UP
     label: ">> Back to the top"
 - extendedWaitUntil:
-    visible: "₱9,049.50"
+    visible: "(?i).*${output.prevMonth}.*"
     timeout: 20000
