@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { currentMonth, formatCentavos, formatDate, formatDateOnly, formatDayMonth, monthRange, nowForApi, parseAmountToCentavos } from "./formatters";
 
 /**
@@ -139,10 +139,27 @@ describe("timezone pinning", () => {
 
     const manilaHour = new Intl.DateTimeFormat("en-GB", {
       hour: "2-digit",
-      hour12: false,
+      hourCycle: "h23",
       timeZone: "Asia/Manila",
     }).format(new Date());
     expect(value.slice(11, 13)).toBe(manilaHour);
+  });
+
+  it("nowForApi emits hour 00, never 24, in Manila's midnight hour", () => {
+    // `hour12: false` can select the h24 cycle, which renders midnight as "24" and sends
+    // `T24:30:00` — the wrong day, possibly the wrong month. Pin the clock so this is covered at
+    // any wall-clock hour, not only when the suite happens to run after midnight in Manila.
+    jest.useFakeTimers();
+    try {
+      jest.setSystemTime(new Date("2026-06-25T16:30:00Z")); // 2026-06-26 00:30 in Manila
+      expect(nowForApi()).toBe("2026-06-26T00:30:00");
+      jest.setSystemTime(new Date("2026-06-25T16:00:00Z")); // 00:00 sharp
+      expect(nowForApi()).toBe("2026-06-26T00:00:00");
+      jest.setSystemTime(new Date("2026-06-25T16:59:59Z")); // last second of the hour
+      expect(nowForApi()).toBe("2026-06-26T00:59:59");
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("currentMonth reports the Manila month", () => {

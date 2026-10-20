@@ -159,7 +159,8 @@ export const nowForApi = (): string => {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-    hour12: false,
+    // h23 pins midnight to "00"; the boolean 12-hour switch can resolve to h24 and give "24".
+    hourCycle: "h23",
     timeZone: APP_TIME_ZONE,
   }).formatToParts(new Date());
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
