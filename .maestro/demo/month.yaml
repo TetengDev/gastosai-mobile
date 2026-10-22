@@ -1,8 +1,15 @@
 # Demo: every month is reachable, and the whole app follows the one you pick.
 #
 # **This flow is filmed.** Same rules as `chat.yaml`: no housekeeping on camera, close on a full
-# screen, and let the empty current month be part of the story rather than something to hide — the
-# point of this feature is that an empty month is no longer a dead end.
+# screen, and let the empty month be part of the story rather than something to hide — the point of
+# this feature is that an empty month is no longer a dead end.
+#
+# **No month name or figure is written down here.** This flow asserted `july 2026` and June's
+# ₱9,049.50 until the demo seed began generating expenses relative to today (backend `b02d467`):
+# from then on every month held different numbers and the recorder refused every take. Months come
+# from `launch.yaml`, and the totals are asked of `/expenses/report/monthly`, the endpoint the
+# screen reads, the way `.maestro/month.yaml` does. The empty month is found the same way that flow
+# finds it: one step past the earliest month with data.
 #
 # Read-only, so there is no cleanup flow for it.
 #
@@ -16,55 +23,82 @@ appId: host.exp.Exponent
 ---
 - runFlow: ../launch.yaml
 
+# Off camera: what the server says each month totals, and how far back the first empty month is.
+- evalScript: |
+    ${output.rows = json(http.get('http://localhost:8080/expenses/report/monthly', {headers: {'Authorization': 'Bearer ' + output.token}}).body)}
+- evalScript: |
+    ${output.fmt = function(key){var rows = output.rows; for (var i = 0; i < rows.length; i++) { if (rows[i].month === key) return '₱' + Number(rows[i].total).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); } return 'NO ROW FOR ' + key;}}
+- evalScript: |
+    ${output.prevTotal = output.fmt(output.prevKey)}
+- evalScript: |
+    ${output.empty = (function(){var rows = output.rows; var earliest = rows[0].month; for (var i = 0; i < rows.length; i++) { if (rows[i].month < earliest) earliest = rows[i].month; } var ey = Number(earliest.slice(0, 4)), em = Number(earliest.slice(5, 7)); var ty = Number(output.thisKey.slice(0, 4)), tm = Number(output.thisKey.slice(5, 7)); var n = ['January','February','March','April','May','June','July','August','September','October','November','December']; var t = new Date(Date.UTC(ey, em - 2, 1)); return {steps: (ty - ey) * 12 + (tm - em) + 1, label: n[t.getUTCMonth()] + ' ' + t.getUTCFullYear()};})()}
+
 - tapOn:
     id: "tab-home"
 - extendedWaitUntil:
-    visible: "(?i).*july 2026.*"
+    visible: "(?i).*${output.thisMonth}.*"
     timeout: 25000
-    label: ">> This month, nothing recorded yet"
+    label: ">> Home opens on this month"
 
 - tapOn:
     id: "month-prev"
     label: ">> Step back a month"
 - extendedWaitUntil:
-    visible: "(?i).*june 2026.*"
+    visible: "(?i).*${output.prevMonth}.*"
     timeout: 20000
 - extendedWaitUntil:
-    visible: "₱9,049.50"
+    visible: "(?i).*${output.prevTotal}.*"
     timeout: 20000
-    label: ">> June, with everything in it"
+    label: ">> Last month, with everything in it"
 
-# Both directions, and the empty month offers a way out rather than dead-ending on nothing.
+# Both directions.
 - tapOn:
     id: "month-next"
     label: ">> Forward again"
 - extendedWaitUntil:
-    visible: "(?i).*nothing recorded in july 2026.*"
+    visible: "(?i).*${output.thisMonth}.*"
     timeout: 20000
+
+# Walk back past the start of the data. The empty month offers a way out rather than dead-ending on
+# nothing.
+- repeat:
+    times: ${output.empty.steps}
+    commands:
+      - tapOn:
+          id: "month-prev"
+- extendedWaitUntil:
+    visible: "(?i).*nothing recorded in ${output.empty.label}.*"
+    timeout: 20000
+    label: ">> Before the first record, nothing"
 - tapOn:
     id: "jump-to-latest"
     label: ">> An empty month offers the nearest one with data"
 - extendedWaitUntil:
-    visible: "₱9,049.50"
+    visible: "(?i).*${output.thisMonth}.*"
     timeout: 20000
 
-# The month is shared context, not per-screen state — the tabs are already on June.
+# The month is shared context, not per-screen state — the tabs follow it.
+- tapOn:
+    id: "month-prev"
+- extendedWaitUntil:
+    visible: "(?i).*${output.prevMonth}.*"
+    timeout: 20000
 - tapOn:
     id: "tab-expenses"
-    label: ">> Expenses is already on June"
+    label: ">> Expenses is already on last month"
 - extendedWaitUntil:
-    visible: "(?i).*june 2026.*"
+    visible: "(?i).*${output.prevMonth}.*"
     timeout: 20000
 - tapOn:
     id: "tab-budgets"
     label: ">> So is Budgets, without being told"
 - extendedWaitUntil:
-    visible: "(?i).*june 2026.*"
+    visible: "(?i).*${output.prevMonth}.*"
     timeout: 20000
 
 - tapOn:
     id: "tab-home"
     label: ">> Back where we started"
 - extendedWaitUntil:
-    visible: "₱9,049.50"
+    visible: "(?i).*${output.prevTotal}.*"
     timeout: 20000
