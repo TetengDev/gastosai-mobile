@@ -13,30 +13,6 @@ appId: host.exp.Exponent
 - tapOn:
     id: "tab-home"
 
-# Let the backend's `/ai/**` rate-limit window run out before this flow asks for anything under it.
-#
-# Every `/ai/**` request — `top-category` included, though it never calls a model — draws on one
-# per-user, fixed 60-second window of 20 (`gastos.ratelimit.ai-per-minute`, `AiRateLimitInterceptor`).
-# Each month Home shows mounts the insight card, which spends two. `month.yaml` runs just before this
-# flow in a directory run and walks Home back through every seeded month, so by the time this flow
-# asked for `top-category` the window was full: it answered
-# `429 {"title":"Too Many Requests","detail":"AI request rate limit exceeded. Please slow down."}`,
-# `.category` of that is `undefined`, and the run failed on `biggest category: undefined`. The app
-# was fine: in all five failing runs on 2026-10-13 the failing step's own screen hierarchy shows
-# "Biggest category: Meal Plan · ₱4,035.00 · 40% of the month" (TEN-461). Alone, the flow starts
-# with an empty window and passed — which is why it only ever failed in the full suite.
-#
-# Sixty-one seconds of nothing is the deterministic way through: whatever spent the window, it has
-# expired by the next request, and this flow then spends three (the app's two for last month and
-# the one below). Nothing on screen is waited for — the id never exists — and `optional` turns the
-# timeout into a warning rather than a failure. Retrying on 429 instead would be no faster: a
-# refused request does not move the window, and there is no `Retry-After` to read.
-- extendedWaitUntil:
-    visible:
-      id: "ai-rate-limit-window-elapsed"
-    timeout: 61000
-    optional: true
-
 - tapOn:
     id: "month-prev"
 - extendedWaitUntil:
