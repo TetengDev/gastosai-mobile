@@ -6,6 +6,32 @@ import { Text as MockText } from "react-native";
 // file happened to import the library first. Without that unmount, a component still holding a
 // timer or a React Query subscription keeps running into the next test.
 import "@testing-library/react-native";
+import { timeoutManager } from "@tanstack/react-query";
+
+/**
+ * React Query's cache timers must not hold the worker open.
+ *
+ * Every query and every mutation schedules a garbage-collection timer when it is created or loses
+ * its last observer — five minutes unless `gcTime` says otherwise. A mutation's `gcTime` is
+ * separate from a query's, so `defaultOptions.queries.gcTime: 0` does not reach it, and
+ * `queryClient.clear()` drops the mutation without cancelling its timer. That five-minute timer is
+ * what made the run end with "A worker process has failed to exit gracefully" (TEN-405).
+ *
+ * Unref'ing them here, for every client any test creates, keeps the timers working while a test
+ * runs and lets the worker exit when it is done, without each render test having to remember a
+ * `gcTime` for queries and mutations both. Any other timer still holds the worker, so a real leak
+ * is still reported.
+ */
+const unref = (handle) => {
+  handle?.unref?.();
+  return handle;
+};
+timeoutManager.setTimeoutProvider({
+  setTimeout: (callback, delay) => unref(setTimeout(callback, delay)),
+  clearTimeout: (handle) => clearTimeout(handle),
+  setInterval: (callback, delay) => unref(setInterval(callback, delay)),
+  clearInterval: (handle) => clearInterval(handle),
+});
 
 /**
  * Per-test-file setup for React Native rendering.
