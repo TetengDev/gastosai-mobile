@@ -43,8 +43,9 @@ let client: QueryClient;
 
 function renderCard() {
   // `retry: false` so a rejected query fails the first time rather than after three backed-off
-  // attempts, which would outlive the test. `gcTime: 0` so an unmounted query leaves no five
-  // minute collection timer behind — jest reports that as a run that will not exit.
+  // attempts, which would outlive the test. `gcTime: 0` so an unmounted query is dropped at once
+  // rather than lingering in the cache. Its collection timer cannot keep jest from exiting either
+  // way: `jest.setup.js` unrefs every React Query timer (TEN-405).
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
