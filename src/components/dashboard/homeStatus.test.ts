@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { celebrationsFor, daysLeftInMonth, needsAttention, statusLine } from "./homeStatus";
+import { budgetMeter, celebrationsFor, daysLeftInMonth, needsAttention, statusLine } from "./homeStatus";
 
 /** Spec §5, Dashboard: the hero's status line per mood, and what "Needs attention" lists. */
 
@@ -109,5 +109,20 @@ describe("celebrationsFor", () => {
     expect(celebrationsFor({ month: "2026-10", today, bands: ["ON_TRACK"], goals: [] })).toEqual([]);
     expect(celebrationsFor({ month: "2026-09", today, bands: ["OVER_BUDGET"], goals: [] })).toEqual([]);
     expect(celebrationsFor({ month: "2026-09", today, bands: [], goals: [] })).toEqual([]);
+  });
+});
+
+describe("budgetMeter", () => {
+  it("measures the month against its total budget, toned by the worst band", () => {
+    expect(budgetMeter({ totalSpent: 90000, totalBudgeted: 100000 }, ["ON_TRACK", "WARNING"])).toEqual({
+      percent: 90,
+      tone: "warning",
+      caption: "₱900.00 of ₱1,000.00 budget",
+    });
+  });
+
+  it("is absent without a budget", () => {
+    expect(budgetMeter(undefined, [])).toBeNull();
+    expect(budgetMeter({ totalSpent: 500, totalBudgeted: 0 }, [])).toBeNull();
   });
 });

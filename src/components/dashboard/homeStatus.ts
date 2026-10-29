@@ -131,3 +131,22 @@ export function celebrationsFor({
 export function closedUnderBudget(month: string, today: string, bands: readonly BudgetBand[]): boolean {
   return daysLeftInMonth(month, today) === null && bands.length > 0 && worstBand(bands) !== "OVER_BUDGET";
 }
+
+/**
+ * The hero meter: the month's budgeted spend against its total budget. The server publishes both
+ * totals but no overall percentage, so the fill is their ratio — a bar width, never a band. Its
+ * tone is the worst server band on screen, as spec §3 asks, so colour never comes from the ratio.
+ */
+export function budgetMeter(
+  summary: Pick<BudgetSummaryResponse, "totalSpent" | "totalBudgeted"> | undefined,
+  bands: readonly BudgetBand[],
+): { percent: number; tone: MeterTone; caption: string } | null {
+  const budgeted = summary?.totalBudgeted ?? 0;
+  if (!summary || budgeted <= 0) return null;
+  const spent = summary.totalSpent ?? 0;
+  return {
+    percent: Math.round((spent * 100) / budgeted),
+    tone: budgetTone(worstBand(bands) ?? "ON_TRACK"),
+    caption: `${formatCentavos(spent)} of ${formatCentavos(budgeted)} budget`,
+  };
+}
