@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { budgetMeter, celebrationsFor, daysLeftInMonth, needsAttention, statusLine } from "./homeStatus";
+import { billMonths, budgetMeter, celebrationsFor, daysLeftInMonth, needsAttention, statusLine } from "./homeStatus";
 
 /** Spec §5, Dashboard: the hero's status line per mood, and what "Needs attention" lists. */
 
@@ -124,5 +124,33 @@ describe("budgetMeter", () => {
   it("is absent without a budget", () => {
     expect(budgetMeter(undefined, [])).toBeNull();
     expect(budgetMeter({ totalSpent: 500, totalBudgeted: 0 }, [])).toBeNull();
+  });
+});
+
+/**
+ * Review finding on TEN-444: "due within 7 days" read only the selected month's upcoming bills, so
+ * from about the 25th a bill due on the 1st-7th of next month (rent, usually) never showed.
+ */
+describe("bills across the month end", () => {
+  it("asks for next month too when the seven-day window crosses into it", () => {
+    expect(billMonths("2026-10", "2026-10-28")).toEqual(["2026-10", "2026-11"]);
+    expect(billMonths("2026-12", "2026-12-30")).toEqual(["2026-12", "2027-01"]);
+  });
+
+  it("asks for the selected month alone when the window stays inside it", () => {
+    expect(billMonths("2026-10", "2026-10-24")).toEqual(["2026-10"]);
+    expect(billMonths("2026-09", "2026-10-28")).toEqual(["2026-09"]);
+  });
+
+  it("lists a bill due on the 2nd of next month on the 28th, and not one due on the 9th", () => {
+    const october = [{ id: 1, name: "Internet", dueDate: "2026-10-30", amount: 159900 }];
+    const november = [
+      { id: 2, name: "Rent", dueDate: "2026-11-02", amount: 1500000 },
+      { id: 3, name: "Gym", dueDate: "2026-11-09", amount: 150000 },
+      // The same occurrence returned by both months' answers is listed once.
+      { id: 1, name: "Internet", dueDate: "2026-10-30", amount: 159900 },
+    ];
+    const rows = needsAttention([], [...october, ...november], "2026-10-28");
+    expect(rows.map((r) => r.label)).toEqual(["Internet", "Rent"]);
   });
 });

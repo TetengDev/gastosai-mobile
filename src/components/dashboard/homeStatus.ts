@@ -68,6 +68,16 @@ function addDays(day: string, n: number): string {
 }
 
 /**
+ * The months whose `/recurring/upcoming` Home must read to cover the seven-day bill window: the
+ * selected month, plus the next one once the window crosses the month end — otherwise a bill due
+ * on the 1st (rent, usually) is invisible all through the last week of the month before.
+ */
+export function billMonths(month: string, today: string): string[] {
+  const next = addDays(today, BILL_WINDOW_DAYS).slice(0, 7);
+  return month === today.slice(0, 7) && next !== month ? [month, next] : [month];
+}
+
+/**
  * Budgets the server bands `WARNING` or `OVER_BUDGET`, fullest first, then bills due from today
  * through the next seven days. Empty means the section is not drawn.
  */
@@ -95,8 +105,16 @@ export function needsAttention(
     });
 
   const until = addDays(today, BILL_WINDOW_DAYS);
+  const seen = new Set<string>();
   const due = bills
     .filter((b) => !!b.dueDate && b.dueDate >= today && b.dueDate <= until)
+    // Two months' answers can carry the same occurrence; list it once.
+    .filter((b) => {
+      const id = `${b.id}-${b.dueDate}`;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    })
     .map(
       (b, i): AttentionRow => ({
         key: `bill-${b.id}-${b.dueDate}-${i}`,

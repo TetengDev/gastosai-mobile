@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { RefreshControl, ScrollView } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import { budgetSummary } from "../../src/api/budgets";
@@ -11,6 +11,7 @@ import { useMonth } from "../../src/context/MonthContext";
 import { Body, Button, ErrorText, MonthStepper } from "../../src/components/ui";
 import { GoalsStrip, Hero, Insights, NeedsAttention, RecentList } from "../../src/components/dashboard/Home";
 import {
+  billMonths,
   budgetMeter,
   celebrationsFor,
   closedUnderBudget,
@@ -39,10 +40,14 @@ export default function Dashboard() {
     queryKey: ["budgets", "summary", month],
     queryFn: () => budgetSummary(month),
   });
-  const bills = useQuery({
-    queryKey: ["recurring", "upcoming", month],
-    queryFn: () => upcomingBills(month),
+  // Next month's bills too once the seven-day window crosses the month end.
+  const bills = useQueries({
+    queries: billMonths(month, today).map((m) => ({
+      queryKey: ["recurring", "upcoming", m],
+      queryFn: () => upcomingBills(m),
+    })),
   });
+  const upcoming = bills.flatMap((q) => q.data ?? []);
   const goals = useQuery({ queryKey: ["goals"], queryFn: listGoals });
 
   // The report is keyed by "YYYY-MM"; find this month's row rather than assuming ordering.
@@ -77,12 +82,16 @@ export default function Dashboard() {
         });
 
   const refreshing =
-    report.isRefetching || expenses.isRefetching || budgets.isRefetching || bills.isRefetching || goals.isRefetching;
+    report.isRefetching ||
+    expenses.isRefetching ||
+    budgets.isRefetching ||
+    bills.some((q) => q.isRefetching) ||
+    goals.isRefetching;
   const refreshAll = () => {
     report.refetch();
     expenses.refetch();
     budgets.refetch();
-    bills.refetch();
+    bills.forEach((q) => q.refetch());
     goals.refetch();
   };
 
@@ -133,7 +142,7 @@ export default function Dashboard() {
         ) : null}
       </Hero>
 
-      <NeedsAttention rows={needsAttention(items, bills.data ?? [], today)} />
+      <NeedsAttention rows={needsAttention(items, upcoming, today)} />
       <GoalsStrip goals={goals.data ?? []} />
       <RecentList
         expenses={expenses.data ?? []}
