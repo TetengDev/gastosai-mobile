@@ -1,91 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { budgetSummary } from "../../api/budgets";
-import { listGoals } from "../../api/goals";
-import { upcomingBills } from "../../api/recurring";
 import { categoryReport, topExpenses } from "../../api/reports";
-import { formatCentavos, formatDateOnly } from "../../lib/formatters";
+import { formatCentavos } from "../../lib/formatters";
 import { expenseAmountText } from "../money";
-import { budgetTone, goalTone, toBand } from "../../lib/pisoMood";
-import { ProgressMeter } from "../ui";
 import SummaryCard from "./SummaryCard";
 import type { SummaryRow } from "./SummaryCard";
 
 /**
- * The list-shaped dashboard cards, mirroring web's `UpcomingBillsCard`, `BudgetOverviewCard`,
- * `TopExpensesCard` and the category breakdown.
+ * The two list-shaped cards inside Home's Insights group: the biggest expenses and the category
+ * split. Budgets, bills and goals moved into Home's own sections (TEN-444).
  *
  * Each shows a *short* version and links to the tab holding the full one — a dashboard summarises,
  * it does not duplicate. Each is independently queried, so one failing leaves the rest intact.
  */
-
-/** What is due for the rest of the month. */
-export function UpcomingBillsCard({ month }: { month: string }) {
-  const router = useRouter();
-  const { data } = useQuery({
-    queryKey: ["recurring", "upcoming", month],
-    queryFn: () => upcomingBills(month),
-  });
-
-  const rows: SummaryRow[] = (data ?? []).slice(0, 3).map((b, i) => ({
-    key: `${b.id}-${b.dueDate}-${i}`,
-    label: b.name ?? "-",
-    sub: b.dueDate ? formatDateOnly(b.dueDate) : b.categoryName,
-    value: formatCentavos(b.amount ?? 0),
-  }));
-
-  return (
-    <SummaryCard
-      testID="card-upcoming"
-      title="DUE THIS MONTH"
-      rows={rows}
-      footer="All recurring"
-      onFooterPress={() => router.push("/(app)/more/recurring")}
-    />
-  );
-}
-
-/**
- * The budgets closest to their limit.
- *
- * Sorted by `percentUsed`, which the backend computed — the sort is presentation over values it
- * supplied, not a recalculation. Three rows, because the point is "what is about to bite", and the
- * Budgets tab is one tap away for the rest.
- */
-export function BudgetOverviewCard({ month }: { month: string }) {
-  const router = useRouter();
-  const { data } = useQuery({
-    queryKey: ["budgets", "summary", month],
-    queryFn: () => budgetSummary(month),
-  });
-
-  const rows: SummaryRow[] = [...(data?.items ?? [])]
-    .sort((a, b) => (b.percentUsed ?? 0) - (a.percentUsed ?? 0))
-    .slice(0, 3)
-    .map((b) => ({
-      key: String(b.categoryId ?? b.categoryName),
-      label: b.categoryName ?? "-",
-      sub: `${formatCentavos(b.spent ?? 0)} of ${formatCentavos(b.budgeted ?? 0)}`,
-      value: `${Math.round(b.percentUsed ?? 0)}%`,
-      extra: (
-        <ProgressMeter
-          percent={b.percentUsed ?? 0}
-          tone={budgetTone(toBand(b.status))}
-          label={`${b.categoryName ?? "Budget"} budget`}
-        />
-      ),
-    }));
-
-  return (
-    <SummaryCard
-      testID="card-budgets"
-      title="CLOSEST TO LIMIT"
-      rows={rows}
-      footer="All budgets"
-      onFooterPress={() => router.push("/(app)/budgets")}
-    />
-  );
-}
 
 /** The month's five largest expenses, ranked by the backend. */
 export function TopExpensesCard({ month }: { month: string }) {
@@ -113,36 +40,6 @@ export function TopExpensesCard({ month }: { month: string }) {
       rows={rows}
       footer="All expenses"
       onFooterPress={() => router.push("/(app)/expenses")}
-    />
-  );
-}
-
-/** Progress on each savings goal, as the server computes it. */
-export function GoalProgressCard() {
-  const router = useRouter();
-  const { data } = useQuery({ queryKey: ["goals"], queryFn: listGoals });
-
-  const rows: SummaryRow[] = (data ?? []).slice(0, 3).map((g) => ({
-    key: String(g.id),
-    label: g.name ?? "-",
-    sub: `${formatCentavos(g.savedAmount ?? 0)} of ${formatCentavos(g.targetAmount ?? 0)}`,
-    value: `${Math.round(g.progressPercent ?? 0)}%`,
-    extra: (
-      <ProgressMeter
-        percent={g.progressPercent ?? 0}
-        tone={goalTone(g.status ?? "ON_TRACK")}
-        label={g.name ?? "Goal"}
-      />
-    ),
-  }));
-
-  return (
-    <SummaryCard
-      testID="card-goals"
-      title="GOALS"
-      rows={rows}
-      footer="All goals"
-      onFooterPress={() => router.push("/(app)/goals")}
     />
   );
 }
