@@ -1,27 +1,46 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
+import type { ComponentProps } from "react";
 import { Pressable, RefreshControl, SectionList, Text, View } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import { dailyReport, listExpenses } from "../../src/api/expenses";
 import type { ExpenseResponse } from "../../src/api/types";
 import { useMonth } from "../../src/context/MonthContext";
-import {
-  formatCentavos,
-  formatDateOnly,
-  formatMonth,
-  monthRange,
-} from "../../src/lib/formatters";
+import { formatDateOnly, formatMonth, monthRange } from "../../src/lib/formatters";
 import { expenseAmountText } from "../../src/components/money";
 import {
+  Amount,
   Body,
   Button,
+  EmptyState,
   ErrorText,
   MonthStepper,
   SearchField,
   Skeleton,
 } from "../../src/components/ui";
 import { useTheme } from "../../src/theme/useTheme";
+
+/**
+ * Default icon per predefined category name — the Ionicons twin of web's
+ * `CATEGORY_NAME_ICON_MAP` (`gastosai-web/src/lib/categoryIcon.ts`). A user-made category falls
+ * back to the tag, as it does on web.
+ */
+const CATEGORY_ICON: Record<string, ComponentProps<typeof Ionicons>["name"]> = {
+  "Cleaning Essentials": "sparkles-outline",
+  Date: "heart-outline",
+  Extras: "cube-outline",
+  "Family Contributions": "people-outline",
+  "Hygiene Essentials": "water-outline",
+  "Meal Plan": "restaurant-outline",
+  "Monthly Personal": "wallet-outline",
+  "Monthly Utilities": "flash-outline",
+  "Training/Upskilling": "school-outline",
+  "Transaction Fees": "card-outline",
+  Transportation: "car-outline",
+  Vacation: "airplane-outline",
+};
 
 interface DaySection {
   /** `YYYY-MM-DD`, straight from the expense's own date. */
@@ -104,10 +123,18 @@ export default function Expenses() {
 
   const hasAny = (expenses.data ?? []).length > 0;
 
-  const emptyMessage = () => {
+  const emptyList = () => {
     if (expenses.isLoading || expenses.isError) return null;
-    if (!hasAny) return `Nothing recorded in ${formatMonth(month)}.`;
-    return `Nothing matches “${filter.trim()}”.`;
+    if (!hasAny) {
+      return (
+        <EmptyState
+          title={`Nothing in ${formatMonth(month)} yet`}
+          body="Record a spend the moment it happens and it lands here, grouped by day."
+          action={{ label: "Log your first expense", onPress: () => router.push("/(app)/quick-add") }}
+        />
+      );
+    }
+    return <Body dim style={{ paddingVertical: 12 }}>{`Nothing matches “${filter.trim()}”.`}</Body>;
   };
 
   return (
@@ -150,13 +177,7 @@ export default function Expenses() {
           />
         }
         contentContainerStyle={{ paddingBottom: 96 }}
-        ListEmptyComponent={
-          emptyMessage() ? (
-            <Body dim style={{ paddingVertical: 12 }}>
-              {emptyMessage()}
-            </Body>
-          ) : null
-        }
+        ListEmptyComponent={emptyList()}
         renderSectionHeader={({ section }) => (
           <View
             testID={`day-header-${section.day}`}
@@ -180,16 +201,13 @@ export default function Expenses() {
             >
               {formatDateOnly(section.day)}
             </Text>
-            {section.total != null ? (
-              <Text style={{ fontFamily: t.fonts.bodyMedium, fontSize: 12.5, color: t.colors.text2 }}>
-                {formatCentavos(section.total)}
-              </Text>
-            ) : null}
+            {section.total != null ? <Amount centavos={section.total} size="inline" /> : null}
           </View>
         )}
         renderItem={({ item }) => {
           // Peso figure from the converted field, so a row and its day header agree.
           const { base, original } = expenseAmountText(item);
+          const category = item.category ?? "Uncategorized";
           return (
           <Pressable
             // Addressable by id, plus a stable handle on the newest row.
@@ -200,28 +218,36 @@ export default function Expenses() {
             // is not pressable, and the tap silently does nothing.
             testID={item.id === newestId ? "expense-row-first" : `expense-row-${item.id}`}
             accessibilityRole="button"
+            // The category is only an icon now, so it has to be spoken.
+            accessibilityLabel={[item.description ?? "-", category, base, original]
+              .filter(Boolean)
+              .join(", ")}
             onPress={() => router.push(`/(app)/expense/${item.id}`)}
             style={({ pressed }) => [
               {
                 flexDirection: "row",
-                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
                 paddingVertical: 12,
+                minHeight: 44,
                 borderBottomColor: t.colors.border3,
                 borderBottomWidth: 1,
               },
               pressed && { opacity: 0.6 },
             ]}
           >
-            <View style={{ flex: 1, paddingRight: 12 }}>
-              <Body numberOfLines={1}>{item.description ?? "-"}</Body>
-              <Body dim style={{ fontSize: 12.5 }}>
-                {item.category ?? "Uncategorized"}
-                {original ? ` · ${original}` : ""}
-              </Body>
+            <Ionicons name={CATEGORY_ICON[category] ?? "pricetag-outline"} size={18} color={t.colors.text2} />
+            <Body numberOfLines={1} style={{ flex: 1 }}>
+              {item.description ?? "-"}
+            </Body>
+            <View style={{ alignItems: "flex-end" }}>
+              <Amount centavos={item.amountInBaseCurrency ?? item.amount ?? 0} />
+              {original ? (
+                <Body dim style={{ fontSize: t.fontSizes.micro }}>
+                  {original}
+                </Body>
+              ) : null}
             </View>
-            <Text style={{ fontFamily: t.fonts.display, fontSize: 15, color: t.colors.textHi }}>
-              {base}
-            </Text>
           </Pressable>
           );
         }}
