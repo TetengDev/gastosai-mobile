@@ -128,26 +128,33 @@ export function needsAttention(
   return [...budgets, ...due];
 }
 
-/** The `Celebrate` events Home holds: each completed goal, and a closed month with no budget over. */
+/** `2027-01` -> `2026-12`. */
+export function previousMonth(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7);
+}
+
+/**
+ * The `Celebrate` events Home holds: each completed goal, and — on the current month only — the
+ * month that just closed, if it had budgets and the server banded none of them over. Stepping
+ * back to a past month never celebrates it; `Celebrate`'s per-event key stops repeats.
+ */
 export function celebrationsFor({
   month,
   today,
-  bands,
+  previousBands,
   goals,
 }: {
   month: string;
   today: string;
-  bands: readonly BudgetBand[];
+  /** The server's bands for the month before `month`. */
+  previousBands: readonly BudgetBand[];
   goals: readonly Pick<GoalResponse, "id" | "status">[];
 }): string[] {
   const events = goals.filter((g) => g.status === "COMPLETED").map((g) => `goal-${g.id}`);
-  if (closedUnderBudget(month, today, bands)) events.push(`month-${month}`);
+  const closedUnder = previousBands.length > 0 && worstBand(previousBands) !== "OVER_BUDGET";
+  if (month === today.slice(0, 7) && closedUnder) events.push(`month-${previousMonth(month)}`);
   return events;
-}
-
-/** A month that has ended with budgets set and none of them over, by the server's banding. */
-export function closedUnderBudget(month: string, today: string, bands: readonly BudgetBand[]): boolean {
-  return daysLeftInMonth(month, today) === null && bands.length > 0 && worstBand(bands) !== "OVER_BUDGET";
 }
 
 /**

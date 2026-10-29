@@ -1,5 +1,13 @@
 import { describe, expect, it } from "@jest/globals";
-import { billMonths, budgetMeter, celebrationsFor, daysLeftInMonth, needsAttention, statusLine } from "./homeStatus";
+import {
+  billMonths,
+  budgetMeter,
+  celebrationsFor,
+  daysLeftInMonth,
+  needsAttention,
+  previousMonth,
+  statusLine,
+} from "./homeStatus";
 
 /** Spec §5, Dashboard: the hero's status line per mood, and what "Needs attention" lists. */
 
@@ -93,22 +101,37 @@ describe("celebrationsFor", () => {
     { id: 7, status: "COMPLETED" as const },
     { id: 8, status: "ON_TRACK" as const },
   ];
+  const today = "2026-10-23";
 
   it("celebrates each completed goal", () => {
-    expect(celebrationsFor({ month: "2026-10", today: "2026-10-23", bands: [], goals })).toEqual(["goal-7"]);
+    expect(celebrationsFor({ month: "2026-10", today, previousBands: [], goals })).toEqual(["goal-7"]);
   });
 
-  it("celebrates a closed month with no budget over", () => {
+  /**
+   * Final review on TEN-444: "a month closes" is the month that just ended, seen from the current
+   * month — not whichever past month the user steps back to, years-old ones included.
+   */
+  it("on the current month, celebrates the previous month closing with no budget over", () => {
     expect(
-      celebrationsFor({ month: "2026-09", today: "2026-10-23", bands: ["ON_TRACK", "WARNING"], goals: [] }),
+      celebrationsFor({ month: "2026-10", today, previousBands: ["ON_TRACK", "WARNING"], goals: [] }),
     ).toEqual(["month-2026-09"]);
   });
 
-  it("does not celebrate a month still running, one with a budget over, or one with no budgets", () => {
-    const today = "2026-10-23";
-    expect(celebrationsFor({ month: "2026-10", today, bands: ["ON_TRACK"], goals: [] })).toEqual([]);
-    expect(celebrationsFor({ month: "2026-09", today, bands: ["OVER_BUDGET"], goals: [] })).toEqual([]);
-    expect(celebrationsFor({ month: "2026-09", today, bands: [], goals: [] })).toEqual([]);
+  it("does not celebrate a previous month with a budget over, or one with no budgets", () => {
+    expect(celebrationsFor({ month: "2026-10", today, previousBands: ["ON_TRACK", "OVER_BUDGET"], goals: [] })).toEqual([]);
+    expect(celebrationsFor({ month: "2026-10", today, previousBands: [], goals: [] })).toEqual([]);
+  });
+
+  it("never celebrates a month for viewing a past month directly", () => {
+    expect(celebrationsFor({ month: "2026-09", today, previousBands: ["ON_TRACK"], goals: [] })).toEqual([]);
+    expect(celebrationsFor({ month: "2023-04", today, previousBands: ["ON_TRACK"], goals: [] })).toEqual([]);
+  });
+
+  it("names December of last year in January", () => {
+    expect(previousMonth("2027-01")).toBe("2026-12");
+    expect(
+      celebrationsFor({ month: "2027-01", today: "2027-01-02", previousBands: ["ON_TRACK"], goals: [] }),
+    ).toEqual(["month-2026-12"]);
   });
 });
 

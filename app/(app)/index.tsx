@@ -14,9 +14,9 @@ import {
   billMonths,
   budgetMeter,
   celebrationsFor,
-  closedUnderBudget,
   daysLeftInMonth,
   needsAttention,
+  previousMonth,
   statusLine,
 } from "../../src/components/dashboard/homeStatus";
 import { useTheme } from "../../src/theme/useTheme";
@@ -49,6 +49,13 @@ export default function Dashboard() {
   });
   const upcoming = bills.flatMap((q) => q.data ?? []);
   const goals = useQuery({ queryKey: ["goals"], queryFn: listGoals });
+  // The month that just closed, for its celebration — fetched only on the current month's view.
+  const prevMonth = previousMonth(month);
+  const closed = useQuery({
+    queryKey: ["budgets", "summary", prevMonth],
+    queryFn: () => budgetSummary(prevMonth),
+    enabled: isCurrentMonth,
+  });
 
   // The report is keyed by "YYYY-MM"; find this month's row rather than assuming ordering.
   const thisMonth = report.data?.find((r) => r.month === month);
@@ -69,7 +76,6 @@ export default function Dashboard() {
   const mood = pisoMoodFor({
     bands,
     hasExpenses: (thisMonth?.total ?? 0) > 0 || (expenses.data?.length ?? 0) > 0,
-    cheer: closedUnderBudget(month, today, bands),
   });
   const status =
     report.isLoading || budgets.isLoading || report.isError || showJump
@@ -118,7 +124,12 @@ export default function Dashboard() {
         mood={mood}
         status={status}
         meter={budgetMeter(budgets.data, bands)}
-        celebrations={celebrationsFor({ month, today, bands, goals: goals.data ?? [] })}
+        celebrations={celebrationsFor({
+          month,
+          today,
+          previousBands: (closed.data?.items ?? []).map((b) => toBand(b.status)),
+          goals: goals.data ?? [],
+        })}
       >
         {report.isError ? (
           <>
