@@ -59,10 +59,13 @@ appId: host.exp.Exponent
     label: ">> Savings goals in the same glance"
 
 # Insights is collapsed by default; opening it is the deliberate second look.
+# Centred, not merely "visible": at the bottom edge the toggle sits under the tab bar, and a tap
+# there lands on the Budgets tab instead.
 - scrollUntilVisible:
     element:
       id: "insights-toggle"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "insights-toggle"
     label: ">> The full report, one tap away"

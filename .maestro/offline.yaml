@@ -50,10 +50,13 @@ tags:
 
 # Insights stays a plain collapsed toggle, and opening it offline adds no error boxes: each card in
 # it renders nothing when its query fails.
+# Centred, not merely "visible": at the bottom edge the toggle sits under the tab bar, and a tap
+# there lands on the Budgets tab instead.
 - scrollUntilVisible:
     element:
       id: "insights-toggle"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "insights-toggle"
 - assertNotVisible:

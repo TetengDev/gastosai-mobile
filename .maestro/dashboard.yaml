@@ -70,10 +70,13 @@ appId: host.exp.Exponent
     direction: DOWN
 
 # Insights is collapsed by default (spec §4): the report is opened on purpose, not scrolled past.
+# Centred, not merely "visible": at the bottom edge the toggle sits under the tab bar, and a tap
+# there lands on the Budgets tab instead.
 - scrollUntilVisible:
     element:
       id: "insights-toggle"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "insights-toggle"
 
