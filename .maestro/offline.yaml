@@ -11,8 +11,9 @@
 # stacked error boxes on the one screen meant to be scannable.
 #
 # Two things are asserted. Home offers a way to recover, which it did not before v0.7 — it showed
-# the message alone and left pull-to-refresh as the undiscoverable way out. And the dashboard cards
-# render *nothing* rather than each reporting its own failure.
+# the message alone and left pull-to-refresh as the undiscoverable way out. And Home's sections,
+# and the cards inside Insights once opened, render *nothing* rather than each reporting its own
+# failure (TEN-444).
 appId: host.exp.Exponent
 # Tagged `manual` so the suite skips it — see config.yaml. Naming the file still runs it.
 tags:
@@ -37,11 +38,30 @@ tags:
 - assertVisible:
     id: "home-retry"
 
-# Silence from the cards is the point: no insight box, no empty chart, no "0 bills due" implying
-# there are none.
+# Silence from the sections is the point: no "nothing needs attention" (which would claim there is
+# nothing due), no empty goals strip, and no status line built from figures that never arrived —
+# "No budget set" or "₱0.00 left" would be a false statement, not an error.
 - assertNotVisible:
-    id: "card-upcoming"
+    id: "needs-attention"
+- assertNotVisible:
+    id: "card-goals"
+- assertNotVisible:
+    id: "home-status"
+
+# Insights stays a plain collapsed toggle, and opening it offline adds no error boxes: each card in
+# it renders nothing when its query fails.
+# Centred, not merely "visible": at the bottom edge the toggle sits under the tab bar, and a tap
+# there lands on the Budgets tab instead.
+- scrollUntilVisible:
+    element:
+      id: "insights-toggle"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "insights-toggle"
 - assertNotVisible:
     id: "card-top"
 - assertNotVisible:
     id: "card-categories"
+- assertNotVisible:
+    id: "trend-change"

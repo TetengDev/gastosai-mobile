@@ -81,8 +81,20 @@ appId: host.exp.Exponent
 #
 # The percentage only. The sentence around it is written by a model and its wording moves between
 # runs — "38.71% lower" one day, "down 38.71% from" the next. See `.maestro/dashboard.yaml`.
-- extendedWaitUntil:
-    visible: "(?i).*${output.changePct}%.*"
+# Insights is collapsed by default (TEN-444); open it so the sentence is there to read.
+# Centred, not merely "visible": at the bottom edge the toggle sits under the tab bar, and a tap
+# there lands on the Budgets tab instead.
+- scrollUntilVisible:
+    element:
+      id: "insights-toggle"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "insights-toggle"
+- scrollUntilVisible:
+    element:
+      text: "(?i).*${output.changePct}%.*"
+    direction: DOWN
     timeout: 30000
 
 # Scroll the dashboard so the viewer sees there is substance here, then return to the top.

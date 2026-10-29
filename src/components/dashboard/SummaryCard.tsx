@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Body, Card } from "../ui";
 import { useTheme } from "../../theme/useTheme";
@@ -8,17 +7,12 @@ export interface SummaryRow {
   label: string;
   sub?: string | null;
   value: string;
-  /** Rendered under the row — a progress bar, for the cards that have one. */
-  extra?: ReactNode;
 }
 
 /**
- * The shape four dashboard cards share: a titled card, a short list, an optional link to the tab
- * that holds the full version.
- *
- * Extracted because upcoming bills, budget overview, top expenses and goal progress differ only in
- * where their rows come from. Four hand-written near-copies is how they drift apart — one gaining
- * an empty state, another not.
+ * The shape Insights' list cards share: a titled card, a short list, an optional link to the tab
+ * that holds the full version. Top expenses and the category split differ only in where their rows
+ * come from.
  *
  * Renders nothing when there are no rows. A dashboard card that says "no data" for a feature the
  * user has not set up is noise on the one screen that should be scannable.
@@ -63,7 +57,6 @@ export default function SummaryCard({
               {r.value}
             </Text>
           </View>
-          {r.extra}
         </View>
       ))}
 

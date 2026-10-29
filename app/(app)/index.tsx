@@ -1,34 +1,35 @@
-import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
-import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { RefreshControl, ScrollView } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import { budgetSummary } from "../../src/api/budgets";
 import { listExpenses, monthlyReport } from "../../src/api/expenses";
-import {
-  formatCentavos,
-  formatDayMonth,
-  formatMonth,
-  monthRange,
-} from "../../src/lib/formatters";
-import { expenseAmountText } from "../../src/components/money";
+import { listGoals } from "../../src/api/goals";
+import { upcomingBills } from "../../src/api/recurring";
+import { formatMonth, monthRange, nowForApi } from "../../src/lib/formatters";
+import { pisoMoodFor, toBand } from "../../src/lib/pisoMood";
 import { useMonth } from "../../src/context/MonthContext";
-import { Body, Button, Card, ErrorText, MonthStepper, Skeleton, StatTile } from "../../src/components/ui";
-import InsightCard from "../../src/components/dashboard/InsightCard";
-import TrendCard from "../../src/components/dashboard/TrendCard";
+import { Body, Button, ErrorText, MonthStepper } from "../../src/components/ui";
+import { GoalsStrip, Hero, Insights, NeedsAttention, RecentList } from "../../src/components/dashboard/Home";
 import {
-  BudgetOverviewCard,
-  CategoryBreakdownCard,
-  GoalProgressCard,
-  TopExpensesCard,
-  UpcomingBillsCard,
-} from "../../src/components/dashboard/cards";
+  billMonths,
+  budgetMeter,
+  celebrationsFor,
+  daysLeftInMonth,
+  needsAttention,
+  previousMonth,
+  statusLine,
+} from "../../src/components/dashboard/homeStatus";
 import { useTheme } from "../../src/theme/useTheme";
 
+/**
+ * Home, spec §4: one answer first — the hero — then what needs attention, goals and recent, with
+ * the report folded into Insights. Every figure is the server's; this screen picks and arranges.
+ */
 export default function Dashboard() {
-  const router = useRouter();
   const t = useTheme();
   const { month, shiftMonth, setMonth, isCurrentMonth } = useMonth();
   const range = monthRange(month);
+  const today = nowForApi().slice(0, 10);
 
   const report = useQuery({ queryKey: ["report", "monthly"], queryFn: monthlyReport });
   const expenses = useQuery({
@@ -39,18 +40,27 @@ export default function Dashboard() {
     queryKey: ["budgets", "summary", month],
     queryFn: () => budgetSummary(month),
   });
+  // Next month's bills too once the seven-day window crosses the month end.
+  const bills = useQueries({
+    queries: billMonths(month, today).map((m) => ({
+      queryKey: ["recurring", "upcoming", m],
+      queryFn: () => upcomingBills(m),
+    })),
+  });
+  const upcoming = bills.flatMap((q) => q.data ?? []);
+  const goals = useQuery({ queryKey: ["goals"], queryFn: listGoals });
+  // The month that just closed, for its celebration — fetched only on the current month's view.
+  const prevMonth = previousMonth(month);
+  const closed = useQuery({
+    queryKey: ["budgets", "summary", prevMonth],
+    queryFn: () => budgetSummary(prevMonth),
+    enabled: isCurrentMonth,
+  });
 
   // The report is keyed by "YYYY-MM"; find this month's row rather than assuming ordering.
   const thisMonth = report.data?.find((r) => r.month === month);
 
-  /**
-   * The most recent month that actually has spending.
-   *
-   * A month with no expenses used to render ₱0.00 and nothing else, which is indistinguishable
-   * from an empty account — and with the app opening on the current month, that is what you saw
-   * even with six months of history behind it. Offering the nearest month with data turns a dead
-   * end into one tap. Read off the report already fetched; nothing new is computed.
-   */
+  // The most recent month with spending, so an empty month offers a way to one that has some.
   const latestMonthWithData = (report.data ?? [])
     .filter((r) => (r.total ?? 0) > 0 && r.month)
     .map((r) => r.month as string)
@@ -59,16 +69,36 @@ export default function Dashboard() {
 
   const monthIsEmpty =
     !report.isLoading && !report.isError && (thisMonth?.total ?? 0) === 0 && !expenses.isLoading;
-  // Four, not five: Home is a quick check-in rather than a report. The full list is one tap away
-  // on Expenses, so a fifth row here buys nothing and pushes the card further under the floating
-  // + button. (`paddingBottom` below keeps the last row scrollable clear of that button.)
-  const recent = (expenses.data ?? []).slice(0, 4);
-  const refreshing = report.isRefetching || expenses.isRefetching || budgets.isRefetching;
+  const showJump = monthIsEmpty && !!latestMonthWithData && latestMonthWithData !== month;
 
+  const items = budgets.data?.items ?? [];
+  const bands = items.map((b) => toBand(b.status));
+  const mood = pisoMoodFor({
+    bands,
+    hasExpenses: (thisMonth?.total ?? 0) > 0 || (expenses.data?.length ?? 0) > 0,
+  });
+  const status =
+    report.isLoading || budgets.isLoading || report.isError || showJump
+      ? null
+      : statusLine({
+          mood,
+          safeToSpend: budgets.data?.safeToSpend ?? 0,
+          hasBudget: (budgets.data?.totalBudgeted ?? 0) > 0,
+          daysLeft: daysLeftInMonth(month, today),
+        });
+
+  const refreshing =
+    report.isRefetching ||
+    expenses.isRefetching ||
+    budgets.isRefetching ||
+    bills.some((q) => q.isRefetching) ||
+    goals.isRefetching;
   const refreshAll = () => {
     report.refetch();
     expenses.refetch();
     budgets.refetch();
+    bills.forEach((q) => q.refetch());
+    goals.refetch();
   };
 
   return (
@@ -79,8 +109,7 @@ export default function Dashboard() {
         <RefreshControl refreshing={refreshing} onRefresh={refreshAll} tintColor={t.colors.text2} />
       }
     >
-      {/* The control that makes every other month reachable. Above the figures, because it
-          changes what all of them mean. */}
+      {/* Above the figures, because it changes what all of them mean. */}
       <MonthStepper
         label={formatMonth(month)}
         onPrev={() => shiftMonth(-1)}
@@ -88,26 +117,27 @@ export default function Dashboard() {
         canGoNext={!isCurrentMonth}
       />
 
-      <Card>
-        {report.isLoading ? (
-          <Skeleton height={72} />
-        ) : (
-          <StatTile
-            label={formatMonth(month)}
-            value={formatCentavos(thisMonth?.total ?? 0)}
-            sub={isCurrentMonth ? "spent this month" : "spent"}
-          />
-        )}
+      <Hero
+        spent={thisMonth?.total ?? 0}
+        loading={report.isLoading}
+        sub={isCurrentMonth ? "spent this month" : "spent"}
+        mood={mood}
+        status={status}
+        meter={budgetMeter(budgets.data, bands)}
+        celebrations={celebrationsFor({
+          month,
+          today,
+          previousBands: (closed.data?.items ?? []).map((b) => toBand(b.status)),
+          goals: goals.data ?? [],
+        })}
+      >
         {report.isError ? (
           <>
             <ErrorText>{errorMessage(report.error, "Could not reach the server.")}</ErrorText>
-            {/* Every other screen offered "Try again"; Home only showed the message, leaving
-                pull-to-refresh as the undiscoverable way out. */}
             <Button testID="home-retry" size="sm" variant="secondary" title="Try again" onPress={refreshAll} />
           </>
         ) : null}
-
-        {monthIsEmpty && latestMonthWithData && latestMonthWithData !== month ? (
+        {showJump ? (
           <>
             <Body dim style={{ fontSize: 12.5 }}>
               Nothing recorded in {formatMonth(month)}.
@@ -116,77 +146,24 @@ export default function Dashboard() {
               testID="jump-to-latest"
               size="sm"
               variant="secondary"
-              title={`Show ${formatMonth(latestMonthWithData)}`}
-              onPress={() => setMonth(latestMonthWithData)}
+              title={`Show ${formatMonth(latestMonthWithData as string)}`}
+              onPress={() => setMonth(latestMonthWithData as string)}
             />
           </>
         ) : null}
-      </Card>
+      </Hero>
 
-      {/* Safe-to-spend is the number most worth seeing on a phone. Server-computed — rendered,
-          never recalculated. */}
-      {budgets.data ? (
-        <Card tone="panel">
-          <StatTile
-            label="Safe to spend"
-            value={formatCentavos(budgets.data.safeToSpend ?? 0)}
-            sub={`${formatCentavos(budgets.data.dailyAllowance ?? 0)} per day`}
-          />
-        </Card>
-      ) : null}
-
-      {/* Below the fold by design: the two cards above answer "what have I spent" at a glance, and
-          everything from here down is the report you scroll to read. */}
-      <InsightCard month={month} />
-      <TrendCard month={month} />
-      <UpcomingBillsCard month={month} />
-      <BudgetOverviewCard month={month} />
-      <TopExpensesCard month={month} />
-      <GoalProgressCard />
-      <CategoryBreakdownCard />
-
-      <Card>
-        <Text style={{ fontFamily: t.fonts.bodySemi, fontSize: 15, color: t.colors.textHi }}>
-          Recent
-        </Text>
-        {expenses.isLoading && <Skeleton height={120} />}
-        <ErrorText>{expenses.isError ? errorMessage(expenses.error) : null}</ErrorText>
-        {recent.map((e, i) => (
-          <Pressable
-            key={e.id}
-            // Positional, for UI automation. Targeting a row by its amount is ambiguous — the
-            // month-total tile above renders the identical string whenever the row is the only
-            // expense of the month — and matching on the description is worse still, since the
-            // AI parser rewrites it.
-            testID={`recent-row-${i}`}
-            accessibilityRole="button"
-            onPress={() => router.push(`/(app)/expense/${e.id}`)}
-            style={({ pressed }) => [
-              { flexDirection: "row", justifyContent: "space-between", paddingVertical: 8 },
-              pressed && { opacity: 0.6 },
-            ]}
-          >
-            <View style={{ flex: 1, paddingRight: 12 }}>
-              <Body numberOfLines={1}>{e.description ?? "-"}</Body>
-              <Body dim style={{ fontSize: 12.5 }}>
-                {e.category ?? "Uncategorized"} · {formatDayMonth(e.date)}
-              </Body>
-            </View>
-            <Text style={{ fontFamily: t.fonts.display, fontSize: 15, color: t.colors.textHi }}>
-              {expenseAmountText(e).base}
-            </Text>
-          </Pressable>
-        ))}
-        {!expenses.isLoading && !expenses.isError && recent.length === 0 && (
-          // Month-aware: "No expenses yet" on a month that merely happens to be empty reads as
-          // "your account is empty", which is exactly the false impression this release removes.
-          <Body dim>
-            {latestMonthWithData
-              ? `Nothing in ${formatMonth(month)}.`
-              : "No expenses yet — tap + to add your first one."}
-          </Body>
-        )}
-      </Card>
+      <NeedsAttention rows={needsAttention(items, upcoming, today)} />
+      <GoalsStrip goals={goals.data ?? []} />
+      <RecentList
+        expenses={expenses.data ?? []}
+        loading={expenses.isLoading}
+        error={expenses.isError ? errorMessage(expenses.error) : null}
+        emptyText={
+          latestMonthWithData ? `Nothing in ${formatMonth(month)}.` : "No expenses yet. Tap + to add your first one."
+        }
+      />
+      <Insights month={month} />
     </ScrollView>
   );
 }
