@@ -90,7 +90,12 @@ appId: host.exp.Exponent
       text: "(?i).*${output.changePct}%.*"
     direction: DOWN
     timeout: 30000
-- assertVisible: "(?i).*biggest category: ${output.topCat.category}.*"
+# Scrolled to, not asserted in place: the sentence above it is a model's prose of any length, and
+# four lines of it pushed this line below the fold.
+- scrollUntilVisible:
+    element:
+      text: "(?i).*biggest category: ${output.topCat.category}.*"
+    direction: DOWN
 
 # The trend card's comparison against last month.
 - scrollUntilVisible:
