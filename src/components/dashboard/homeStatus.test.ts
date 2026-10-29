@@ -117,7 +117,7 @@ describe("budgetMeter", () => {
     expect(budgetMeter({ totalSpent: 90000, totalBudgeted: 100000 }, ["ON_TRACK", "WARNING"])).toEqual({
       percent: 90,
       tone: "warning",
-      caption: "₱900.00 of ₱1,000.00 budget",
+      caption: "₱900.00 of ₱1,000.00 budgeted · 90%",
     });
   });
 

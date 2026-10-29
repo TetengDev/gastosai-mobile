@@ -162,9 +162,12 @@ export function budgetMeter(
   const budgeted = summary?.totalBudgeted ?? 0;
   if (!summary || budgeted <= 0) return null;
   const spent = summary.totalSpent ?? 0;
+  const percent = Math.round((spent * 100) / budgeted);
   return {
-    percent: Math.round((spent * 100) / budgeted),
+    percent,
     tone: budgetTone(worstBand(bands) ?? "ON_TRACK"),
-    caption: `${formatCentavos(spent)} of ${formatCentavos(budgeted)} budget`,
+    // "budgeted": `totalSpent` counts budgeted categories only, unlike the hero figure above it,
+    // which is all spend. Saying so keeps the two from reading as one number disagreeing.
+    caption: `${formatCentavos(spent)} of ${formatCentavos(budgeted)} budgeted · ${percent}%`,
   };
 }

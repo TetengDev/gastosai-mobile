@@ -49,7 +49,7 @@ describe("Hero", () => {
     sub: "spent this month",
     mood: "worried" as const,
     status: "Close to the limit · ₱800.00 left for 9 days",
-    meter: { percent: 92, tone: "warning" as const, caption: "₱9,200.00 of ₱10,000.00 budget" },
+    meter: { percent: 92, tone: "warning" as const, caption: "₱9,200.00 of ₱10,000.00 budgeted · 92%" },
     celebrations: [],
   };
 
@@ -59,7 +59,7 @@ describe("Hero", () => {
     expect(screen.getByText("spent this month")).toBeOnTheScreen();
     expect(screen.getByLabelText("Close to budget")).toBeOnTheScreen();
     expect(screen.getByLabelText("Month budget").props.accessibilityValue.now).toBe(92);
-    expect(screen.getByText("₱9,200.00 of ₱10,000.00 budget")).toBeOnTheScreen();
+    expect(screen.getByText("₱9,200.00 of ₱10,000.00 budgeted · 92%")).toBeOnTheScreen();
     expect(screen.getByTestId("home-status")).toHaveTextContent(props.status);
   });
 
