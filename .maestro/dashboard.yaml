@@ -1,4 +1,4 @@
-# Home as a dashboard, not just a check-in.
+# Home: one answer first (the hero), then goals, recent, and the report folded into Insights.
 #
 # **Every assertion here is a figure the client cannot invent.** 38.71% comes from
 # `/expenses/report/monthly-comparison`, "Meal Plan" from `/ai/insights/top-category`, ₱1,900.00
@@ -56,6 +56,27 @@ appId: host.exp.Exponent
 - evalScript: |
     ${output.changePct = Math.abs(Number(output.cmp.changePercent)).toFixed(2)}
 
+# The hero answers first: the month's figure, Piso beside it, and one status line built from the
+# server's `safeToSpend`.
+- extendedWaitUntil:
+    visible:
+      id: "home-status"
+    timeout: 20000
+
+# Goals sit above the fold-away report, as a row of meters.
+- scrollUntilVisible:
+    element:
+      id: "card-goals"
+    direction: DOWN
+
+# Insights is collapsed by default (spec §4): the report is opened on purpose, not scrolled past.
+- scrollUntilVisible:
+    element:
+      id: "insights-toggle"
+    direction: DOWN
+- tapOn:
+    id: "insights-toggle"
+
 # The insight sentence, generated server-side.
 #
 # **The percentage only — never a word of the prose.** This asserted `38.71% lower` and passed for
@@ -64,28 +85,26 @@ appId: host.exp.Exponent
 # `/expenses/report/monthly-comparison` and is stable; every word around it is a model's phrasing and
 # will change again. `Biggest category:` below is app-rendered, so it *is* safe to match, and it is
 # what actually proves the insight card resolved rather than a spinner.
-- extendedWaitUntil:
-    visible: "(?i).*${output.changePct}%.*"
+- scrollUntilVisible:
+    element:
+      text: "(?i).*${output.changePct}%.*"
+    direction: DOWN
     timeout: 30000
 - assertVisible: "(?i).*biggest category: ${output.topCat.category}.*"
 
 # The trend card's comparison against last month.
-- assertVisible:
-    id: "trend-change"
+- scrollUntilVisible:
+    element:
+      id: "trend-change"
+    direction: DOWN
 
-# The list cards. Each is scrolled to rather than assumed on screen — this is a dashboard you read
-# by scrolling, which is the deliberate trade for keeping the glance intact at the top.
+# The list cards inside Insights, each scrolled to rather than assumed on screen.
 - scrollUntilVisible:
     element:
       id: "card-top"
     direction: DOWN
 # The largest expense of that month, ranked by the backend rather than named here.
 - assertVisible: "(?i).*${output.topAmount}.*"
-
-- scrollUntilVisible:
-    element:
-      id: "card-goals"
-    direction: DOWN
 
 - scrollUntilVisible:
     element:

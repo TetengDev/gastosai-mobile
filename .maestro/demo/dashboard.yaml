@@ -17,8 +17,8 @@
 # `.maestro/README.md`. What actually guards this behaviour is `.maestro/dashboard.yaml`.
 #
 # @watch Every figure is computed by the server
-# @watch The glance stays intact at the top
-# @watch Scroll down for where it went
+# @watch One answer at the top, Piso beside it
+# @watch The report opens on purpose, not by scrolling
 appId: host.exp.Exponent
 ---
 - runFlow: ../launch.yaml
@@ -46,28 +46,44 @@ appId: host.exp.Exponent
 - evalScript: |
     ${output.topCat = json(output.topCatRes.body)}
 
-# The insight sentence: the figure the client cannot invent.
-#
-# The percentage only, never the prose around it — that is a model's wording and it moves between
-# runs. `Biggest category:` is app-rendered, so it is the safe way to prove the card resolved rather
-# than still showing a spinner.
+# The hero first: the month's figure with Piso beside it and one plain status line.
 - extendedWaitUntil:
-    visible: "(?i).*${output.changePct}%.*"
-    timeout: 30000
-    label: ">> Written by the server, not the phone"
-- assertVisible: "(?i).*biggest category: ${output.topCat.category}.*"
-
-# A dashboard you read by scrolling — the deliberate trade for keeping the glance intact up top.
-- scrollUntilVisible:
-    element:
-      id: "card-top"
-    direction: DOWN
-    label: ">> The biggest expenses, ranked"
+    visible:
+      id: "home-status"
+    timeout: 20000
+    label: ">> One answer first: how the month is going"
 - scrollUntilVisible:
     element:
       id: "card-goals"
     direction: DOWN
     label: ">> Savings goals in the same glance"
+
+# Insights is collapsed by default; opening it is the deliberate second look.
+- scrollUntilVisible:
+    element:
+      id: "insights-toggle"
+    direction: DOWN
+- tapOn:
+    id: "insights-toggle"
+    label: ">> The full report, one tap away"
+
+# The insight sentence: the figure the client cannot invent.
+#
+# The percentage only, never the prose around it — that is a model's wording and it moves between
+# runs. `Biggest category:` is app-rendered, so it is the safe way to prove the card resolved rather
+# than still showing a spinner.
+- scrollUntilVisible:
+    element:
+      text: "(?i).*${output.changePct}%.*"
+    direction: DOWN
+    timeout: 30000
+    label: ">> Written by the server, not the phone"
+- assertVisible: "(?i).*biggest category: ${output.topCat.category}.*"
+- scrollUntilVisible:
+    element:
+      id: "card-top"
+    direction: DOWN
+    label: ">> The biggest expenses, ranked"
 - scrollUntilVisible:
     element:
       id: "card-categories"
