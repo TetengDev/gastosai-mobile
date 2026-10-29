@@ -1,0 +1,49 @@
+# Demo: the expense list, grouped by day, and an empty month that invites the first entry.
+#
+# **This flow is filmed.** No housekeeping on camera; close on a full screen.
+#
+# No month, day or figure is written down: the seed rolls forward with the calendar, so the empty
+# month is asked of `/expenses/report/monthly` the way `.maestro/month.yaml` asks it. What guards
+# this behaviour is `.maestro/expenses.yaml`.
+#
+# Read-only, so there is no cleanup flow for it.
+#
+# @watch Day headers carry the server's day total
+# @watch One line per expense: icon, note, amount
+# @watch An empty month offers Log your first expense
+appId: host.exp.Exponent
+---
+- runFlow: ../launch.yaml
+
+# Off camera: how far back the first empty month is.
+- evalScript: |
+    ${output.empty = (function(){var rows = json(http.get('http://localhost:8080/expenses/report/monthly', {headers: {'Authorization': 'Bearer ' + output.token}}).body); var earliest = rows[0].month; for (var i = 0; i < rows.length; i++) { if (rows[i].month < earliest) earliest = rows[i].month; } var ey = Number(earliest.slice(0, 4)), em = Number(earliest.slice(5, 7)); var ty = Number(output.thisKey.slice(0, 4)), tm = Number(output.thisKey.slice(5, 7)); var n = ['January','February','March','April','May','June','July','August','September','October','November','December']; var t = new Date(Date.UTC(ey, em - 2, 1)); return {steps: (ty - ey) * 12 + (tm - em) + 1, label: n[t.getUTCMonth()] + ' ' + t.getUTCFullYear()};})()}
+
+- tapOn:
+    id: "tab-expenses"
+    label: ">> Expenses, grouped by day"
+- extendedWaitUntil:
+    visible:
+      id: "expense-row-first"
+    timeout: 25000
+    label: ">> Each day header carries that day's total"
+
+- tapOn:
+    id: "month-prev"
+    label: ">> Search and the month stay pinned on top"
+- extendedWaitUntil:
+    visible: "(?i).*${output.prevMonth}.*"
+    timeout: 20000
+
+- repeat:
+    times: ${output.empty.steps - 1}
+    commands:
+      - tapOn:
+          id: "month-prev"
+- extendedWaitUntil:
+    visible: "(?i).*nothing in ${output.empty.label} yet.*"
+    timeout: 20000
+    label: ">> An empty month is an invitation"
+- assertVisible:
+    text: "Log your first expense"
+    label: ">> One next step: log your first expense"
