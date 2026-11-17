@@ -188,7 +188,9 @@ export default function ResultView({ result }: { result: unknown }) {
       if (entries.length < MAX_ROWS) entries.push([k, v]);
       else hidden++;
     }
-    if (entries.length > 0) {
+    // `floor` alone still discloses: a walk that ran out before reaching any scalar has hidden
+    // whatever comes after, and saying nothing would let the payload suppress it.
+    if (entries.length > 0 || floor) {
       return list(
         entries.map(([k, v]) => row(k, label(k), value(String(v)))),
         hidden,

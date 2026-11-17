@@ -77,6 +77,16 @@ describe("ResultView row cap", () => {
 });
 
 describe("ResultView pathological payloads", () => {
+  it("discloses scalars hidden behind more nested keys than the walk visits", () => {
+    const r: Record<string, unknown> = {};
+    for (let i = 0; i < 6000; i++) r[`o${i}`] = { x: i };
+    for (let i = 0; i < 10; i++) r[`k${i}`] = i;
+    render(<ResultView result={r} />);
+    expect(screen.queryAllByText(/^k\d+$/)).toHaveLength(0);
+    expect(screen.getAllByTestId("chat-result-more")).toHaveLength(1);
+    expect(screen.getByTestId("chat-result-more")).toHaveTextContent(/^\+0 or more ?not shown$/);
+  });
+
   it("renders a 400k-row list in under 500ms", () => {
     const rows = many(400_000, shapes[0][1]);
     const started = Date.now();
