@@ -169,8 +169,8 @@ export default function ResultView({ result }: { result: unknown }) {
     // Unrecognised object: show it rather than swallow it. Scalars only — nesting a whole object
     // into a row would print "[object Object]", which is worse than omitting the key.
     //
-    // `for…in` rather than `Object.entries`, which would materialise every key and value before any
-    // cap applied — the reason `previewFields` in `PreviewCard.tsx` walks this way too. The walk
+    // `for…in` rather than `Object.entries`, which would build an entry tuple for every key before
+    // any cap applied (the engine still enumerates the keys; only value reads and rows are bounded) — the reason `previewFields` in `PreviewCard.tsx` walks this way too. The walk
     // keeps counting past the cap so the disclosure can say how many keys were cut, but stops after
     // `MAX_COUNTED` more keys (nested ones included, so a wide object of objects is bounded too),
     // and the count then reads as a floor.
