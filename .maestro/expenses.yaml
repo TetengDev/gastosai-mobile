@@ -72,3 +72,18 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     visible: "(?i).*jpy meal plan import.*"
     timeout: 15000
+
+# An empty month is an invitation, not a blank list. One step before the earliest month with data
+# is always empty (the same reasoning as month.yaml); walk there from where the steps above left
+# the stepper.
+- evalScript: |
+    ${output.empty = (function(){var rows = json(http.get('http://localhost:8080/expenses/report/monthly', {headers: {'Authorization': 'Bearer ' + output.token}}).body); var earliest = rows[0].month; for (var i = 0; i < rows.length; i++) { if (rows[i].month < earliest) earliest = rows[i].month; } var ey = Number(earliest.slice(0, 4)), em = Number(earliest.slice(5, 7)); var ty = Number(output.thisKey.slice(0, 4)), tm = Number(output.thisKey.slice(5, 7)); var n = ['January','February','March','April','May','June','July','August','September','October','November','December']; var t = new Date(Date.UTC(ey, em - 2, 1)); return {steps: (ty - ey) * 12 + (tm - em) + 1 - output.fx.steps, label: n[t.getUTCMonth()] + ' ' + t.getUTCFullYear()};})()}
+- repeat:
+    times: ${output.empty.steps}
+    commands:
+      - tapOn:
+          id: "month-prev"
+- extendedWaitUntil:
+    visible: "(?i).*nothing in ${output.empty.label} yet.*"
+    timeout: 20000
+- assertVisible: "Log your first expense"
