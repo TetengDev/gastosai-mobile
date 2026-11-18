@@ -221,7 +221,9 @@ export default function Budgets() {
                       tone={tone}
                       label={`${b.categoryName ?? "Budget"} budget`}
                     />
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
+                    <View
+                      style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 8 }}
+                    >
                       <Body dim style={{ fontSize: 12.5 }}>
                         {formatCentavos(b.spent ?? 0)} of {formatCentavos(b.budgeted ?? 0)}
                       </Body>
