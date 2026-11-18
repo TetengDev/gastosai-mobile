@@ -159,6 +159,26 @@ export function useLogExpense(onError: (e: unknown) => void) {
 }
 
 /**
+ * A key that changes each time the screen comes back into focus.
+ *
+ * Add and quick-add are hidden tabs that stay mounted, so without it a return visit finds last
+ * time's typed form, a proposal still offering "Save this", ignores the values a second "Edit
+ * first" hands over, and does not focus the entry again. Keying the screen on this remounts it.
+ */
+export function useVisitKey(): number {
+  const [visit, setVisit] = useState(0);
+  const seen = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      // The first focus is the mount itself; only a return needs a fresh screen.
+      if (seen.current) setVisit((v) => v + 1);
+      seen.current = true;
+    }, []),
+  );
+  return visit;
+}
+
+/**
  * The save action's place during the hold: Piso `saved` beside the line (spec §4). The first
  * expense ever plays `Celebrate` over that Piso, at the same size, as goals do; it is only ever
  * drawn while the screen is in focus, because the hold ends on blur.

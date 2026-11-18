@@ -10,7 +10,7 @@ import { parseExpense } from "../../src/api/expenses";
 import type { ParsedExpenseResult } from "../../src/api/types";
 import { formatCentavos, formatDate } from "../../src/lib/formatters";
 import { centavosToInput } from "../../src/components/money";
-import { LoggedNotice, useLogExpense } from "../../src/components/ExpenseForm";
+import { LoggedNotice, useLogExpense, useVisitKey } from "../../src/components/ExpenseForm";
 import { Body, Button, Card, ErrorText, Field, Pill } from "../../src/components/ui";
 import { useTheme } from "../../src/theme/useTheme";
 import { accents } from "../../src/theme";
@@ -22,7 +22,12 @@ function confidenceColor(c?: string): string {
   return accents.alert;
 }
 
+/** Remounted on every return visit: the route is a hidden tab that stays mounted. */
 export default function QuickAdd() {
+  return <QuickAddScreen key={useVisitKey()} />;
+}
+
+function QuickAddScreen() {
   const router = useRouter();
   const [text, setText] = useState("");
   const [parsed, setParsed] = useState<ParsedExpenseResult | null>(null);

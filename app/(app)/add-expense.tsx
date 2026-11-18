@@ -1,9 +1,14 @@
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { errorMessage } from "../../src/api/client";
-import ExpenseForm, { LoggedNotice, useLogExpense } from "../../src/components/ExpenseForm";
+import ExpenseForm, { LoggedNotice, useLogExpense, useVisitKey } from "../../src/components/ExpenseForm";
 
+/** Remounted on every return visit: the route is a hidden tab that stays mounted. */
 export default function AddExpense() {
+  return <AddExpenseScreen key={useVisitKey()} />;
+}
+
+function AddExpenseScreen() {
   const [error, setError] = useState<string | null>(null);
 
   // Quick-add hands parsed values here when the user picks "Edit instead", so a low-confidence
