@@ -1,5 +1,6 @@
-import { useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useFocusEffect } from "expo-router";
 import { RefreshControl, ScrollView } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import { budgetSummary } from "../../src/api/budgets";
@@ -93,6 +94,15 @@ export default function Dashboard() {
     });
   };
 
+  // Tabs stay mounted when hidden: a cheer played behind another tab is spent where nobody sees it.
+  const [focused, setFocused] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
+
   // The report is keyed by "YYYY-MM"; find this month's row rather than assuming ordering.
   const thisMonth = report.data?.find((r) => r.month === month);
 
@@ -173,7 +183,7 @@ export default function Dashboard() {
         // Nothing until both sources land: otherwise a goal starts playing, the closed month
         // arrives, and the queue's "month first" order cuts the goal off mid-cheer.
         celebrations={
-          goals.isLoading || closed.isLoading
+          !focused || goals.isLoading || closed.isLoading
             ? []
             : celebrationsFor({
                 month,
