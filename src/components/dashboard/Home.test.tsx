@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { AccessibilityInfo, StyleSheet } from "react-native";
 import { monthSummary } from "../../api/insights";
 import { celebrationKey } from "../../lib/celebrateStore";
+import { palettes } from "../../theme";
 import { GoalsStrip, Hero, Insights, NeedsAttention, RecentList } from "./Home";
 
 /**
@@ -163,7 +164,8 @@ describe("NeedsAttention", () => {
         onMarkPaid={onMarkPaid}
       />,
     );
-    const button = screen.getByRole("button", { name: "Mark Meralco paid" });
+    // Label in Name (WCAG 2.5.3): the spoken name starts with the visible "Mark paid".
+    const button = screen.getByRole("button", { name: "Mark paid: Meralco" });
     expect(button).toHaveTextContent("Mark paid");
     // A 44pt target: the pill's text alone is well under it.
     expect(StyleSheet.flatten(button.props.style).minHeight).toBeGreaterThanOrEqual(44);
@@ -180,7 +182,36 @@ describe("NeedsAttention", () => {
       />,
     );
     expect(screen.queryByText("Mark paid")).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Mark .* paid$/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Mark paid/ })).toBeNull();
+  });
+
+  const overdueRow = {
+    key: "o",
+    label: "Meralco",
+    sub: "Overdue · was due Nov 10",
+    href: "/(app)/more/recurring" as const,
+    amount: 250000,
+    markPaid: { id: 7 },
+    overdue: true,
+  };
+
+  it("says an overdue line in the warning amber, and an upcoming one in the quiet grey", () => {
+    wrap(
+      <NeedsAttention
+        rows={[overdueRow, { key: "n", label: "Netflix", sub: "Due Nov 20", href: "/(app)/more/recurring", amount: 54900 }]}
+      />,
+    );
+    expect(StyleSheet.flatten(screen.getByText("Overdue · was due Nov 10").props.style).color).toBe(palettes.light.warnText);
+    expect(StyleSheet.flatten(screen.getByText("Due Nov 20").props.style).color).toBe(palettes.light.text2);
+  });
+
+  it("holds Mark paid, disabled and busy, while a mark is in flight", () => {
+    const onMarkPaid = jest.fn();
+    wrap(<NeedsAttention rows={[overdueRow]} onMarkPaid={onMarkPaid} busy />);
+    const button = screen.getByRole("button", { name: "Mark paid: Meralco" });
+    expect(button.props.accessibilityState).toMatchObject({ disabled: true, busy: true });
+    fireEvent.press(button);
+    expect(onMarkPaid).not.toHaveBeenCalled();
   });
 });
 

@@ -249,6 +249,7 @@ describe("overdue bills", () => {
       amount: 250_000,
       href: "/(app)/more/recurring",
       markPaid: { id: 7 },
+      overdue: true,
     });
     expect(rows[0].sub).toBe("Overdue · was due Nov 10");
   });
@@ -291,7 +292,7 @@ describe("overdue bills", () => {
       today,
     );
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ label: "Meralco", sub: "Overdue · not paid last month", markPaid: { id: 7 } });
+    expect(rows[0]).toMatchObject({ label: "Meralco", sub: "Overdue · not paid last month", markPaid: { id: 7 }, overdue: true });
   });
 
   it("does not flag a bill that was paid last month", () => {
@@ -361,6 +362,7 @@ describe("overdue bills", () => {
     );
     expect(rows.map((r) => r.label)).toEqual(["Food", "Meralco", "Netflix"]);
     expect(rows[2]).toMatchObject({ sub: "Due Nov 20", markPaid: { id: 8 } });
+    expect(rows[2].overdue).toBeUndefined();
     expect(rows[0].markPaid).toBeUndefined();
   });
 

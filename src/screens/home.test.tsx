@@ -124,7 +124,7 @@ describe("Home, Mark paid", () => {
     renderHome();
     expect(await screen.findByText("Overdue · was due Nov 10")).toBeOnTheScreen();
 
-    const button = screen.getByRole("button", { name: "Mark Meralco paid" });
+    const button = screen.getByRole("button", { name: "Mark paid: Meralco" });
     fireEvent.press(button);
     fireEvent.press(button);
     // The mutation starts a tick later; the second tap landed before it did.
@@ -138,11 +138,38 @@ describe("Home, Mark paid", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it("says so in Needs attention when the mark fails, and keeps the row", async () => {
+  it("says so in Needs attention when the mark fails, keeps the row, and lets it be tried again", async () => {
     put.mockRejectedValue(new Error("boom"));
     renderHome();
-    fireEvent.press(await screen.findByRole("button", { name: "Mark Meralco paid" }));
+    fireEvent.press(await screen.findByRole("button", { name: "Mark paid: Meralco" }));
     expect(await screen.findByText("Could not mark that bill paid. Try again.")).toBeOnTheScreen();
+    expect(screen.getByText("Overdue · was due Nov 10")).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByRole("button", { name: "Mark paid: Meralco" }));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+  });
+
+  it("does not carry a failed mark's error onto a past month, where there is nothing to retry", async () => {
+    put.mockRejectedValue(new Error("boom"));
+    renderHome();
+    fireEvent.press(await screen.findByRole("button", { name: "Mark paid: Meralco" }));
+    expect(await screen.findByText("Could not mark that bill paid. Try again.")).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId("month-prev"));
+    await waitFor(() => expect(screen.queryByText("Overdue · was due Nov 10")).toBeNull());
+    expect(screen.queryByText("Could not mark that bill paid. Try again.")).toBeNull();
+  });
+
+  it("holds the bill rows until the paid state lands, so a paid bill never flashes up as due", async () => {
+    let answer: (list: RecurringExpenseResponse[]) => void = () => undefined;
+    jest.mocked(listRecurring).mockImplementation(() => new Promise((r) => (answer = r)));
+    renderHome();
+    await screen.findByTestId("home-status");
+    expect(screen.queryByText("Netflix")).toBeNull();
+    expect(screen.queryByText("Meralco")).toBeNull();
+
+    await act(async () => answer([meralco(false)]));
+    expect(await screen.findByText("Netflix")).toBeOnTheScreen();
     expect(screen.getByText("Overdue · was due Nov 10")).toBeOnTheScreen();
   });
 
