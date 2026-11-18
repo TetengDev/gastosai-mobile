@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { AxiosError, type AxiosResponse } from "axios";
+import { Keyboard, KeyboardAvoidingView, ScrollView, StyleSheet } from "react-native";
 import QuickAdd from "../../app/(app)/quick-add";
 import { createExpense, listExpenses, parseExpense } from "../api/expenses";
 import { budgetSummary } from "../api/budgets";
@@ -184,6 +185,24 @@ describe("Quick add", () => {
   it("names the typed entry for a screen reader", () => {
     renderQuickAdd();
     expect(screen.getByLabelText("What did you spend on?")).toBe(screen.getByTestId("quick-add-input"));
+  });
+
+  // The proposal card renders under the input; with the keyboard up it would sit behind it.
+  it("puts the keyboard away when it reads the sentence", async () => {
+    const dismiss = jest.spyOn(Keyboard, "dismiss");
+    renderQuickAdd();
+    fireEvent.changeText(screen.getByTestId("quick-add-input"), "lunch 250 at Jollibee");
+    fireEvent.press(screen.getByText("Read it"));
+    expect(dismiss).toHaveBeenCalled();
+    dismiss.mockRestore();
+    await screen.findByText("Save this");
+  });
+
+  it("keeps its content clear of the header and the keyboard", () => {
+    renderQuickAdd();
+    expect(screen.UNSAFE_getByType(KeyboardAvoidingView).props.keyboardVerticalOffset).toBeGreaterThan(0);
+    const content = StyleSheet.flatten(screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle);
+    expect(content.paddingBottom).toBeGreaterThan(content.paddingTop);
   });
 
   // Pin: receipt scan stays, as the second path under the typed one.
