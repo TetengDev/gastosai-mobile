@@ -1,6 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   InputAccessoryView,
   Keyboard,
   KeyboardAvoidingView,
@@ -11,9 +13,14 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { listCategories, listExpenses } from "../api/expenses";
+import { budgetSummary } from "../api/budgets";
+import { createExpense, listCategories, listExpenses } from "../api/expenses";
 import type { BudgetSummaryItem, ExpenseRequest, ExpenseResponse } from "../api/types";
-import { formatCentavos, nowForApi, parseAmountToCentavos } from "../lib/formatters";
+import { Piso } from "../brand/Piso";
+import { useMonth } from "../context/MonthContext";
+import { useNavOrigin } from "../context/NavOriginContext";
+import { currentMonth, formatCentavos, nowForApi, parseAmountToCentavos } from "../lib/formatters";
+import { Celebrate } from "./Celebrate";
 import { expenseAmountText } from "./money";
 import { Button, ErrorText, Field, Pill } from "./ui";
 import { useTheme } from "../theme/useTheme";
@@ -51,6 +58,126 @@ interface Props {
 
 /** How many category chips the form offers (spec §4). */
 const CHIP_COUNT = 6;
+
+/** Spec §2: how long Piso holds `saved` before the screen moves on (R18). */
+const SAVED_HOLD_MS = 1200;
+const SAVED_PISO_SIZE = 56;
+
+export interface Logged {
+  /** R19's line, from `loggedLine`. */
+  line: string;
+  /** R23: the all-time list was loaded and empty when the user pressed save. */
+  first: boolean;
+}
+
+/**
+ * Saving a new expense, shared by add and quick-add (R18, R19, R23). Not used by edit: the
+ * confirmation is for new expenses only.
+ *
+ * Mobile has no toast host that survives navigation, so the screen itself holds for 1.2 s with
+ * Piso `saved` and the budget line where its save action was, then returns to the tab it was
+ * opened from. Both routes are hidden tabs that stay mounted, so leaving early cancels the hold and
+ * clears the line rather than pulling the user back, or greeting the next visit with it.
+ */
+export function useLogExpense(onError: (e: unknown) => void) {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const { resetToCurrent } = useMonth();
+  const origin = useNavOrigin();
+  // Observed, not just read: quick-add draws no form, and R23 needs the history in hand at submit.
+  useQuery({ queryKey: ["expenses", "all"], queryFn: () => listExpenses() });
+
+  const [logged, setLogged] = useState<Logged | null>(null);
+  const focused = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useFocusEffect(
+    useCallback(() => {
+      focused.current = true;
+      return () => {
+        focused.current = false;
+        clearTimeout(timer.current);
+        setLogged(null);
+      };
+    }, []),
+  );
+
+  const save = useMutation({
+    mutationFn: async (body: ExpenseRequest) => {
+      // Read at submit, before the save invalidates it: afterwards it always holds one expense.
+      const history = queryClient.getQueryData<ExpenseResponse[]>(["expenses", "all"]);
+      const saved = await createExpense(body);
+      return { saved, first: history?.length === 0 };
+    },
+    onSuccess: async ({ saved, first }) => {
+      // The month the server filed it in (Manila wall-clock), not today's: a parsed receipt can
+      // carry another date. Fetched after the save, so `remaining` already counts it.
+      const month = saved.date?.slice(0, 7) ?? currentMonth();
+      // Both the list and the month total are now stale. Not awaited: they refetch during the
+      // hold, and the confirmation waits only on the line it shows.
+      void queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      void queryClient.invalidateQueries({ queryKey: ["report", "monthly"] });
+      const summary = await queryClient
+        .fetchQuery({
+          queryKey: ["budgets", "summary", month],
+          queryFn: () => budgetSummary(month),
+          retry: false,
+        })
+        .catch(() => undefined);
+      // A new expense is usually dated today; a user browsing an earlier month would otherwise
+      // save successfully and then see nothing (docs/lessons.md).
+      resetToCurrent();
+      if (!focused.current) return;
+      const line = loggedLine(saved, summary?.items);
+      setLogged({ line, first });
+      AccessibilityInfo.announceForAccessibility(line);
+      timer.current = setTimeout(() => {
+        setLogged(null);
+        router.navigate(origin as never);
+      }, SAVED_HOLD_MS);
+    },
+    onError,
+  });
+
+  return { save, logged };
+}
+
+/**
+ * The save action's place during the hold: Piso `saved` beside the line (spec §4). The first
+ * expense ever plays `Celebrate` over that Piso, at the same size, as goals do; it is only ever
+ * drawn while the screen is in focus, because the hold ends on blur.
+ */
+export function LoggedNotice({ logged }: { logged: Logged }) {
+  const t = useTheme();
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <View style={{ width: SAVED_PISO_SIZE, height: SAVED_PISO_SIZE }}>
+        <Piso state="saved" size={SAVED_PISO_SIZE} />
+        {logged.first ? (
+          <View
+            pointerEvents="none"
+            // The line already says it; Celebrate's own Piso would repeat it.
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={{ position: "absolute", top: 0, left: 0 }}
+          >
+            <Celebrate event="first-expense" size={SAVED_PISO_SIZE} />
+          </View>
+        ) : null}
+      </View>
+      <Text
+        accessibilityLiveRegion="polite"
+        style={{
+          flex: 1,
+          fontFamily: t.fonts.bodyMedium,
+          fontSize: t.fontSizes.content,
+          color: t.colors.textHi,
+        }}
+      >
+        {logged.line}
+      </Text>
+    </View>
+  );
+}
 
 /**
  * R19's confirmation line, identical on web. `remaining` is the server's figure for the saved

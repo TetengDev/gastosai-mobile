@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import axios from "axios";
@@ -6,13 +6,12 @@ import * as ImagePicker from "expo-image-picker";
 import { KeyboardAvoidingView, Linking, Platform, ScrollView, Text, View } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import { scanReceipt } from "../../src/api/ai";
-import { createExpense, parseExpense } from "../../src/api/expenses";
+import { parseExpense } from "../../src/api/expenses";
 import type { ParsedExpenseResult } from "../../src/api/types";
 import { formatCentavos, formatDate } from "../../src/lib/formatters";
 import { centavosToInput } from "../../src/components/money";
+import { LoggedNotice, useLogExpense } from "../../src/components/ExpenseForm";
 import { Body, Button, Card, ErrorText, Field, Pill } from "../../src/components/ui";
-import { useMonth } from "../../src/context/MonthContext";
-import { useNavOrigin } from "../../src/context/NavOriginContext";
 import { useTheme } from "../../src/theme/useTheme";
 import { accents } from "../../src/theme";
 
@@ -25,15 +24,12 @@ function confidenceColor(c?: string): string {
 
 export default function QuickAdd() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const [text, setText] = useState("");
   const [parsed, setParsed] = useState<ParsedExpenseResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [quotaReached, setQuotaReached] = useState(false);
   const [permissionBlocked, setPermissionBlocked] = useState(false);
   const t = useTheme();
-  const { resetToCurrent } = useMonth();
-  const origin = useNavOrigin();
 
   const parse = useMutation({
     mutationFn: parseExpense,
@@ -51,18 +47,9 @@ export default function QuickAdd() {
     },
   });
 
-  const save = useMutation({
-    mutationFn: createExpense,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["expenses"] });
-      await queryClient.invalidateQueries({ queryKey: ["report", "monthly"] });
-      // A new expense is dated today. If the user was browsing an earlier month, stay there and
-      // the row they just saved is invisible — filed correctly, but apparently lost.
-      resetToCurrent();
-      router.navigate(origin as never);
-    },
-    onError: (e) => setError(errorMessage(e, "Could not save the expense.")),
-  });
+  // Invalidation, the month reset and the 1.2 s hold on Piso `saved` live in the hook, shared
+  // with add-expense.
+  const { save, logged } = useLogExpense((e) => setError(errorMessage(e, "Could not save the expense.")));
 
   const scan = useMutation({
     mutationFn: ({ uri, mimeType }: { uri: string; mimeType?: string }) =>
@@ -264,7 +251,9 @@ export default function QuickAdd() {
               <ErrorText>{parsed.rejectionMessage}</ErrorText>
             ) : null}
 
-            {parsed.saveable ? (
+            {logged ? (
+              <LoggedNotice logged={logged} />
+            ) : parsed.saveable ? (
               <>
                 {/* Never auto-saved. The model can be wrong, and a silently created wrong
                     expense is worse than no expense — the user confirms what gets stored. */}
