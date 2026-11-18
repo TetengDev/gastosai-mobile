@@ -1,6 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 import AmountSheet from "./AmountSheet";
+import { palettes } from "../theme";
 
 /** What the Goals screen relies on from its sheet: centavos out, with the label, and nothing past centavos. */
 
@@ -50,5 +52,28 @@ describe("AmountSheet", () => {
     fireEvent.changeText(screen.getByTestId("sheet-amount"), "500");
     fireEvent.press(screen.getByTestId("sheet-save"));
     expect(onSubmit).toHaveBeenCalledWith({ amount: 50_000, label: "" });
+  });
+
+  // Design review, fix round 1. Text3 on the dark sheet and the link blue on its accessory bar
+  // both fall under 4.5:1; the review asked for text2 and textHi.
+  it("draws the AMOUNT label in text2 and Done in textHi", () => {
+    renderSheet();
+    expect(StyleSheet.flatten(screen.getByText("AMOUNT").props.style).color).toBe(palettes.light.text2);
+    expect(StyleSheet.flatten(screen.getByText("Done").props.style).color).toBe(palettes.light.textHi);
+  });
+
+  it("gives Cancel and Done a 44 pt target of their own", () => {
+    renderSheet();
+    for (const id of ["sheet-cancel", "sheet-amount-done"]) {
+      expect(StyleSheet.flatten(screen.getByTestId(id).props.style)).toMatchObject({
+        minHeight: 44,
+        justifyContent: "center",
+      });
+    }
+  });
+
+  it("names the amount field for a screen reader", () => {
+    renderSheet();
+    expect(screen.getByLabelText("Amount in pesos")).toBe(screen.getByTestId("sheet-amount"));
   });
 });
