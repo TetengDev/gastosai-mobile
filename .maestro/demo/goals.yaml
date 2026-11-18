@@ -54,13 +54,12 @@ appId: host.exp.Exponent
     label: ">> Created, and starting from zero"
 - assertVisible: "(?i).*₱0.00 of ₱10,000.00.*"
 
-# The sheet opens pre-filled with the current saved amount, so this replaces it rather than adding.
+# The sheet asks for the amount to add, and opens empty.
 - tapOn:
     text: "Add savings"
     label: ">> Put something towards it"
 - tapOn:
     id: "sheet-amount"
-- eraseText
 - inputText: "4000"
 - tapOn:
     id: "sheet-amount-done"

@@ -51,8 +51,9 @@ export default function AmountSheet({
 }: {
   visible: boolean;
   title: string;
-  labelField: string;
-  labelPlaceholder: string;
+  /** Omit for an amount-only sheet (adding to a goal); `label` is then submitted as `""`. */
+  labelField?: string;
+  labelPlaceholder?: string;
   initial?: Partial<AmountSheetValues>;
   submitLabel: string;
   submitting: boolean;
@@ -76,7 +77,7 @@ export default function AmountSheet({
       setError("Enter an amount greater than zero.");
       return;
     }
-    if (!label.trim()) {
+    if (labelField && !label.trim()) {
       setError(`${labelField} is required.`);
       return;
     }
@@ -171,14 +172,16 @@ export default function AmountSheet({
             </View>
           </View>
 
-          <Field
-            testID="sheet-label"
-            label={labelField}
-            value={label}
-            onChangeText={setLabel}
-            placeholder={labelPlaceholder}
-            autoCapitalize="words"
-          />
+          {labelField ? (
+            <Field
+              testID="sheet-label"
+              label={labelField}
+              value={label}
+              onChangeText={setLabel}
+              placeholder={labelPlaceholder}
+              autoCapitalize="words"
+            />
+          ) : null}
 
           <ErrorText>{error ?? serverError}</ErrorText>
           <Button testID="sheet-save" title={submitLabel} onPress={submit} loading={submitting} />

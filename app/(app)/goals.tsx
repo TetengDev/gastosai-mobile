@@ -37,9 +37,10 @@ type SheetMode =
  * happens once; adding to it happens every payday, and burying that behind an edit form would put
  * the common case behind the rare one.
  *
- * `progressPercent` and `status` are server-computed. A contribution sends the new saved total and
- * re-renders whatever comes back — it never advances the bar locally to feel quicker, which would
- * put the phone and every other client into disagreement (CLAUDE.md §1.2).
+ * `progressPercent` and `status` are server-computed. "Add savings" asks for the amount to add, as
+ * on web; the API stores an absolute saved total, so the screen sends the current total plus that
+ * amount and re-renders whatever comes back. It never advances the bar locally to feel quicker,
+ * which would put the phone and every other client into disagreement (CLAUDE.md §1.2).
  *
  * A goal the server marks `COMPLETED` leaves the list: it plays `Celebrate` once over the header
  * Piso, then sits in a collapsed Achieved group (spec §4, R25). The split reads `status` only,
@@ -103,9 +104,11 @@ export default function Goals() {
     const { goal } = sheet;
     if (goal.id == null) return;
     if (sheet.kind === "contribute") {
-      // The *new total*, not the delta: the API stores an absolute saved amount, and the sheet
-      // opens pre-filled with the current one so adding to it is a small edit.
-      const body = toRequest(goal, { savedAmount: amount });
+      // The API stores an absolute total, so the amount added is summed here, in integer
+      // centavos, onto the goal as it stands now: the sheet's snapshot may predate a refresh.
+      const current = goals.find((g) => g.id === goal.id);
+      if (current?.savedAmount == null) return;
+      const body = toRequest(current, { savedAmount: current.savedAmount + amount });
       if (body) update.mutate({ id: goal.id, body });
       return;
     }
@@ -138,15 +141,14 @@ export default function Goals() {
       };
     }
     if (sheet.kind === "contribute") {
+      // Amount only, opening empty: the goal is already chosen, and what is asked is how much
+      // to add, not the new total.
       return {
-        title: "Update saved",
-        labelField: "Goal name",
-        labelPlaceholder: "Emergency fund",
-        submitLabel: "Save",
-        initial: {
-          amount: centavosToInput(sheet.goal.savedAmount),
-          label: sheet.goal.name ?? "",
-        },
+        title: "Add savings",
+        labelField: undefined,
+        labelPlaceholder: undefined,
+        submitLabel: "Add",
+        initial: undefined,
       };
     }
     return {
