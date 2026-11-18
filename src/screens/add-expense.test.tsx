@@ -63,6 +63,9 @@ jest.mock("../components/Celebrate", () => {
   };
 });
 
+// Hidden tabs stay mounted. The stub runs the focus callback only while `mockFocused`, the way
+// expo-router does for the screen the user is looking at.
+let mockFocused = true;
 const mockNavigate = jest.fn();
 jest.mock("expo-router", () => {
   const { useEffect } = jest.requireActual<typeof import("react")>("react");
@@ -70,13 +73,15 @@ jest.mock("expo-router", () => {
     useRouter: () => ({ navigate: mockNavigate, replace: jest.fn() }),
     useLocalSearchParams: () => ({}),
     useFocusEffect: (effect: () => void | (() => void)) => {
-      useEffect(() => effect(), [effect]);
+      useEffect(() => (mockFocused ? effect() : undefined), [effect]);
     },
   };
 });
 
-function renderAdd() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+/** `cached`: keep queries fresh and in memory, as the app's own client does for 30 s. */
+function renderAdd(cached = false) {
+  const queries = cached ? { staleTime: Infinity, gcTime: Infinity } : { gcTime: 0 };
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, ...queries } } });
   const view = render(
     <QueryClientProvider client={client}>
       <MonthProvider>
@@ -103,6 +108,7 @@ beforeEach(() => {
   jest.useFakeTimers();
   celebrated.length = 0;
   mockNavigate.mockClear();
+  jest.mocked(budgetSummary).mockClear();
   jest.mocked(budgetSummary).mockImplementation(summary([food(175_000)]));
 });
 afterEach(() => {
@@ -120,6 +126,26 @@ describe("Add expense", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/(app)");
     // The route stays mounted as a hidden tab; the next visit must not open on this line.
     expect(screen.queryByText(/^Logged/)).toBeNull();
+  });
+
+  // R18 is spec §2's 1.2 s, not merely "a while".
+  it("holds for the full 1200 ms", async () => {
+    const { client } = renderAdd();
+    await saveLunch(client);
+    await screen.findByText(/^Logged/);
+    await act(() => jest.advanceTimersByTimeAsync(1100));
+    expect(mockNavigate).not.toHaveBeenCalled();
+    await act(() => jest.advanceTimersByTimeAsync(100));
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+  });
+
+  // The app's client keeps queries fresh for 30 s; Home's summary for this month is usually in the
+  // cache from before the save, and its `remaining` does not count the new expense.
+  it("reads the summary from the server after the save, not from the cache", async () => {
+    const { client } = renderAdd(true);
+    client.setQueryData(["budgets", "summary", "2026-11"], { month: "2026-11", items: [food(200_000)] });
+    await saveLunch(client);
+    expect(await screen.findByText("Logged ₱250.00 · ₱1,750.00 left in Food")).toBeOnTheScreen();
   });
 
   it("says how far over when the category is over budget", async () => {
@@ -201,6 +227,24 @@ describe("Add expense", () => {
     await hold();
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("Expense saved")).toBeNull();
+  });
+
+  // A save that lands while another tab is on screen shows nothing there and moves no one.
+  it("neither holds, celebrates nor navigates while out of focus", async () => {
+    jest.mocked(listExpenses).mockResolvedValue([]);
+    mockFocused = false;
+    try {
+      const { client } = renderAdd();
+      await saveLunch(client);
+      await waitFor(() => expect(jest.mocked(budgetSummary)).toHaveBeenCalled());
+      await hold();
+      expect(screen.queryByText(/^Logged/)).toBeNull();
+      expect(celebrated).toEqual([]);
+      expect(mockNavigate).not.toHaveBeenCalled();
+    } finally {
+      mockFocused = true;
+      jest.mocked(listExpenses).mockResolvedValue([mockOld]);
+    }
   });
 
   // Leaving during the hold must not pull the user back 1.2 s later.

@@ -164,6 +164,11 @@ describe("Quick add", () => {
     expect(screen.queryByLabelText("Expense saved")).toBeNull();
   });
 
+  it("names the typed entry for a screen reader", () => {
+    renderQuickAdd();
+    expect(screen.getByLabelText("What did you spend on?")).toBe(screen.getByTestId("quick-add-input"));
+  });
+
   // Pin: receipt scan stays, as the second path under the typed one.
   it("keeps receipt scan below the typed entry", () => {
     renderQuickAdd();
