@@ -159,10 +159,24 @@ export function Hero({
 }
 
 /**
- * Budgets the server bands as close or over, and bills due within a week. Hidden when empty and
- * nothing failed: a bills query that errors says so here rather than dropping its bills unseen.
+ * Budgets the server bands as close or over, bills left unpaid, and bills due within a week. Hidden
+ * when empty and nothing failed: a bills query that errors says so here rather than dropping its
+ * bills unseen, and so does a Mark paid that did not go through (R9).
  */
-export function NeedsAttention({ rows, error }: { rows: readonly AttentionRow[]; error?: string | null }) {
+export function NeedsAttention({
+  rows,
+  error,
+  onMarkPaid,
+  busy,
+}: {
+  rows: readonly AttentionRow[];
+  error?: string | null;
+  /** A row's Mark paid, by bill id. */
+  onMarkPaid?: (id: number) => void;
+  /** A mark is in flight: every Mark paid holds until it and its refetch land. */
+  busy?: boolean;
+}) {
+  const t = useTheme();
   const router = useRouter();
   if (rows.length === 0 && !error) return null;
 
@@ -171,25 +185,54 @@ export function NeedsAttention({ rows, error }: { rows: readonly AttentionRow[];
       <SectionLabel>NEEDS ATTENTION</SectionLabel>
       <ErrorText>{error}</ErrorText>
       {rows.map((r) => (
-        <Pressable
-          key={r.key}
-          accessibilityRole="button"
-          onPress={() => router.push(r.href)}
-          style={({ pressed }) => [{ gap: 6, paddingVertical: 6 }, pressed && { opacity: 0.6 }]}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <Body numberOfLines={1}>{r.label}</Body>
-              <Body dim style={{ fontSize: 12.5 }}>
-                {r.sub}
-              </Body>
+        // The row and its Mark paid are siblings: a button inside the row's own button would be
+        // one control to a screen reader.
+        <View key={r.key} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push(r.href)}
+            style={({ pressed }) => [{ flex: 1, gap: 6, paddingVertical: 6 }, pressed && { opacity: 0.6 }]}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Body numberOfLines={1}>{r.label}</Body>
+                {/* Amber, never the danger red: an unpaid bill is a heads-up, not a failure. */}
+                <Body dim style={{ fontSize: 12.5, ...(r.overdue ? { color: t.colors.warnText } : null) }}>
+                  {r.sub}
+                </Body>
+              </View>
+              {r.amount != null ? <Amount centavos={r.amount} /> : null}
             </View>
-            {r.amount != null ? <Amount centavos={r.amount} /> : null}
-          </View>
-          {r.tone && r.percent != null ? (
-            <ProgressMeter percent={r.percent} tone={r.tone} label={`${r.label} budget`} />
+            {r.tone && r.percent != null ? (
+              <ProgressMeter percent={r.percent} tone={r.tone} label={`${r.label} budget`} />
+            ) : null}
+          </Pressable>
+          {r.markPaid && onMarkPaid ? (
+            // Not `Button`: it takes no accessibility label, and its small size is under 44pt.
+            <Pressable
+              accessibilityRole="button"
+              // Label in Name (WCAG 2.5.3): the spoken name starts with the visible text.
+              accessibilityLabel={`Mark paid: ${r.label}`}
+              accessibilityState={{ disabled: !!busy, busy: !!busy }}
+              disabled={busy}
+              onPress={() => r.markPaid && onMarkPaid(r.markPaid.id)}
+              style={({ pressed }) => ({
+                minHeight: 44,
+                justifyContent: "center",
+                paddingHorizontal: 14,
+                borderRadius: t.radii.pill,
+                borderWidth: 1,
+                borderColor: t.colors.borderInput,
+                backgroundColor: t.colors.surface,
+                opacity: pressed || busy ? 0.7 : 1,
+              })}
+            >
+              <Text style={{ fontFamily: t.fonts.bodyMedium, fontSize: t.fontSizes.caption, color: t.colors.textHi }}>
+                Mark paid
+              </Text>
+            </Pressable>
           ) : null}
-        </Pressable>
+        </View>
       ))}
     </Card>
   );

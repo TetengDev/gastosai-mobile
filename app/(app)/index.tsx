@@ -1,11 +1,13 @@
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useCallback, useRef, useState } from "react";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useFocusEffect } from "expo-router";
 import { RefreshControl, ScrollView } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import { budgetSummary } from "../../src/api/budgets";
 import { listExpenses, monthlyReport } from "../../src/api/expenses";
 import { listGoals } from "../../src/api/goals";
-import { upcomingBills } from "../../src/api/recurring";
-import { formatMonth, monthRange, nowForApi } from "../../src/lib/formatters";
+import { listRecurring, markRecurringPaid, upcomingBills } from "../../src/api/recurring";
+import { currentMonth, formatMonth, monthRange, nowForApi } from "../../src/lib/formatters";
 import { toBand } from "../../src/lib/pisoMood";
 import { useMonth } from "../../src/context/MonthContext";
 import { Body, Button, ErrorText, MonthStepper } from "../../src/components/ui";
@@ -16,6 +18,7 @@ import {
   celebrationsFor,
   daysLeftInMonth,
   heroMood,
+  isPaidUp,
   needsAttention,
   previousMonth,
   statusLine,
@@ -62,6 +65,45 @@ export default function Dashboard() {
     queryFn: () => budgetSummary(prevMonth),
     enabled: isCurrentMonth,
   });
+  // Each bill's paid state (R2), and what was due last month (R3), for the overdue rows. Either
+  // failing is silent: the rows fall back to upcoming bills alone.
+  const recurring = useQuery({ queryKey: ["recurring"], queryFn: listRecurring });
+  const billsLastMonth = useQuery({
+    queryKey: ["recurring", "upcoming", prevMonth],
+    queryFn: () => upcomingBills(prevMonth),
+    enabled: isCurrentMonth,
+  });
+
+  const queryClient = useQueryClient();
+  // A ref as well as isPending: two taps inside one frame both read a stale isPending.
+  const marking = useRef(false);
+  // The ["recurring"] prefix covers the list and every upcoming month, so a marked bill leaves
+  // overdue on the refetch. Returned, so the mutation stays pending until that lands.
+  const markPaid = useMutation({
+    mutationFn: (id: number) => markRecurringPaid(id, currentMonth()),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["recurring"] }),
+    // Here, not per mutate(): those are skipped once their observer is gone, and a ref left set
+    // would hold every Mark paid dead until a restart.
+    onSettled: () => {
+      marking.current = false;
+    },
+  });
+  const onMarkPaid = (id: number) => {
+    // The bill as it is now, not as the row saw it; one already paid up needs no call.
+    const bill = recurring.data?.find((r) => r.id === id);
+    if (marking.current || !bill || isPaidUp(bill, currentMonth())) return;
+    marking.current = true;
+    markPaid.mutate(id);
+  };
+
+  // Tabs stay mounted when hidden: a cheer played behind another tab is spent where nobody sees it.
+  const [focused, setFocused] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
 
   // The report is keyed by "YYYY-MM"; find this month's row rather than assuming ordering.
   const thisMonth = report.data?.find((r) => r.month === month);
@@ -97,18 +139,22 @@ export default function Dashboard() {
           daysLeft: daysLeftInMonth(month, today),
         });
 
-  const refreshing =
-    report.isRefetching ||
-    expenses.isRefetching ||
-    budgets.isRefetching ||
-    bills.some((q) => q.isRefetching) ||
-    goals.isRefetching;
-  const refreshAll = () => {
-    report.refetch();
-    expenses.refetch();
-    budgets.refetch();
-    bills.forEach((q) => q.refetch());
-    goals.refetch();
+  // The spinner is the user's refresh alone: a background refetch (Mark paid's, a focus refetch)
+  // would otherwise spin it with nobody having pulled.
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshAll = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      report.refetch(),
+      expenses.refetch(),
+      budgets.refetch(),
+      ...bills.map((q) => q.refetch()),
+      recurring.refetch(),
+      // refetch() ignores `enabled`; last month's bills are only the current month's business.
+      isCurrentMonth ? billsLastMonth.refetch() : null,
+      goals.refetch(),
+    ]);
+    setRefreshing(false);
   };
 
   return (
@@ -138,7 +184,7 @@ export default function Dashboard() {
         // Nothing until both sources land: otherwise a goal starts playing, the closed month
         // arrives, and the queue's "month first" order cuts the goal off mid-cheer.
         celebrations={
-          goals.isLoading || closed.isLoading
+          !focused || goals.isLoading || closed.isLoading
             ? []
             : celebrationsFor({
                 month,
@@ -171,8 +217,28 @@ export default function Dashboard() {
       </Hero>
 
       <NeedsAttention
-        rows={needsAttention(items, upcoming, today)}
-        error={billsFailed ? errorMessage(billsFailed.error) : null}
+        rows={needsAttention(
+          items,
+          {
+            month,
+            // Held until the paid state lands, or a paid bill shows as due and then vanishes. A
+            // failed /recurring releases them (R2), after the app's one retry.
+            upcoming: isCurrentMonth && recurring.isLoading ? [] : upcoming,
+            upcomingPrevious: billsLastMonth.data,
+            recurring: recurring.data,
+          },
+          today,
+        )}
+        error={
+          // Only where Mark paid is offered: a past month has no button to try again with.
+          markPaid.isError && isCurrentMonth
+            ? "Could not mark that bill paid. Try again."
+            : billsFailed
+              ? errorMessage(billsFailed.error)
+              : null
+        }
+        onMarkPaid={onMarkPaid}
+        busy={markPaid.isPending}
       />
       <GoalsStrip goals={goals.data ?? []} />
       <RecentList

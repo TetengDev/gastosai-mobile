@@ -1,6 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient, type UseMutationResult } from "@tanstack/react-query";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
+  Alert,
   InputAccessoryView,
   Keyboard,
   KeyboardAvoidingView,
@@ -11,10 +14,17 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { listCategories, listExpenses } from "../api/expenses";
-import type { ExpenseRequest } from "../api/types";
-import { nowForApi, parseAmountToCentavos } from "../lib/formatters";
-import { Body, Button, ErrorText, Field, Pill } from "./ui";
+import { budgetSummary } from "../api/budgets";
+import { errorMessage } from "../api/client";
+import { createExpense, listCategories, listExpenses } from "../api/expenses";
+import type { BudgetSummaryItem, ExpenseRequest, ExpenseResponse } from "../api/types";
+import { Piso } from "../brand/Piso";
+import { useMonth } from "../context/MonthContext";
+import { useNavOrigin } from "../context/NavOriginContext";
+import { currentMonth, formatCentavos, nowForApi, parseAmountToCentavos } from "../lib/formatters";
+import { Celebrate } from "./Celebrate";
+import { expenseAmountText } from "./money";
+import { Button, ErrorText, Field, Pill } from "./ui";
 import { useTheme } from "../theme/useTheme";
 
 /**
@@ -41,6 +51,206 @@ interface Props {
   onSubmit: (body: ExpenseRequest) => void;
   /** Rendered under the primary action — used for Delete on the edit screen. */
   footer?: React.ReactNode;
+  /**
+   * Shown in place of the primary action once a new expense is saved, so the confirmation sits
+   * where the Save button was and the button cannot be tapped twice during the hold.
+   */
+  confirmation?: React.ReactNode;
+}
+
+/** How many category chips the form offers (spec §4). */
+const CHIP_COUNT = 6;
+
+/** Spec §2: how long Piso holds `saved` before the screen moves on (R18). */
+const SAVED_HOLD_MS = 1200;
+/** How long the R19 line waits for the budget summary before it says the amount alone. */
+const SUMMARY_WAIT_MS = 1500;
+const SAVED_PISO_SIZE = 56;
+
+export interface Logged {
+  /** R19's line, from `loggedLine`. */
+  line: string;
+  /** R23: the all-time list was loaded and empty when the user pressed save. */
+  first: boolean;
+}
+
+/**
+ * Saving a new expense, shared by add and quick-add (R18, R19, R23). Not used by edit: the
+ * confirmation is for new expenses only.
+ *
+ * Mobile has no toast host that survives navigation, so the screen itself holds for 1.2 s with
+ * Piso `saved` and the budget line where its save action was, then returns to the tab it was
+ * opened from. Both routes are hidden tabs that stay mounted, so leaving early cancels the hold and
+ * clears the line rather than pulling the user back, or greeting the next visit with it.
+ */
+export interface LogExpense {
+  /** `mutate(body)` posts a new expense; `isPending` covers the POST and the summary read. */
+  save: UseMutationResult<{ saved: ExpenseResponse; first: boolean }, unknown, ExpenseRequest>;
+  /** Set only during the 1.2 s hold, and only while the screen is in focus. */
+  logged: Logged | null;
+}
+
+/** `onError` gets the failure line to show on the screen; off screen, it is an alert instead. */
+export function useLogExpense(onError: (message: string) => void): LogExpense {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const { resetToCurrent } = useMonth();
+  const origin = useNavOrigin();
+  // Observed, not just read: quick-add draws no form, and R23 needs the history in hand at submit.
+  useQuery({ queryKey: ["expenses", "all"], queryFn: () => listExpenses() });
+
+  const [logged, setLogged] = useState<Logged | null>(null);
+  const focused = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useFocusEffect(
+    useCallback(() => {
+      focused.current = true;
+      return () => {
+        focused.current = false;
+        clearTimeout(timer.current);
+        setLogged(null);
+      };
+    }, []),
+  );
+
+  const save = useMutation({
+    mutationFn: async (body: ExpenseRequest) => {
+      // Read at submit, before the save invalidates it: afterwards it always holds one expense.
+      const history = queryClient.getQueryData<ExpenseResponse[]>(["expenses", "all"]);
+      const saved = await createExpense(body);
+      return { saved, first: history?.length === 0 };
+    },
+    onSuccess: async ({ saved, first }) => {
+      // The month the server filed it in (Manila wall-clock), not today's: a parsed receipt can
+      // carry another date. Fetched after the save, so `remaining` already counts it.
+      const month = saved.date?.slice(0, 7) ?? currentMonth();
+      // The list, every report (month total, day totals, trend, top, category) and every month's
+      // budget summary now miss it. Not awaited: they refetch during the hold, and the
+      // confirmation waits only on the line it shows. This month's summary is cancelled and
+      // fetched fresh just below.
+      void queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      void queryClient.invalidateQueries({ queryKey: ["report"] });
+      void queryClient.invalidateQueries({ queryKey: ["budgets", "summary"] });
+      const summaryKey = ["budgets", "summary", month];
+      // A request Home started before the save would otherwise be reused, and its answer
+      // predates the expense.
+      await queryClient.cancelQueries({ queryKey: summaryKey });
+      let gaveUp: ReturnType<typeof setTimeout> | undefined;
+      const summary = await Promise.race([
+        queryClient
+          .fetchQuery({
+            queryKey: summaryKey,
+            queryFn: () => budgetSummary(month),
+            // Always the server, never the cache: the app keeps queries fresh for 30 s, and a
+            // summary from before the save does not count the expense just logged.
+            staleTime: 0,
+            retry: false,
+          })
+          .catch(() => undefined),
+        // A slow summary must not hold the confirmation hostage; past this, the amount alone.
+        new Promise<undefined>((resolve) => {
+          gaveUp = setTimeout(resolve, SUMMARY_WAIT_MS);
+        }),
+      ]);
+      clearTimeout(gaveUp);
+      // A new expense is usually dated today; a user browsing an earlier month would otherwise
+      // save successfully and then see nothing (docs/lessons.md).
+      resetToCurrent();
+      if (!focused.current) return;
+      const line = loggedLine(saved, summary?.items);
+      setLogged({ line, first });
+      AccessibilityInfo.announceForAccessibility(line);
+      timer.current = setTimeout(() => {
+        setLogged(null);
+        router.navigate(origin as never);
+      }, SAVED_HOLD_MS);
+    },
+    onError: (e) => {
+      const message = errorMessage(e, "Could not save the expense.");
+      // Left or remounted before the POST failed: the screen's own error line would land on an
+      // instance nobody sees, and the user would believe the expense was logged.
+      if (focused.current) onError(message);
+      else Alert.alert(message);
+    },
+  });
+
+  return { save, logged };
+}
+
+/**
+ * A key that changes each time the screen comes back into focus.
+ *
+ * Add and quick-add are hidden tabs that stay mounted, so without it a return visit finds last
+ * time's typed form, a proposal still offering "Save this", ignores the values a second "Edit
+ * first" hands over, and does not focus the entry again. Keying the screen on this remounts it.
+ */
+export function useVisitKey(): number {
+  const [visit, setVisit] = useState(0);
+  const seen = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      // The first focus is the mount itself; only a return needs a fresh screen.
+      if (seen.current) setVisit((v) => v + 1);
+      seen.current = true;
+    }, []),
+  );
+  return visit;
+}
+
+/**
+ * The save action's place during the hold: Piso `saved` beside the line (spec §4). The first
+ * expense ever plays `Celebrate` over that Piso, at the same size, as goals do; it is only ever
+ * drawn while the screen is in focus, because the hold ends on blur.
+ */
+export function LoggedNotice({ logged }: { logged: Logged }) {
+  const t = useTheme();
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <View style={{ width: SAVED_PISO_SIZE, height: SAVED_PISO_SIZE }}>
+        <Piso state="saved" size={SAVED_PISO_SIZE} />
+        {logged.first ? (
+          <View
+            pointerEvents="none"
+            // The line already says it; Celebrate's own Piso would repeat it.
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={{ position: "absolute", top: 0, left: 0 }}
+          >
+            <Celebrate event="first-expense" size={SAVED_PISO_SIZE} />
+          </View>
+        ) : null}
+      </View>
+      <Text
+        accessibilityLiveRegion="polite"
+        style={{
+          flex: 1,
+          fontFamily: t.fonts.bodyMedium,
+          fontSize: t.fontSizes.content,
+          color: t.colors.textHi,
+        }}
+      >
+        {logged.line}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * R19's confirmation line, identical on web. `remaining` is the server's figure for the saved
+ * category's budget line in the expense's month; nothing here is derived from budgeted or spent.
+ */
+export function loggedLine(
+  saved: ExpenseResponse,
+  items: readonly BudgetSummaryItem[] | undefined,
+): string {
+  const logged = `Logged ${expenseAmountText(saved).base}`;
+  const remaining = saved.category
+    ? items?.find((i) => i.categoryName === saved.category)?.remaining
+    : undefined;
+  if (remaining == null) return logged;
+  return remaining >= 0
+    ? `${logged} · ${formatCentavos(remaining)} left in ${saved.category}`
+    : `${logged} · Over by ${formatCentavos(-remaining)} in ${saved.category}`;
 }
 
 /**
@@ -61,12 +271,13 @@ export default function ExpenseForm({
   serverError,
   onSubmit,
   footer,
+  confirmation,
 }: Props) {
   const t = useTheme();
   const categories = useQuery({ queryKey: ["categories"], queryFn: listCategories });
   // Wrapped, not passed bare: TanStack calls queryFn with its own context object, which
   // `listExpenses` would take as a date range and forward as nonsense query params.
-  // Deliberately unscoped by month — chip ordering wants the whole history, not one month.
+  // Deliberately unscoped by month — the recent categories are the whole history's, not one month's.
   const recent = useQuery({ queryKey: ["expenses", "all"], queryFn: () => listExpenses() });
 
   const [amount, setAmount] = useState(initial?.amount ?? "");
@@ -75,19 +286,16 @@ export default function ExpenseForm({
   const [localError, setLocalError] = useState<string | null>(null);
 
   /**
-   * Categories ordered by how often they appear in the user's own recent expenses, so the likely
-   * choice sits first. This only re-orders a list the client already holds — no totals or buckets
-   * are derived here, which keeps it on the right side of "no business logic on-device".
+   * The six categories most recently used (R20): the first distinct ones met walking the user's
+   * expenses newest first, as `GET /expenses` serves them. Topped up from the category list, so a
+   * user with little history still has chips. Only picks from lists the client already holds.
    */
-  const orderedCategories = useMemo(() => {
-    const names = (categories.data ?? []).map((c) => c.name).filter((n): n is string => !!n);
-    const counts = new Map<string, number>();
-    for (const e of recent.data ?? []) {
-      if (e.category) counts.set(e.category, (counts.get(e.category) ?? 0) + 1);
-    }
-    // Capped: this account has 13 categories, and rendering them all pushed the Save button off
-    // screen. The long tail stays reachable through the free-text field below.
-    return [...names].sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0)).slice(0, 8);
+  const recentCategories = useMemo(() => {
+    const used = (recent.data ?? []).map((e) => e.category);
+    const names = (categories.data ?? []).map((c) => c.name);
+    return [...new Set([...used, ...names])]
+      .filter((n): n is string => !!n)
+      .slice(0, CHIP_COUNT);
   }, [categories.data, recent.data]);
 
   const submit = () => {
@@ -130,7 +338,8 @@ export default function ExpenseForm({
               fontFamily: t.fonts.mono,
               fontSize: 11,
               letterSpacing: 1.3,
-              color: t.colors.text3,
+              // text2, not text3: text3 misses 4.5:1 in dark mode.
+              color: t.colors.text2,
             }}
           >
             AMOUNT
@@ -141,8 +350,12 @@ export default function ExpenseForm({
             </Text>
             <TextInput
               testID="expense-amount"
+              // The visible "AMOUNT" and "₱" are separate texts a screen reader does not tie to it.
+              accessibilityLabel="Amount in pesos"
               value={amount}
-              onChangeText={setAmount}
+              // A peso has two decimal places: a third is refused, not rounded into a centavo
+              // the user never typed.
+              onChangeText={(v) => (/\.\d{3}/.test(v) ? undefined : setAmount(v))}
               keyboardType="decimal-pad"
               inputAccessoryViewID={Platform.OS === "ios" ? AMOUNT_ACCESSORY_ID : undefined}
               placeholder="0.00"
@@ -159,21 +372,12 @@ export default function ExpenseForm({
           </View>
         </View>
 
-        <Field
-          testID="expense-description"
-          label="Description"
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Lunch at Jollibee"
-          autoCapitalize="sentences"
-        />
-
         <View style={{ gap: 8 }}>
           <Text style={{ fontFamily: t.fonts.body, fontSize: 13, color: t.colors.text2 }}>
             Category
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {orderedCategories.map((name) => (
+            {recentCategories.map((name) => (
               <Pill
                 key={name}
                 testID={`category-${name}`}
@@ -192,15 +396,23 @@ export default function ExpenseForm({
             value={category}
             onChangeText={setCategory}
             placeholder="New category"
+            accessibilityLabel="Or type a new category"
           />
         </View>
 
+        <Field
+          testID="expense-description"
+          label="Description"
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Lunch at Jollibee"
+          autoCapitalize="sentences"
+          accessibilityLabel="Description"
+        />
+
         <ErrorText>{localError ?? serverError}</ErrorText>
-        <Button title={submitLabel} onPress={submit} loading={submitting} />
+        {confirmation ?? <Button title={submitLabel} onPress={submit} loading={submitting} />}
         {footer}
-        <Body dim style={{ fontSize: 12.5 }}>
-          Unknown categories are created automatically.
-        </Body>
       </ScrollView>
 
       {Platform.OS === "ios" ? (
@@ -221,9 +433,11 @@ export default function ExpenseForm({
               accessibilityRole="button"
               onPress={Keyboard.dismiss}
               hitSlop={12}
+              style={{ minHeight: 44, justifyContent: "center" }}
             >
+              {/* textHi, not link: the link blue misses 4.5:1 on the dark accessory bar. */}
               <Text
-                style={{ fontFamily: t.fonts.bodyMedium, fontSize: 16, color: t.colors.link }}
+                style={{ fontFamily: t.fonts.bodyMedium, fontSize: 16, color: t.colors.textHi }}
               >
                 Done
               </Text>

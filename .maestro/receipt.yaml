@@ -45,6 +45,8 @@ tags:
     id: "fab-add"
 - assertVisible: "What did you spend on?"
 
+# The typed entry is focused on open, and its keyboard covers the buttons below it.
+- hideKeyboard
 - tapOn:
     id: "choose-photo"
 
@@ -80,6 +82,7 @@ tags:
     timeout: 120000
 - assertVisible: "HIGH|MEDIUM|LOW"
 
+- hideKeyboard
 - tapOn: "Save this"
 - extendedWaitUntil:
     visible: "(?i).*spent this month.*"

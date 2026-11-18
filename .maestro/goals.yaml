@@ -45,11 +45,10 @@ appId: host.exp.Exponent
     timeout: 20000
 - assertVisible: "(?i).*₱0.00 of ₱10,000.00.*"
 
-# Contribute. The sheet opens pre-filled with the current saved amount, so this replaces it.
+# Contribute. The sheet asks for the amount to add and opens empty; ₱0 + ₱4,000 is the new total.
 - tapOn: "Add savings"
 - tapOn:
     id: "sheet-amount"
-- eraseText
 - inputText: "4000"
 - tapOn:
     id: "sheet-amount-done"

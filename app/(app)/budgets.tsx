@@ -13,7 +13,8 @@ import { listCategories } from "../../src/api/categories";
 import type { BudgetSummaryItem } from "../../src/api/types";
 import { formatCentavos, formatMonth } from "../../src/lib/formatters";
 import { centavosToInput } from "../../src/components/money";
-import { budgetTone, toBand } from "../../src/lib/pisoMood";
+import { budgetTone, pisoMoodFor, toBand } from "../../src/lib/pisoMood";
+import { Piso } from "../../src/brand/Piso";
 import { useMonth } from "../../src/context/MonthContext";
 import BudgetSheet from "../../src/components/BudgetSheet";
 import {
@@ -29,14 +30,6 @@ import {
   StatTile,
 } from "../../src/components/ui";
 import { useTheme } from "../../src/theme/useTheme";
-import { accents } from "../../src/theme";
-
-/** The backend sets a status per category; map it to a colour rather than re-deriving one. */
-function toneColor(status?: string): string {
-  if (status === "OVER" || status === "EXCEEDED") return accents.danger;
-  if (status === "NEAR" || status === "WARNING") return accents.amber;
-  return accents.brand;
-}
 
 /**
  * Budgets for the current month — now writable.
@@ -108,7 +101,11 @@ export default function Budgets() {
     );
   };
 
-  const items = summary.data?.items ?? [];
+  // Fullest first (spec §4): a copy, because sorting in place would reorder React Query's cache.
+  const items = [...(summary.data?.items ?? [])].sort(
+    (a, b) => (b.percentUsed ?? 0) - (a.percentUsed ?? 0),
+  );
+  const mood = pisoMoodFor({ bands: items.map((b) => toBand(b.status)), hasExpenses: true });
   const pending = create.isPending || update.isPending;
   const mutationError = create.isError
     ? errorMessage(create.error)
@@ -129,12 +126,20 @@ export default function Budgets() {
           />
         }
       >
-        <MonthStepper
-          label={formatMonth(month)}
-          onPrev={() => shiftMonth(-1)}
-          onNext={() => shiftMonth(1)}
-          canGoNext={!isCurrentMonth}
-        />
+        {/* The screen's one Piso, in the worst line's mood. Rows carry none (spec §4). Drawn only
+            once the summary has landed: without bands it would read calm beside "Could not load"
+            and flash amber on every month step. The spacer keeps the stepper from jumping. */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {summary.data ? <Piso state={mood} size={44} /> : <View style={{ width: 44, height: 44 }} />}
+          <View style={{ flex: 1 }}>
+            <MonthStepper
+              label={formatMonth(month)}
+              onPrev={() => shiftMonth(-1)}
+              onNext={() => shiftMonth(1)}
+              canGoNext={!isCurrentMonth}
+            />
+          </View>
+        </View>
 
         {summary.isLoading && <Skeleton height={140} />}
 
@@ -172,54 +177,77 @@ export default function Budgets() {
                 />
               </Card>
             ) : (
-              items.map((b) => (
-                <Card key={b.categoryId ?? b.categoryName}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text
-                      style={{ fontFamily: t.fonts.bodySemi, fontSize: 15, color: t.colors.textHi }}
+              items.map((b) => {
+                const tone = budgetTone(toBand(b.status));
+                const remaining = b.remaining ?? 0;
+                return (
+                  <Card key={b.categoryId ?? b.categoryName}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 8,
+                        // The RowMenu's 36 pt target needs a 44 pt row: hitSlop does not reliably
+                        // reach past the parent's bounds.
+                        minHeight: 44,
+                      }}
                     >
-                      {b.categoryName}
-                    </Text>
-                    {/* percentUsed comes from the backend — displayed, never recalculated. */}
-                    <Pill
-                      label={`${Math.round(b.percentUsed ?? 0)}%`}
-                      dotColor={toneColor(b.status)}
+                      {/* flex: 1 holds the pill beside the menu; two lines keep a name whole at large text sizes. */}
+                      <Text
+                        numberOfLines={2}
+                        style={{ flex: 1, fontFamily: t.fonts.bodySemi, fontSize: 15, color: t.colors.textHi }}
+                      >
+                        {b.categoryName}
+                      </Text>
+                      {/* percentUsed comes from the backend — displayed, never recalculated. */}
+                      <Pill
+                        label={`${Math.round(b.percentUsed ?? 0)}%`}
+                        dotColor={tone === "onTrack" ? t.colors.brand : t.colors.warnText}
+                      />
+                      {/* Secondary actions live here rather than as two text links under every
+                          card. With a budget per category that was ten small targets down the
+                          screen with nothing ranking them. */}
+                      <RowMenu
+                        testID={`budget-menu-${b.categoryId}`}
+                        title={b.categoryName ?? undefined}
+                        actions={[
+                          { label: "Edit limit", onPress: () => setEditing(b) },
+                          {
+                            label: "Remove budget…",
+                            destructive: true,
+                            onPress: () => confirmDelete(b),
+                          },
+                        ]}
+                      />
+                    </View>
+                    <ProgressMeter
+                      percent={b.percentUsed ?? 0}
+                      tone={tone}
+                      label={`${b.categoryName ?? "Budget"} budget`}
                     />
-                    {/* Secondary actions live here rather than as two text links under every
-                        card. With a budget per category that was ten small targets down the
-                        screen with nothing ranking them. */}
-                    <RowMenu
-                      testID={`budget-menu-${b.categoryId}`}
-                      title={b.categoryName ?? undefined}
-                      actions={[
-                        { label: "Edit limit", onPress: () => setEditing(b) },
-                        {
-                          label: "Remove budget…",
-                          destructive: true,
-                          onPress: () => confirmDelete(b),
-                        },
-                      ]}
-                    />
-                  </View>
-                  <ProgressMeter
-                    percent={b.percentUsed ?? 0}
-                    tone={budgetTone(toBand(b.status))}
-                    label={`${b.categoryName ?? "Budget"} budget`}
-                  />
-                  <Body dim style={{ fontSize: 12.5 }}>
-                    {formatCentavos(b.spent ?? 0)} of {formatCentavos(b.budgeted ?? 0)} ·{" "}
-                    {formatCentavos(b.remaining ?? 0)} left
-                  </Body>
-
-
-                </Card>
-              ))
+                    <View
+                      style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 8 }}
+                    >
+                      <Body dim style={{ fontSize: 12.5 }}>
+                        {formatCentavos(b.spent ?? 0)} of {formatCentavos(b.budgeted ?? 0)}
+                      </Body>
+                      {/* The server's `remaining`, worded as Home words it. Over is amber, never red. */}
+                      <Text
+                        style={{
+                          fontFamily: t.fonts.mono,
+                          fontSize: 12.5,
+                          color: remaining < 0 ? t.colors.warnText : t.colors.text2,
+                        }}
+                      >
+                        {remaining < 0
+                          ? `Over by ${formatCentavos(-remaining)}`
+                          : `${formatCentavos(remaining)} left`}
+                      </Text>
+                    </View>
+                  </Card>
+                );
+              })
             )}
 
             {items.length > 0 && unbudgeted.length > 0 && (

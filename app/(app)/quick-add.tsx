@@ -1,18 +1,17 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
-import { KeyboardAvoidingView, Linking, Platform, ScrollView, Text, View } from "react-native";
+import { Keyboard, KeyboardAvoidingView, Linking, Platform, ScrollView, Text, View } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import { scanReceipt } from "../../src/api/ai";
-import { createExpense, parseExpense } from "../../src/api/expenses";
+import { parseExpense } from "../../src/api/expenses";
 import type { ParsedExpenseResult } from "../../src/api/types";
 import { formatCentavos, formatDate } from "../../src/lib/formatters";
 import { centavosToInput } from "../../src/components/money";
+import { LoggedNotice, useLogExpense, useVisitKey } from "../../src/components/ExpenseForm";
 import { Body, Button, Card, ErrorText, Field, Pill } from "../../src/components/ui";
-import { useMonth } from "../../src/context/MonthContext";
-import { useNavOrigin } from "../../src/context/NavOriginContext";
 import { useTheme } from "../../src/theme/useTheme";
 import { accents } from "../../src/theme";
 
@@ -23,17 +22,19 @@ function confidenceColor(c?: string): string {
   return accents.alert;
 }
 
+/** Remounted on every return visit: the route is a hidden tab that stays mounted. */
 export default function QuickAdd() {
+  return <QuickAddScreen key={useVisitKey()} />;
+}
+
+function QuickAddScreen() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const [text, setText] = useState("");
   const [parsed, setParsed] = useState<ParsedExpenseResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [quotaReached, setQuotaReached] = useState(false);
   const [permissionBlocked, setPermissionBlocked] = useState(false);
   const t = useTheme();
-  const { resetToCurrent } = useMonth();
-  const origin = useNavOrigin();
 
   const parse = useMutation({
     mutationFn: parseExpense,
@@ -51,18 +52,9 @@ export default function QuickAdd() {
     },
   });
 
-  const save = useMutation({
-    mutationFn: createExpense,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["expenses"] });
-      await queryClient.invalidateQueries({ queryKey: ["report", "monthly"] });
-      // A new expense is dated today. If the user was browsing an earlier month, stay there and
-      // the row they just saved is invisible — filed correctly, but apparently lost.
-      resetToCurrent();
-      router.navigate(origin as never);
-    },
-    onError: (e) => setError(errorMessage(e, "Could not save the expense.")),
-  });
+  // Invalidation, the month reset and the 1.2 s hold on Piso `saved` live in the hook, shared
+  // with add-expense.
+  const { save, logged } = useLogExpense(setError);
 
   const scan = useMutation({
     mutationFn: ({ uri, mimeType }: { uri: string; mimeType?: string }) =>
@@ -93,6 +85,10 @@ export default function QuickAdd() {
   });
 
   const runParse = () => {
+    // The saved hold is on its way out; a new read would be abandoned mid-flight.
+    if (logged || save.isPending) return;
+    // The proposal card renders below; with the keyboard still up it would sit behind it.
+    Keyboard.dismiss();
     setError(null);
     setParsed(null);
     setQuotaReached(false);
@@ -111,6 +107,9 @@ export default function QuickAdd() {
    * people deny, and iOS only ever asks once.
    */
   const capture = async (source: "camera" | "library") => {
+    if (logged || save.isPending) return;
+    // As in runParse: the proposal card the photo comes back as would sit behind the keyboard.
+    Keyboard.dismiss();
     setError(null);
     setParsed(null);
     setQuotaReached(false);
@@ -160,7 +159,10 @@ export default function QuickAdd() {
    */
   const fallbackDescription = () => text.trim() || "Receipt";
 
-  const editInstead = () =>
+  const editInstead = () => {
+    // Mid-save, the form would open prefilled with an expense about to exist, and a save there
+    // would log it twice.
+    if (logged || save.isPending) return;
     router.replace({
       pathname: "/(app)/add-expense",
       params: {
@@ -171,25 +173,34 @@ export default function QuickAdd() {
         date: parsed?.date ?? undefined,
       },
     });
+  };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
+      // ponytail: the header's height, fixed as chat.tsx does; useHeaderHeight lives in
+      // @react-navigation/elements, which is not a direct dependency.
+      keyboardVerticalOffset={90}
       style={{ flex: 1, backgroundColor: t.colors.page }}
     >
       <ScrollView
-        contentContainerStyle={{ padding: t.spacing.screen, gap: t.spacing.gap }}
+        // Bottom room so the proposal card and its Save can scroll clear of the keyboard.
+        contentContainerStyle={{ padding: t.spacing.screen, gap: t.spacing.gap, paddingBottom: 140 }}
         keyboardShouldPersistTaps="handled"
       >
   
         <Field
           testID="quick-add-input"
           label="What did you spend on?"
+          // Field's visible label is a separate text a screen reader does not tie to the input.
+          accessibilityLabel="What did you spend on?"
           value={text}
           onChangeText={setText}
           placeholder="lunch 150 at Jollibee"
           autoCapitalize="sentences"
           multiline
+          // Spec §4: focused on open, so the keyboard is up before the first tap.
+          autoFocus
           onSubmitEditing={runParse}
         />
         <Button title="Read it" onPress={runParse} loading={parse.isPending} />
@@ -224,6 +235,17 @@ export default function QuickAdd() {
             />
           </View>
         </View>
+
+        {/* The amount-first form, always one tap away rather than only after a parse or a 429. */}
+        <Button
+          testID="enter-manually"
+          variant="ghost"
+          title="Enter manually"
+          onPress={() => {
+            if (logged || save.isPending) return;
+            router.replace({ pathname: "/(app)/add-expense" });
+          }}
+        />
 
         <ErrorText>{error}</ErrorText>
 
@@ -264,7 +286,9 @@ export default function QuickAdd() {
               <ErrorText>{parsed.rejectionMessage}</ErrorText>
             ) : null}
 
-            {parsed.saveable ? (
+            {logged ? (
+              <LoggedNotice logged={logged} />
+            ) : parsed.saveable ? (
               <>
                 {/* Never auto-saved. The model can be wrong, and a silently created wrong
                     expense is worse than no expense — the user confirms what gets stored. */}

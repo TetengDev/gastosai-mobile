@@ -36,6 +36,12 @@ export interface AmountSheetValues {
  * The Done bar exists for the same reason it does on the expense form: `decimal-pad` has no
  * return key, and without it the keypad covers the save button.
  */
+// ponytail: a copy of web's `CURRENCY_SYMBOLS` (gastosai-web src/lib/formatters.ts); move it to
+// `src/lib/formatters.ts` when a second mobile screen needs a symbol.
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  PHP: "₱", USD: "$", EUR: "€", SGD: "S$", JPY: "¥", GBP: "£", AUD: "A$",
+};
+
 export default function AmountSheet({
   visible,
   title,
@@ -48,11 +54,13 @@ export default function AmountSheet({
   onSubmit,
   onClose,
   footer,
+  currency,
 }: {
   visible: boolean;
   title: string;
-  labelField: string;
-  labelPlaceholder: string;
+  /** Omit for an amount-only sheet (adding to a goal); `label` is then submitted as `""`. */
+  labelField?: string;
+  labelPlaceholder?: string;
   initial?: Partial<AmountSheetValues>;
   submitLabel: string;
   submitting: boolean;
@@ -61,8 +69,14 @@ export default function AmountSheet({
   onSubmit: (values: { amount: number; label: string }) => void;
   onClose: () => void;
   footer?: React.ReactNode;
+  /** The goal's currency. Omitted, or PHP, the amount is in pesos. */
+  currency?: string;
 }) {
   const t = useTheme();
+  const foreign = !!currency && currency !== "PHP";
+  const symbol = foreign ? (CURRENCY_SYMBOLS[currency] ?? currency) : "₱";
+  // Same wording as web, so both platforms read a goal's amount out the same way.
+  const amountName = foreign ? `Amount (${symbol})` : "Amount in pesos";
   const [amount, setAmount] = useState(initial?.amount ?? "");
   const [label, setLabel] = useState(initial?.label ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +90,7 @@ export default function AmountSheet({
       setError("Enter an amount greater than zero.");
       return;
     }
-    if (!label.trim()) {
+    if (labelField && !label.trim()) {
       setError(`${labelField} is required.`);
       return;
     }
@@ -105,12 +119,20 @@ export default function AmountSheet({
             flexDirection: "row",
             alignItems: "center",
             paddingHorizontal: t.spacing.screen,
-            paddingVertical: 14,
+            // Cancel's 44 pt target now gives the bar its height; 14 on top of it made it 72 pt.
+            paddingVertical: 4,
             borderBottomColor: t.colors.border,
             borderBottomWidth: 1,
           }}
         >
-          <Pressable testID="sheet-cancel" accessibilityRole="button" onPress={onClose} hitSlop={10}>
+          {/* 44 pt targets of their own: hitSlop does not reliably reach past the parent's bounds. */}
+          <Pressable
+            testID="sheet-cancel"
+            accessibilityRole="button"
+            onPress={onClose}
+            hitSlop={10}
+            style={{ minHeight: 44, justifyContent: "center" }}
+          >
             <Text style={{ fontFamily: t.fonts.body, fontSize: 16, color: t.colors.text2 }}>
               Cancel
             </Text>
@@ -140,19 +162,24 @@ export default function AmountSheet({
                 fontFamily: t.fonts.mono,
                 fontSize: 11,
                 letterSpacing: 1.3,
-                color: t.colors.text3,
+                // text2, not text3: text3 misses 4.5:1 on the dark sheet.
+                color: t.colors.text2,
               }}
             >
               AMOUNT
             </Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}>
               <Text style={{ fontFamily: t.fonts.display, fontSize: 34, color: t.colors.text3 }}>
-                ₱
+                {symbol}
               </Text>
               <TextInput
                 testID="sheet-amount"
+                // The visible "AMOUNT" and symbol are separate texts a screen reader does not tie to it.
+                accessibilityLabel={amountName}
                 value={amount}
-                onChangeText={setAmount}
+                // A peso has two decimal places: a third is refused, not rounded into a centavo
+                // the user never typed.
+                onChangeText={(v) => (/\.\d{3}/.test(v) ? undefined : setAmount(v))}
                 keyboardType="decimal-pad"
                 inputAccessoryViewID={Platform.OS === "ios" ? ACCESSORY_ID : undefined}
                 placeholder="0.00"
@@ -169,14 +196,16 @@ export default function AmountSheet({
             </View>
           </View>
 
-          <Field
-            testID="sheet-label"
-            label={labelField}
-            value={label}
-            onChangeText={setLabel}
-            placeholder={labelPlaceholder}
-            autoCapitalize="words"
-          />
+          {labelField ? (
+            <Field
+              testID="sheet-label"
+              label={labelField}
+              value={label}
+              onChangeText={setLabel}
+              placeholder={labelPlaceholder}
+              autoCapitalize="words"
+            />
+          ) : null}
 
           <ErrorText>{error ?? serverError}</ErrorText>
           <Button testID="sheet-save" title={submitLabel} onPress={submit} loading={submitting} />
@@ -201,8 +230,10 @@ export default function AmountSheet({
                 accessibilityRole="button"
                 onPress={Keyboard.dismiss}
                 hitSlop={12}
+                style={{ minHeight: 44, justifyContent: "center" }}
               >
-                <Body style={{ fontFamily: t.fonts.bodyMedium, fontSize: 16, color: t.colors.link }}>
+                {/* textHi, not link: the link blue misses 4.5:1 on the dark accessory bar. */}
+                <Body style={{ fontFamily: t.fonts.bodyMedium, fontSize: 16, color: t.colors.textHi }}>
                   Done
                 </Body>
               </Pressable>

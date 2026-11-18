@@ -27,10 +27,12 @@ reading before changing that area.
 
 | Found | Found via | Symptom | Cause | Issue | Status |
 |---|---|---|---|---|---|
-| 2026-10-13 | Building TEN-437 | Over-budget lines on Budgets show a green dot on the percentage pill | `budgets.tsx` `toneColor` looks for `"OVER"`/`"EXCEEDED"`, while the server sends `"OVER_BUDGET"` | [TEN-447](https://linear.app/tengdev/issue/TEN-447) (3rd criterion) | open |
+| 2026-10-13 | Building TEN-437 | Over-budget lines on Budgets show a green dot on the percentage pill | `budgets.tsx` `toneColor` looks for `"OVER"`/`"EXCEEDED"`, while the server sends `"OVER_BUDGET"` | [TEN-447](https://linear.app/tengdev/issue/TEN-447) (3rd criterion) | fixed in release/wave8-mobile (`2263584`) |
 | 2026-10-13 | Review of [#59](https://github.com/TetengDev/gastosai-mobile/pull/59) | A celebration could be lost for good, or play twice | `Celebrate` marked the event seen before checking it was still mounted, and two mounts at once could both play it | [TEN-437](https://linear.app/tengdev/issue/TEN-437) | fixed in [#59](https://github.com/TetengDev/gastosai-mobile/pull/59) (`acad815`) |
 | 2026-10-13 | Review of [#59](https://github.com/TetengDev/gastosai-mobile/pull/59) | A celebration one account has seen is skipped for the next account on the same device | Seen flags under `ga.celebrate.<event>` are not scoped to the user | [TEN-454](https://linear.app/tengdev/issue/TEN-454) | open |
 | 2026-10-13 | Review of [#59](https://github.com/TetengDev/gastosai-mobile/pull/59) | At or below 100%, the meter's over tone looks the same as warning | Both tones use the same fill until the overflow segment appears | [TEN-455](https://linear.app/tengdev/issue/TEN-455) | open |
+| 2026-11-18 | Review of [TEN-448](https://linear.app/tengdev/issue/TEN-448) | A goal or closed-month celebration on Home could play while another tab was on screen, and was then spent unseen | Tabs stay mounted when hidden, and `app/(app)/index.tsx` handed `celebrations` to Home whether or not it was the focused tab | [TEN-540](https://linear.app/tengdev/issue/TEN-540) | fixed in release/wave8-mobile (`687721e`) |
+| 2026-11-18 | Review of [TEN-446](https://linear.app/tengdev/issue/TEN-446) | Coming back to Add or Quick add found last visit's typed form and a proposal still offering "Save this", ignored the values a second "Edit first" handed over, and did not focus the entry | Both routes are hidden tabs that stay mounted, so their state survived leaving the screen | [TEN-446](https://linear.app/tengdev/issue/TEN-446) | fixed in release/wave8-mobile (`55210e3`) |
 
 ## Tests and tooling
 
