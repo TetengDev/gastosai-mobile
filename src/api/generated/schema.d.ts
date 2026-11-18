@@ -1156,6 +1156,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/recurring/{id}/payments/{month}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["v2MarkRecurringExpensePaid"];
+        post?: never;
+        delete: operations["v2UnmarkRecurringExpensePaid"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v2/submissions": {
         parameters: {
             query?: never;
@@ -1928,6 +1944,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/recurring/{id}/payments/{month}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["markPaid"];
+        post?: never;
+        delete: operations["unmarkPaid"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/submissions": {
         parameters: {
             query?: never;
@@ -2644,6 +2676,11 @@ export interface components {
             dailyAllowance?: number;
             items?: components["schemas"]["BudgetSummaryItem"][];
             month?: string;
+            /**
+             * Format: int32
+             * @description Total spent as a whole-number percentage of total budgeted, rounded half-up. May exceed 100, and saturates at the int limit. 0 when nothing is budgeted, which reads the same as nothing spent, so check totalBudgeted > 0 before showing it.
+             */
+            percentUsed?: number;
             safeToSpend?: number;
             totalBudgeted?: number;
             totalSpent?: number;
@@ -2653,6 +2690,11 @@ export interface components {
             dailyAllowance?: number;
             items?: components["schemas"]["BudgetSummaryItemV2"][];
             month?: string;
+            /**
+             * Format: int32
+             * @description Total spent as a whole-number percentage of total budgeted, rounded half-up. May exceed 100, and saturates at the int limit. 0 when nothing is budgeted, which reads the same as nothing spent, so check totalBudgeted > 0 before showing it.
+             */
+            percentUsed?: number;
             /** Format: int64 */
             safeToSpend?: number;
             /** Format: int64 */
@@ -3569,9 +3611,16 @@ export interface components {
             frequency?: "MONTHLY" | "WEEKLY" | "YEARLY";
             /** Format: int64 */
             id?: number;
+            /**
+             * @description The latest month this bill was marked paid, `YYYY-MM` in Asia/Manila, or null if it has never been marked paid. Clients use it to show a previous month left unpaid, so an overdue bill stays visible after its month ends.
+             * @example 2026-09
+             */
+            lastPaidMonth?: string | null;
             /** Format: int32 */
             monthOfYear?: number;
             name?: string;
+            /** @description Whether this bill is marked paid for the current month, decided in Asia/Manila. One mark covers the whole month, so a WEEKLY bill is paid or unpaid for the month as a whole. */
+            paidThisMonth?: boolean;
         };
         RecurringExpenseResponseV2: {
             active?: boolean;
@@ -3590,9 +3639,16 @@ export interface components {
             frequency?: "MONTHLY" | "WEEKLY" | "YEARLY";
             /** Format: int64 */
             id?: number;
+            /**
+             * @description The latest month this bill was marked paid, `YYYY-MM` in Asia/Manila, or null if it has never been marked paid. Clients use it to show a previous month left unpaid, so an overdue bill stays visible after its month ends.
+             * @example 2026-09
+             */
+            lastPaidMonth?: string | null;
             /** Format: int32 */
             monthOfYear?: number;
             name?: string;
+            /** @description Whether this bill is marked paid for the current month, decided in Asia/Manila. One mark covers the whole month, so a WEEKLY bill is paid or unpaid for the month as a whole. */
+            paidThisMonth?: boolean;
         };
         RegisterRequest: {
             /** Format: email */
@@ -5776,6 +5832,48 @@ export interface operations {
             };
         };
     };
+    v2MarkRecurringExpensePaid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v2UnmarkRecurringExpensePaid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     v2ListSubmissions: {
         parameters: {
             query?: never;
@@ -7334,6 +7432,48 @@ export interface operations {
             header?: never;
             path: {
                 id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    markPaid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    unmarkPaid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                month: string;
             };
             cookie?: never;
         };
