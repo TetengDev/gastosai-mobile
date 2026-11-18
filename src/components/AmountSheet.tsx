@@ -141,7 +141,8 @@ export default function AmountSheet({
                 fontFamily: t.fonts.mono,
                 fontSize: 11,
                 letterSpacing: 1.3,
-                color: t.colors.text3,
+                // text2, not text3: text3 misses 4.5:1 on the dark sheet.
+                color: t.colors.text2,
               }}
             >
               AMOUNT
@@ -207,7 +208,8 @@ export default function AmountSheet({
                 onPress={Keyboard.dismiss}
                 hitSlop={12}
               >
-                <Body style={{ fontFamily: t.fonts.bodyMedium, fontSize: 16, color: t.colors.link }}>
+                {/* textHi, not link: the link blue misses 4.5:1 on the dark accessory bar. */}
+                <Body style={{ fontFamily: t.fonts.bodyMedium, fontSize: 16, color: t.colors.textHi }}>
                   Done
                 </Body>
               </Pressable>
