@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import Budgets from "../../app/(app)/budgets";
+import { budgetSummary } from "../api/budgets";
+import { Piso } from "../brand/Piso";
 import { MonthProvider } from "../context/MonthContext";
 import { accents, palettes } from "../theme";
 
@@ -20,14 +22,14 @@ const items = [
 ];
 
 jest.mock("../api/budgets", () => ({
-  budgetSummary: async (month: string) => ({
+  budgetSummary: jest.fn(async (month: string) => ({
     month,
     safeToSpend: 0,
     dailyAllowance: 0,
     totalSpent: 3_364_300,
     totalBudgeted: 3_364_300,
     items,
-  }),
+  })),
   listBudgets: async () => [],
   createBudget: jest.fn(),
   updateBudget: jest.fn(),
@@ -85,5 +87,21 @@ describe("Budgets", () => {
     await screen.findByText("Rent");
     expect(screen.getAllByLabelText("Over budget")).toHaveLength(1);
     expect(screen.getByTestId("month-label")).toBeOnTheScreen();
+  });
+
+  // Until the summary lands there are no bands, so a Piso would read calm beside a spinner or an
+  // error, then flash to amber. The header holds its space instead.
+  it("draws no Piso while the summary is loading", async () => {
+    jest.mocked(budgetSummary).mockImplementationOnce(() => new Promise(() => {}));
+    renderBudgets();
+    expect(screen.getByTestId("month-label")).toBeOnTheScreen();
+    expect(screen.UNSAFE_queryAllByType(Piso)).toHaveLength(0);
+  });
+
+  it("draws no Piso when the summary fails to load", async () => {
+    jest.mocked(budgetSummary).mockRejectedValueOnce(new Error("boom"));
+    renderBudgets();
+    expect(await screen.findByText("Try again")).toBeOnTheScreen();
+    expect(screen.UNSAFE_queryAllByType(Piso)).toHaveLength(0);
   });
 });
