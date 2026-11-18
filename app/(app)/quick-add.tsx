@@ -188,6 +188,8 @@ export default function QuickAdd() {
           placeholder="lunch 150 at Jollibee"
           autoCapitalize="sentences"
           multiline
+          // Spec §4: focused on open, so the keyboard is up before the first tap.
+          autoFocus
           onSubmitEditing={runParse}
         />
         <Button title="Read it" onPress={runParse} loading={parse.isPending} />
@@ -222,6 +224,14 @@ export default function QuickAdd() {
             />
           </View>
         </View>
+
+        {/* The amount-first form, always one tap away rather than only after a parse or a 429. */}
+        <Button
+          testID="enter-manually"
+          variant="ghost"
+          title="Enter manually"
+          onPress={() => router.replace({ pathname: "/(app)/add-expense" })}
+        />
 
         <ErrorText>{error}</ErrorText>
 
