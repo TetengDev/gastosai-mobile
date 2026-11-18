@@ -157,7 +157,10 @@ function QuickAddScreen() {
    */
   const fallbackDescription = () => text.trim() || "Receipt";
 
-  const editInstead = () =>
+  const editInstead = () => {
+    // Mid-save, the form would open prefilled with an expense about to exist, and a save there
+    // would log it twice.
+    if (logged || save.isPending) return;
     router.replace({
       pathname: "/(app)/add-expense",
       params: {
@@ -168,6 +171,7 @@ function QuickAddScreen() {
         date: parsed?.date ?? undefined,
       },
     });
+  };
 
   return (
     <KeyboardAvoidingView
@@ -235,7 +239,10 @@ function QuickAddScreen() {
           testID="enter-manually"
           variant="ghost"
           title="Enter manually"
-          onPress={() => router.replace({ pathname: "/(app)/add-expense" })}
+          onPress={() => {
+            if (logged || save.isPending) return;
+            router.replace({ pathname: "/(app)/add-expense" });
+          }}
         />
 
         <ErrorText>{error}</ErrorText>

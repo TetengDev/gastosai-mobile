@@ -129,6 +129,7 @@ beforeEach(() => {
   jest.useFakeTimers();
   celebrated.length = 0;
   mockNavigate.mockClear();
+  mockReplace.mockClear();
   jest.mocked(createExpense).mockClear();
   jest.mocked(parseExpense).mockClear();
   jest.mocked(scanReceipt).mockClear();
@@ -207,6 +208,32 @@ describe("Quick add", () => {
     expect(jest.mocked(scanReceipt)).not.toHaveBeenCalled();
     await act(() => jest.advanceTimersByTimeAsync(500));
     expect(await screen.findByText(/^Logged ₱250\.00/)).toBeOnTheScreen();
+  });
+
+  // A form opened mid-save would be prefilled with an expense that is about to exist: a second
+  // save from it logs it twice.
+  it("does not leave for the form while the save is still in flight", async () => {
+    jest.mocked(createExpense).mockImplementationOnce(
+      (body) =>
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ id: 99, amount: body.amount, category: body.category, date: "2026-11-18T12:00:00+08:00" }), 500),
+        ),
+    );
+    renderQuickAdd();
+    await readAndSave();
+    fireEvent.press(screen.getByText("Edit first"));
+    fireEvent.press(screen.getByText("Enter manually"));
+    expect(mockReplace).not.toHaveBeenCalled();
+    await act(() => jest.advanceTimersByTimeAsync(500));
+    expect(await screen.findByText(/^Logged ₱250\.00/)).toBeOnTheScreen();
+  });
+
+  it("does not leave for the form during the hold", async () => {
+    renderQuickAdd();
+    await readAndSave();
+    await screen.findByText(/^Logged/);
+    fireEvent.press(screen.getByText("Enter manually"));
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   // The + button opens this screen, so it is where a first expense usually comes from (R23).
