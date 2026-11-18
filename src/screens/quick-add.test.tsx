@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { AxiosError, type AxiosResponse } from "axios";
 import QuickAdd from "../../app/(app)/quick-add";
-import { createExpense, listExpenses } from "../api/expenses";
+import { createExpense, listExpenses, parseExpense } from "../api/expenses";
 import { budgetSummary } from "../api/budgets";
 import { scanReceipt } from "../api/ai";
 import type { ExpenseRequest, ExpenseResponse } from "../api/types";
@@ -108,6 +108,8 @@ beforeEach(() => {
   celebrated.length = 0;
   mockNavigate.mockClear();
   jest.mocked(createExpense).mockClear();
+  jest.mocked(parseExpense).mockClear();
+  jest.mocked(scanReceipt).mockClear();
 });
 afterEach(() => {
   jest.useRealTimers();
@@ -133,6 +135,21 @@ describe("Quick add", () => {
     expect(screen.queryByText("Save this")).toBeNull();
     expect(screen.queryByText("Edit first")).toBeNull();
     expect(jest.mocked(createExpense)).toHaveBeenCalledTimes(1);
+  });
+
+  // During the hold the screen is on its way out; a new read or scan would start work it then
+  // abandons.
+  it("does not read or scan again during the hold", async () => {
+    renderQuickAdd();
+    await readAndSave();
+    await screen.findByText(/^Logged/);
+    fireEvent.press(screen.getByText("Read it"));
+    fireEvent.press(screen.getByTestId("scan-receipt"));
+    fireEvent.press(screen.getByTestId("choose-photo"));
+    await act(async () => {});
+    expect(jest.mocked(parseExpense)).toHaveBeenCalledTimes(1);
+    expect(jest.mocked(scanReceipt)).not.toHaveBeenCalled();
+    expect(screen.getByText(/^Logged/)).toBeOnTheScreen();
   });
 
   // The + button opens this screen, so it is where a first expense usually comes from (R23).
