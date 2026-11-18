@@ -111,7 +111,14 @@ export default function AmountSheet({
             borderBottomWidth: 1,
           }}
         >
-          <Pressable testID="sheet-cancel" accessibilityRole="button" onPress={onClose} hitSlop={10}>
+          {/* 44 pt targets of their own: hitSlop does not reliably reach past the parent's bounds. */}
+          <Pressable
+            testID="sheet-cancel"
+            accessibilityRole="button"
+            onPress={onClose}
+            hitSlop={10}
+            style={{ minHeight: 44, justifyContent: "center" }}
+          >
             <Text style={{ fontFamily: t.fonts.body, fontSize: 16, color: t.colors.text2 }}>
               Cancel
             </Text>
@@ -207,6 +214,7 @@ export default function AmountSheet({
                 accessibilityRole="button"
                 onPress={Keyboard.dismiss}
                 hitSlop={12}
+                style={{ minHeight: 44, justifyContent: "center" }}
               >
                 {/* textHi, not link: the link blue misses 4.5:1 on the dark accessory bar. */}
                 <Body style={{ fontFamily: t.fonts.bodyMedium, fontSize: 16, color: t.colors.textHi }}>
