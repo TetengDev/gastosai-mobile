@@ -161,6 +161,8 @@ export default function AmountSheet({
               </Text>
               <TextInput
                 testID="sheet-amount"
+                // The visible "AMOUNT" and "₱" are separate texts a screen reader does not tie to it.
+                accessibilityLabel="Amount in pesos"
                 value={amount}
                 // A peso has two decimal places: a third is refused, not rounded into a centavo
                 // the user never typed.
