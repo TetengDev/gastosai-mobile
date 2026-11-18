@@ -77,6 +77,8 @@ export interface AttentionRow {
   amount?: number;
   /** Bill rows the current month's mark covers (R6): overdue ones, and those due this month. */
   markPaid?: { id: number };
+  /** Bill rows left unpaid: the sub-line is a warning. */
+  overdue?: boolean;
 }
 
 const BILL_WINDOW_DAYS = 7;
@@ -166,14 +168,17 @@ export function needsAttention(
       .sort((a, b) => (a.dueDate as string).localeCompare(b.dueDate as string));
     for (const b of missed) {
       if (unpaid(b.id)) {
-        overdue.set(b.id, billRow(b, `overdue-${b.id}`, `Overdue · was due ${formatDayMonth(b.dueDate)}`, true));
+        overdue.set(b.id, {
+          ...billRow(b, `overdue-${b.id}`, `Overdue · was due ${formatDayMonth(b.dueDate)}`, true),
+          overdue: true,
+        });
       }
     }
     // Last month, for a bill due then and last marked before it. Never marked is not unpaid (R1).
     for (const b of upcomingPrevious) {
       const lastPaid = unpaid(b.id)?.lastPaidMonth;
       if (!overdue.has(b.id) && b.dueDate?.slice(0, 7) === lastMonth && lastPaid && lastPaid < lastMonth) {
-        overdue.set(b.id, billRow(b, `overdue-${b.id}`, "Overdue · not paid last month", true));
+        overdue.set(b.id, { ...billRow(b, `overdue-${b.id}`, "Overdue · not paid last month", true), overdue: true });
       }
     }
   }

@@ -167,11 +167,14 @@ export function NeedsAttention({
   rows,
   error,
   onMarkPaid,
+  busy,
 }: {
   rows: readonly AttentionRow[];
   error?: string | null;
   /** A row's Mark paid, by bill id. */
   onMarkPaid?: (id: number) => void;
+  /** A mark is in flight: every Mark paid holds until it and its refetch land. */
+  busy?: boolean;
 }) {
   const t = useTheme();
   const router = useRouter();
@@ -193,7 +196,8 @@ export function NeedsAttention({
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <View style={{ flex: 1 }}>
                 <Body numberOfLines={1}>{r.label}</Body>
-                <Body dim style={{ fontSize: 12.5 }}>
+                {/* Amber, never the danger red: an unpaid bill is a heads-up, not a failure. */}
+                <Body dim style={{ fontSize: 12.5, ...(r.overdue ? { color: t.colors.warnText } : null) }}>
                   {r.sub}
                 </Body>
               </View>
@@ -207,7 +211,10 @@ export function NeedsAttention({
             // Not `Button`: it takes no accessibility label, and its small size is under 44pt.
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Mark ${r.label} paid`}
+              // Label in Name (WCAG 2.5.3): the spoken name starts with the visible text.
+              accessibilityLabel={`Mark paid: ${r.label}`}
+              accessibilityState={{ disabled: !!busy, busy: !!busy }}
+              disabled={busy}
               onPress={() => r.markPaid && onMarkPaid(r.markPaid.id)}
               style={({ pressed }) => ({
                 minHeight: 44,
@@ -217,7 +224,7 @@ export function NeedsAttention({
                 borderWidth: 1,
                 borderColor: t.colors.borderInput,
                 backgroundColor: t.colors.surface,
-                opacity: pressed ? 0.7 : 1,
+                opacity: pressed || busy ? 0.7 : 1,
               })}
             >
               <Text style={{ fontFamily: t.fonts.bodyMedium, fontSize: t.fontSizes.caption, color: t.colors.textHi }}>
