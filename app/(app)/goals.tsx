@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import { createGoal, deleteGoal, listGoals, updateGoal } from "../../src/api/goals";
@@ -63,7 +64,18 @@ export default function Goals() {
   // One celebration at a time, each unmounted once it has played so the cheer folds away and the
   // header Piso returns. Seen events finish at once, so a revisit shows nothing.
   const [celebrated, setCelebrated] = useState<readonly string[]>([]);
-  const celebration = achieved.map((g) => `goal-${g.id}`).find((e) => !celebrated.includes(e));
+  // Only while this tab is on screen: tabs stay mounted when hidden, and a cheer played behind
+  // another tab is spent where nobody sees it.
+  const [focused, setFocused] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
+  const celebration = focused
+    ? achieved.map((g) => `goal-${g.id}`).find((e) => !celebrated.includes(e))
+    : undefined;
 
   const close = () => setSheet(null);
   const onSaved = () => {
