@@ -23,3 +23,10 @@ export const updateRecurring = (id: number, body: RecurringExpenseRequest) =>
 
 export const deleteRecurring = (id: number) =>
   api.delete(`/recurring/${id}`).then(() => undefined);
+
+/**
+ * Marks bill `id` paid for `month` (`YYYY-MM`, a Manila month). Idempotent server-side. There is
+ * no unmark here yet: no screen offers an undo (R14).
+ */
+export const markRecurringPaid = (id: number, month: string) =>
+  api.put(`/recurring/${id}/payments/${month}`).then(() => undefined);

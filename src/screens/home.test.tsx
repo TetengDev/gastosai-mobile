@@ -127,8 +127,9 @@ describe("Home, Mark paid", () => {
     const button = screen.getByRole("button", { name: "Mark Meralco paid" });
     fireEvent.press(button);
     fireEvent.press(button);
+    // The mutation starts a tick later; the second tap landed before it did.
+    await waitFor(() => expect(put).toHaveBeenCalledWith("/recurring/7/payments/2026-11"));
     expect(put).toHaveBeenCalledTimes(1);
-    expect(put).toHaveBeenCalledWith("/recurring/7/payments/2026-11");
 
     jest.mocked(listRecurring).mockResolvedValue([meralco(true)]);
     await act(async () => resolve());

@@ -1,11 +1,12 @@
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useRef } from "react";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshControl, ScrollView } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import { budgetSummary } from "../../src/api/budgets";
 import { listExpenses, monthlyReport } from "../../src/api/expenses";
 import { listGoals } from "../../src/api/goals";
-import { upcomingBills } from "../../src/api/recurring";
-import { formatMonth, monthRange, nowForApi } from "../../src/lib/formatters";
+import { listRecurring, markRecurringPaid, upcomingBills } from "../../src/api/recurring";
+import { currentMonth, formatMonth, monthRange, nowForApi } from "../../src/lib/formatters";
 import { toBand } from "../../src/lib/pisoMood";
 import { useMonth } from "../../src/context/MonthContext";
 import { Body, Button, ErrorText, MonthStepper } from "../../src/components/ui";
@@ -62,6 +63,35 @@ export default function Dashboard() {
     queryFn: () => budgetSummary(prevMonth),
     enabled: isCurrentMonth,
   });
+  // Each bill's paid state (R2), and what was due last month (R3), for the overdue rows. Either
+  // failing is silent: the rows fall back to upcoming bills alone.
+  const recurring = useQuery({ queryKey: ["recurring"], queryFn: listRecurring });
+  const billsLastMonth = useQuery({
+    queryKey: ["recurring", "upcoming", prevMonth],
+    queryFn: () => upcomingBills(prevMonth),
+    enabled: isCurrentMonth,
+  });
+
+  // The ["recurring"] prefix covers the list and every upcoming month, so a marked bill leaves
+  // overdue on the refetch. Returned, so the mutation stays pending until that lands.
+  const queryClient = useQueryClient();
+  const markPaid = useMutation({
+    mutationFn: (id: number) => markRecurringPaid(id, currentMonth()),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["recurring"] }),
+  });
+  // A ref, not isPending: two taps inside one frame both read a stale isPending.
+  const marking = useRef(false);
+  const onMarkPaid = (id: number) => {
+    // The bill as it is now, not as the row saw it; one already paid needs no call.
+    const bill = recurring.data?.find((r) => r.id === id);
+    if (marking.current || !bill || bill.paidThisMonth) return;
+    marking.current = true;
+    markPaid.mutate(id, {
+      onSettled: () => {
+        marking.current = false;
+      },
+    });
+  };
 
   // The report is keyed by "YYYY-MM"; find this month's row rather than assuming ordering.
   const thisMonth = report.data?.find((r) => r.month === month);
@@ -102,12 +132,17 @@ export default function Dashboard() {
     expenses.isRefetching ||
     budgets.isRefetching ||
     bills.some((q) => q.isRefetching) ||
+    recurring.isRefetching ||
+    billsLastMonth.isRefetching ||
     goals.isRefetching;
   const refreshAll = () => {
     report.refetch();
     expenses.refetch();
     budgets.refetch();
     bills.forEach((q) => q.refetch());
+    recurring.refetch();
+    // refetch() ignores `enabled`; last month's bills are only the current month's business.
+    if (isCurrentMonth) billsLastMonth.refetch();
     goals.refetch();
   };
 
@@ -171,8 +206,19 @@ export default function Dashboard() {
       </Hero>
 
       <NeedsAttention
-        rows={needsAttention(items, { month, upcoming }, today)}
-        error={billsFailed ? errorMessage(billsFailed.error) : null}
+        rows={needsAttention(
+          items,
+          { month, upcoming, upcomingPrevious: billsLastMonth.data, recurring: recurring.data },
+          today,
+        )}
+        error={
+          markPaid.isError
+            ? "Could not mark that bill paid. Try again."
+            : billsFailed
+              ? errorMessage(billsFailed.error)
+              : null
+        }
+        onMarkPaid={onMarkPaid}
       />
       <GoalsStrip goals={goals.data ?? []} />
       <RecentList
