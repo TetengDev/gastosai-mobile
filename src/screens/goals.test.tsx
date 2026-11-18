@@ -65,6 +65,18 @@ jest.mock("../components/Celebrate", () => {
   };
 });
 
+// Tabs stay mounted when hidden. The stub runs the focus callback only while `mockFocused`, the
+// way expo-router does for a tab the user is looking at.
+let mockFocused = true;
+jest.mock("expo-router", () => {
+  const { useEffect } = jest.requireActual<typeof import("react")>("react");
+  return {
+    useFocusEffect: (effect: () => void | (() => void)) => {
+      useEffect(() => (mockFocused ? effect() : undefined), [effect]);
+    },
+  };
+});
+
 function renderGoals() {
   celebrated.length = 0;
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
@@ -141,6 +153,18 @@ describe("Goals", () => {
     expect(screen.queryByTestId("celebrate-goal-2", hidden)).toBeNull();
     finish("celebrate-goal-3");
     expect(screen.queryByTestId(/^celebrate-/, hidden)).toBeNull();
+  });
+
+  // A hidden tab must not spend the once-only cheer where nobody sees it.
+  it("does not celebrate while the Goals tab is not in focus", async () => {
+    mockFocused = false;
+    try {
+      renderGoals();
+      await screen.findByText("Laptop");
+      expect(celebrated).toEqual([]);
+    } finally {
+      mockFocused = true;
+    }
   });
 
   // `.maestro/goals.yaml` and the demo cleanup tap `goal-menu-0` for the goal they just created.
