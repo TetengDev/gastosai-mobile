@@ -148,6 +148,32 @@ describe("Add expense", () => {
     expect(await screen.findByText("Logged ₱250.00 · ₱1,750.00 left in Food")).toBeOnTheScreen();
   });
 
+  // Home may be mid-fetch of this month's summary when Save is pressed; that answer predates the
+  // expense and must not be the one the line reads.
+  it("does not reuse a summary request that started before the save", async () => {
+    const { client } = renderAdd(true);
+    void client.prefetchQuery({
+      queryKey: ["budgets", "summary", "2026-11"],
+      queryFn: () =>
+        new Promise((resolve) => setTimeout(() => resolve({ month: "2026-11", items: [food(200_000)] }), 1000)),
+    });
+    await saveLunch(client);
+    expect(await screen.findByText("Logged ₱250.00 · ₱1,750.00 left in Food")).toBeOnTheScreen();
+  });
+
+  // A slow summary must not hold the confirmation hostage: 1.5 s, then the amount alone.
+  it("falls back to the amount alone when the summary takes over 1.5 s", async () => {
+    jest.mocked(budgetSummary).mockImplementation(() => new Promise(() => {}));
+    const { client } = renderAdd();
+    await saveLunch(client);
+    await act(() => jest.advanceTimersByTimeAsync(1400));
+    expect(screen.queryByText(/^Logged/)).toBeNull();
+    await act(() => jest.advanceTimersByTimeAsync(100));
+    expect(screen.getByText("Logged ₱250.00")).toBeOnTheScreen();
+    await hold();
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+  });
+
   it("says how far over when the category is over budget", async () => {
     jest.mocked(budgetSummary).mockImplementation(summary([food(-5_000)]));
     const { client } = renderAdd();
