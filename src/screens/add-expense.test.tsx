@@ -66,14 +66,25 @@ jest.mock("../components/Celebrate", () => {
 // Hidden tabs stay mounted. The stub runs the focus callback only while `mockFocused`, the way
 // expo-router does for the screen the user is looking at.
 let mockFocused = true;
+let mockParams: Record<string, string> = {};
 const mockNavigate = jest.fn();
+// Each focus callback can be blurred and refocused, as expo-router does when the user leaves a
+// hidden tab and comes back to it.
+const mockFocusSetters = new Set<(focused: boolean) => void>();
 jest.mock("expo-router", () => {
-  const { useEffect } = jest.requireActual<typeof import("react")>("react");
+  const { useEffect, useState } = jest.requireActual<typeof import("react")>("react");
   return {
     useRouter: () => ({ navigate: mockNavigate, replace: jest.fn() }),
-    useLocalSearchParams: () => ({}),
+    useLocalSearchParams: () => mockParams,
     useFocusEffect: (effect: () => void | (() => void)) => {
-      useEffect(() => (mockFocused ? effect() : undefined), [effect]);
+      const [focused, setFocused] = useState(mockFocused);
+      useEffect(() => {
+        mockFocusSetters.add(setFocused);
+        return () => {
+          mockFocusSetters.delete(setFocused);
+        };
+      }, []);
+      useEffect(() => (focused ? effect() : undefined), [effect, focused]);
     },
   };
 });
@@ -102,6 +113,15 @@ async function saveLunch(client: QueryClient) {
 }
 
 const hold = () => act(() => jest.advanceTimersByTimeAsync(1200));
+
+/** Leaves the screen and comes back to it. */
+const revisit = async () => {
+  for (const focused of [false, true]) {
+    await act(async () => {
+      mockFocusSetters.forEach((set) => set(focused));
+    });
+  }
+};
 const hidden = { includeHiddenElements: true };
 
 beforeEach(() => {
@@ -270,6 +290,35 @@ describe("Add expense", () => {
     } finally {
       mockFocused = true;
       jest.mocked(listExpenses).mockResolvedValue([mockOld]);
+    }
+  });
+
+  // The route is a hidden tab that stays mounted; a return visit is a fresh form.
+  it("comes back to an empty form with the amount focused again", async () => {
+    renderAdd();
+    const before = screen.getByTestId("expense-amount");
+    fireEvent.changeText(before, "250");
+    fireEvent.changeText(screen.getByTestId("expense-description"), "Lunch");
+    await revisit();
+    const after = screen.getByTestId("expense-amount");
+    expect(after).not.toBe(before);
+    expect(after.props.value).toBe("");
+    expect(after.props.autoFocus).toBe(true);
+    expect(screen.getByTestId("expense-description").props.value).toBe("");
+  });
+
+  // A second "Edit first" from quick-add hands new values to the same mounted route.
+  it("takes the values handed to it on a later visit", async () => {
+    mockParams = { amount: "100.00", description: "Taxi" };
+    try {
+      renderAdd();
+      expect(screen.getByTestId("expense-amount").props.value).toBe("100.00");
+      mockParams = { amount: "77.00", description: "Jollibee" };
+      await revisit();
+      expect(screen.getByTestId("expense-amount").props.value).toBe("77.00");
+      expect(screen.getByTestId("expense-description").props.value).toBe("Jollibee");
+    } finally {
+      mockParams = {};
     }
   });
 

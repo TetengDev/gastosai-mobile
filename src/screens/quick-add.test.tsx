@@ -68,12 +68,23 @@ jest.mock("../components/Celebrate", () => {
 
 const mockNavigate = jest.fn();
 const mockReplace = jest.fn();
+const mockFocused = true;
+// Each focus callback can be blurred and refocused, as expo-router does when the user leaves a
+// hidden tab and comes back to it.
+const mockFocusSetters = new Set<(focused: boolean) => void>();
 jest.mock("expo-router", () => {
-  const { useEffect } = jest.requireActual<typeof import("react")>("react");
+  const { useEffect, useState } = jest.requireActual<typeof import("react")>("react");
   return {
     useRouter: () => ({ navigate: mockNavigate, replace: mockReplace }),
     useFocusEffect: (effect: () => void | (() => void)) => {
-      useEffect(() => effect(), [effect]);
+      const [focused, setFocused] = useState(mockFocused);
+      useEffect(() => {
+        mockFocusSetters.add(setFocused);
+        return () => {
+          mockFocusSetters.delete(setFocused);
+        };
+      }, []);
+      useEffect(() => (focused ? effect() : undefined), [effect, focused]);
     },
   };
 });
@@ -102,6 +113,15 @@ async function readAndSave() {
 }
 
 const hold = () => act(() => jest.advanceTimersByTimeAsync(1200));
+
+/** Leaves the screen and comes back to it. */
+const revisit = async () => {
+  for (const focused of [false, true]) {
+    await act(async () => {
+      mockFocusSetters.forEach((set) => set(focused));
+    });
+  }
+};
 /** Where a testID first appears in the rendered tree, to compare reading order. */
 const position = (id: string) => JSON.stringify(screen.toJSON()).indexOf(`"testID":"${id}"`);
 
@@ -152,6 +172,21 @@ describe("Quick add", () => {
     expect(jest.mocked(parseExpense)).toHaveBeenCalledTimes(1);
     expect(jest.mocked(scanReceipt)).not.toHaveBeenCalled();
     expect(screen.getByText(/^Logged/)).toBeOnTheScreen();
+  });
+
+  // The route is a hidden tab that stays mounted; a return visit must not offer last time's
+  // proposal for saving.
+  it("comes back empty, with no proposal left to save", async () => {
+    renderQuickAdd();
+    fireEvent.changeText(screen.getByTestId("quick-add-input"), "lunch 250 at Jollibee");
+    fireEvent.press(screen.getByText("Read it"));
+    await screen.findByText("Save this");
+    const before = screen.getByTestId("quick-add-input");
+    await revisit();
+    expect(screen.queryByText("Save this")).toBeNull();
+    const after = screen.getByTestId("quick-add-input");
+    expect(after).not.toBe(before);
+    expect(after.props.value).toBe("");
   });
 
   // The + button opens this screen, so it is where a first expense usually comes from (R23).
