@@ -76,4 +76,23 @@ describe("AmountSheet", () => {
     renderSheet();
     expect(screen.getByLabelText("Amount in pesos")).toBe(screen.getByTestId("sheet-amount"));
   });
+
+  // Web parity (controller ruling): a goal in another currency names its own symbol.
+  it("names the field and its symbol after a goal's own currency", () => {
+    renderSheet({ currency: "USD" });
+    expect(screen.getByLabelText("Amount ($)")).toBe(screen.getByTestId("sheet-amount"));
+    expect(screen.getByText("$")).toBeOnTheScreen();
+    expect(screen.queryByText("₱")).toBeNull();
+  });
+
+  it("falls back to the code for a currency with no symbol", () => {
+    renderSheet({ currency: "KRW" });
+    expect(screen.getByLabelText("Amount (KRW)")).toBe(screen.getByTestId("sheet-amount"));
+  });
+
+  it("stays in pesos for a PHP goal", () => {
+    renderSheet({ currency: "PHP" });
+    expect(screen.getByLabelText("Amount in pesos")).toBe(screen.getByTestId("sheet-amount"));
+    expect(screen.getByText("₱")).toBeOnTheScreen();
+  });
 });

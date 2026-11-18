@@ -216,6 +216,17 @@ describe("Goals", () => {
     expect(screen.queryByTestId("sheet-label")).toBeNull();
   });
 
+  // A goal's own currency names the amount; a new goal has none yet, so it stays in pesos.
+  it("names the amount after the goal's currency, and in pesos for a new goal", async () => {
+    jest.mocked(listGoals).mockResolvedValueOnce([completed, atHundred, { ...behind, currency: "JPY" }]);
+    renderGoals();
+    fireEvent.press(await screen.findByTestId("goal-contribute-3"));
+    expect(screen.getByLabelText("Amount (¥)")).toBe(screen.getByTestId("sheet-amount"));
+    fireEvent.press(screen.getByTestId("sheet-cancel"));
+    fireEvent.press(screen.getByTestId("goal-create"));
+    expect(screen.getByLabelText("Amount in pesos")).toBe(screen.getByTestId("sheet-amount"));
+  });
+
   it("adds what was entered to the saved total, in centavos", async () => {
     renderGoals();
     fireEvent.press(await screen.findByTestId("goal-contribute-3"));
