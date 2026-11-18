@@ -36,6 +36,12 @@ export interface AmountSheetValues {
  * The Done bar exists for the same reason it does on the expense form: `decimal-pad` has no
  * return key, and without it the keypad covers the save button.
  */
+// ponytail: a copy of web's `CURRENCY_SYMBOLS` (gastosai-web src/lib/formatters.ts); move it to
+// `src/lib/formatters.ts` when a second mobile screen needs a symbol.
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  PHP: "₱", USD: "$", EUR: "€", SGD: "S$", JPY: "¥", GBP: "£", AUD: "A$",
+};
+
 export default function AmountSheet({
   visible,
   title,
@@ -48,6 +54,7 @@ export default function AmountSheet({
   onSubmit,
   onClose,
   footer,
+  currency,
 }: {
   visible: boolean;
   title: string;
@@ -62,8 +69,14 @@ export default function AmountSheet({
   onSubmit: (values: { amount: number; label: string }) => void;
   onClose: () => void;
   footer?: React.ReactNode;
+  /** The goal's currency. Omitted, or PHP, the amount is in pesos. */
+  currency?: string;
 }) {
   const t = useTheme();
+  const foreign = !!currency && currency !== "PHP";
+  const symbol = foreign ? (CURRENCY_SYMBOLS[currency] ?? currency) : "₱";
+  // Same wording as web, so both platforms read a goal's amount out the same way.
+  const amountName = foreign ? `Amount (${symbol})` : "Amount in pesos";
   const [amount, setAmount] = useState(initial?.amount ?? "");
   const [label, setLabel] = useState(initial?.label ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -157,12 +170,12 @@ export default function AmountSheet({
             </Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}>
               <Text style={{ fontFamily: t.fonts.display, fontSize: 34, color: t.colors.text3 }}>
-                ₱
+                {symbol}
               </Text>
               <TextInput
                 testID="sheet-amount"
-                // The visible "AMOUNT" and "₱" are separate texts a screen reader does not tie to it.
-                accessibilityLabel="Amount in pesos"
+                // The visible "AMOUNT" and symbol are separate texts a screen reader does not tie to it.
+                accessibilityLabel={amountName}
                 value={amount}
                 // A peso has two decimal places: a third is refused, not rounded into a centavo
                 // the user never typed.

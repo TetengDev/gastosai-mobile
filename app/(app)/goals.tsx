@@ -371,6 +371,8 @@ export default function Goals() {
           serverError={mutationError}
           onSubmit={submitSheet}
           onClose={close}
+          // A new goal has no currency yet; the sheet then stays in pesos.
+          currency={sheet && sheet.kind !== "create" ? sheet.goal.currency : undefined}
         />
       ) : null}
     </>
