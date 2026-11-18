@@ -47,7 +47,9 @@ const chipIds = () => screen.queryAllByTestId(/^category-/).map((n) => n.props.t
 /** Where a testID first appears in the rendered tree, to compare reading order. */
 const position = (id: string) => JSON.stringify(screen.toJSON()).indexOf(`"testID":"${id}"`);
 
-afterEach(() => jest.useRealTimers());
+afterEach(() => {
+  jest.useRealTimers();
+});
 
 describe("ExpenseForm", () => {
   // R20: recency, not frequency.

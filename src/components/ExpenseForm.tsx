@@ -12,9 +12,10 @@ import {
   View,
 } from "react-native";
 import { listCategories, listExpenses } from "../api/expenses";
-import type { ExpenseRequest } from "../api/types";
-import { nowForApi, parseAmountToCentavos } from "../lib/formatters";
-import { Body, Button, ErrorText, Field, Pill } from "./ui";
+import type { BudgetSummaryItem, ExpenseRequest, ExpenseResponse } from "../api/types";
+import { formatCentavos, nowForApi, parseAmountToCentavos } from "../lib/formatters";
+import { expenseAmountText } from "./money";
+import { Button, ErrorText, Field, Pill } from "./ui";
 import { useTheme } from "../theme/useTheme";
 
 /**
@@ -41,6 +42,32 @@ interface Props {
   onSubmit: (body: ExpenseRequest) => void;
   /** Rendered under the primary action — used for Delete on the edit screen. */
   footer?: React.ReactNode;
+  /**
+   * Shown in place of the primary action once a new expense is saved, so the confirmation sits
+   * where the Save button was and the button cannot be tapped twice during the hold.
+   */
+  confirmation?: React.ReactNode;
+}
+
+/** How many category chips the form offers (spec §4). */
+const CHIP_COUNT = 6;
+
+/**
+ * R19's confirmation line, identical on web. `remaining` is the server's figure for the saved
+ * category's budget line in the expense's month; nothing here is derived from budgeted or spent.
+ */
+export function loggedLine(
+  saved: ExpenseResponse,
+  items: readonly BudgetSummaryItem[] | undefined,
+): string {
+  const logged = `Logged ${expenseAmountText(saved).base}`;
+  const remaining = saved.category
+    ? items?.find((i) => i.categoryName === saved.category)?.remaining
+    : undefined;
+  if (remaining == null) return logged;
+  return remaining >= 0
+    ? `${logged} · ${formatCentavos(remaining)} left in ${saved.category}`
+    : `${logged} · Over by ${formatCentavos(-remaining)} in ${saved.category}`;
 }
 
 /**
@@ -61,12 +88,13 @@ export default function ExpenseForm({
   serverError,
   onSubmit,
   footer,
+  confirmation,
 }: Props) {
   const t = useTheme();
   const categories = useQuery({ queryKey: ["categories"], queryFn: listCategories });
   // Wrapped, not passed bare: TanStack calls queryFn with its own context object, which
   // `listExpenses` would take as a date range and forward as nonsense query params.
-  // Deliberately unscoped by month — chip ordering wants the whole history, not one month.
+  // Deliberately unscoped by month — the recent categories are the whole history's, not one month's.
   const recent = useQuery({ queryKey: ["expenses", "all"], queryFn: () => listExpenses() });
 
   const [amount, setAmount] = useState(initial?.amount ?? "");
@@ -75,19 +103,16 @@ export default function ExpenseForm({
   const [localError, setLocalError] = useState<string | null>(null);
 
   /**
-   * Categories ordered by how often they appear in the user's own recent expenses, so the likely
-   * choice sits first. This only re-orders a list the client already holds — no totals or buckets
-   * are derived here, which keeps it on the right side of "no business logic on-device".
+   * The six categories most recently used (R20): the first distinct ones met walking the user's
+   * expenses newest first, as `GET /expenses` serves them. Topped up from the category list, so a
+   * user with little history still has chips. Only picks from lists the client already holds.
    */
-  const orderedCategories = useMemo(() => {
-    const names = (categories.data ?? []).map((c) => c.name).filter((n): n is string => !!n);
-    const counts = new Map<string, number>();
-    for (const e of recent.data ?? []) {
-      if (e.category) counts.set(e.category, (counts.get(e.category) ?? 0) + 1);
-    }
-    // Capped: this account has 13 categories, and rendering them all pushed the Save button off
-    // screen. The long tail stays reachable through the free-text field below.
-    return [...names].sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0)).slice(0, 8);
+  const recentCategories = useMemo(() => {
+    const used = (recent.data ?? []).map((e) => e.category);
+    const names = (categories.data ?? []).map((c) => c.name);
+    return [...new Set([...used, ...names])]
+      .filter((n): n is string => !!n)
+      .slice(0, CHIP_COUNT);
   }, [categories.data, recent.data]);
 
   const submit = () => {
@@ -130,7 +155,8 @@ export default function ExpenseForm({
               fontFamily: t.fonts.mono,
               fontSize: 11,
               letterSpacing: 1.3,
-              color: t.colors.text3,
+              // text2, not text3: text3 misses 4.5:1 in dark mode.
+              color: t.colors.text2,
             }}
           >
             AMOUNT
@@ -141,8 +167,12 @@ export default function ExpenseForm({
             </Text>
             <TextInput
               testID="expense-amount"
+              // The visible "AMOUNT" and "₱" are separate texts a screen reader does not tie to it.
+              accessibilityLabel="Amount in pesos"
               value={amount}
-              onChangeText={setAmount}
+              // A peso has two decimal places: a third is refused, not rounded into a centavo
+              // the user never typed.
+              onChangeText={(v) => (/\.\d{3}/.test(v) ? undefined : setAmount(v))}
               keyboardType="decimal-pad"
               inputAccessoryViewID={Platform.OS === "ios" ? AMOUNT_ACCESSORY_ID : undefined}
               placeholder="0.00"
@@ -159,21 +189,12 @@ export default function ExpenseForm({
           </View>
         </View>
 
-        <Field
-          testID="expense-description"
-          label="Description"
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Lunch at Jollibee"
-          autoCapitalize="sentences"
-        />
-
         <View style={{ gap: 8 }}>
           <Text style={{ fontFamily: t.fonts.body, fontSize: 13, color: t.colors.text2 }}>
             Category
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {orderedCategories.map((name) => (
+            {recentCategories.map((name) => (
               <Pill
                 key={name}
                 testID={`category-${name}`}
@@ -192,15 +213,23 @@ export default function ExpenseForm({
             value={category}
             onChangeText={setCategory}
             placeholder="New category"
+            accessibilityLabel="Or type a new category"
           />
         </View>
 
+        <Field
+          testID="expense-description"
+          label="Description"
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Lunch at Jollibee"
+          autoCapitalize="sentences"
+          accessibilityLabel="Description"
+        />
+
         <ErrorText>{localError ?? serverError}</ErrorText>
-        <Button title={submitLabel} onPress={submit} loading={submitting} />
+        {confirmation ?? <Button title={submitLabel} onPress={submit} loading={submitting} />}
         {footer}
-        <Body dim style={{ fontSize: 12.5 }}>
-          Unknown categories are created automatically.
-        </Body>
       </ScrollView>
 
       {Platform.OS === "ios" ? (
@@ -221,9 +250,11 @@ export default function ExpenseForm({
               accessibilityRole="button"
               onPress={Keyboard.dismiss}
               hitSlop={12}
+              style={{ minHeight: 44, justifyContent: "center" }}
             >
+              {/* textHi, not link: the link blue misses 4.5:1 on the dark accessory bar. */}
               <Text
-                style={{ fontFamily: t.fonts.bodyMedium, fontSize: 16, color: t.colors.link }}
+                style={{ fontFamily: t.fonts.bodyMedium, fontSize: 16, color: t.colors.textHi }}
               >
                 Done
               </Text>
