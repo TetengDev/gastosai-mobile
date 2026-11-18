@@ -14,11 +14,12 @@ import { accents, palettes } from "../theme";
  * Lives under `src/` because jest only matches there and expo-router treats `app/` as routes (R15).
  */
 
-// Server order, deliberately not the display order: 30, 104, 84.
+// Server order, deliberately not the display order: 30, 104, 50. Fun's band disagrees with its
+// percentage (WARNING at 50%), so a client-side percentage threshold cannot pass the dot test.
 const items = [
   { categoryId: 1, categoryName: "Food", budgeted: 114_300, spent: 34_300, remaining: 80_000, percentUsed: 30, status: "ON_TRACK" },
   { categoryId: 2, categoryName: "Rent", budgeted: 3_000_000, spent: 3_120_000, remaining: -120_000, percentUsed: 104, status: "OVER_BUDGET" },
-  { categoryId: 3, categoryName: "Fun", budgeted: 250_000, spent: 210_000, remaining: 40_000, percentUsed: 84, status: "WARNING" },
+  { categoryId: 3, categoryName: "Fun", budgeted: 420_000, spent: 210_000, remaining: 210_000, percentUsed: 50, status: "WARNING" },
 ];
 
 jest.mock("../api/budgets", () => ({
@@ -27,7 +28,7 @@ jest.mock("../api/budgets", () => ({
     safeToSpend: 0,
     dailyAllowance: 0,
     totalSpent: 3_364_300,
-    totalBudgeted: 3_364_300,
+    totalBudgeted: 3_534_300,
     items,
   })),
   listBudgets: async () => [],
@@ -65,14 +66,14 @@ describe("Budgets", () => {
   it("lists the lines fullest first", async () => {
     renderBudgets();
     await screen.findByText("Rent");
-    expect(screen.getAllByText(/^\d+%$/).map((n) => n.props.children)).toEqual(["104%", "84%", "30%"]);
+    expect(screen.getAllByText(/^\d+%$/).map((n) => n.props.children)).toEqual(["104%", "50%", "30%"]);
   });
 
   it("takes each pill dot from the server's band, amber for over budget", async () => {
     renderBudgets();
     await screen.findByText("Rent");
     expect(pillDotColor("104%")).toBe(palettes.light.warnText);
-    expect(pillDotColor("84%")).toBe(palettes.light.warnText);
+    expect(pillDotColor("50%")).toBe(palettes.light.warnText);
     expect(pillDotColor("30%")).toBe(accents.brand);
   });
 
