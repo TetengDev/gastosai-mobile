@@ -172,6 +172,8 @@ export default function QuickAdd() {
         <Field
           testID="quick-add-input"
           label="What did you spend on?"
+          // Field's visible label is a separate text a screen reader does not tie to the input.
+          accessibilityLabel="What did you spend on?"
           value={text}
           onChangeText={setText}
           placeholder="lunch 150 at Jollibee"
