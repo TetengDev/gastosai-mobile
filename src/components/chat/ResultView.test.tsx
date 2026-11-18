@@ -109,3 +109,81 @@ describe("ResultView pathological payloads", () => {
     expect(elapsed).toBeLessThan(500);
   });
 });
+
+/**
+ * Every value is cut the way the preview card cuts it (TEN-532, after TEN-422): 200 characters,
+ * then the count of what was cut. And a row that is not an object must not throw.
+ */
+describe("ResultView value cap", () => {
+  const long = "x".repeat(10_000);
+  const clamped = `${"x".repeat(200)}… (+9800 more characters)`;
+
+  it("cuts a long description to 200 characters and counts the rest", () => {
+    render(
+      <ResultView
+        result={[{ id: 1, description: long, category: "Food", date: "2026-07-01", amount: 100 }]}
+      />,
+    );
+    expect(screen.getByText(clamped)).toBeTruthy();
+  });
+
+  it("cuts a long category inside the expense caption", () => {
+    render(
+      <ResultView
+        result={[{ id: 1, description: "d", category: long, date: "2026-07-01", amount: 100 }]}
+      />,
+    );
+    // The caption is one value — category and date joined — so the cut counts the date in too.
+    expect(screen.getByText(/^x{200}… \(\+\d+ more characters\)$/)).toBeTruthy();
+  });
+
+  it("cuts a long value and a long key in the object fallback", () => {
+    render(<ResultView result={{ short: long, [long]: 1 }} />);
+    expect(screen.getAllByText(clamped)).toHaveLength(2);
+  });
+
+  it("leaves a value of exactly 200 characters whole", () => {
+    render(<ResultView result={{ k: "y".repeat(200) }} />);
+    expect(screen.getByText("y".repeat(200))).toBeTruthy();
+  });
+
+  it("shows an array value as its count rather than joining it", () => {
+    render(<ResultView result={[{ id: 1, name: ["a", "b", "c"] }]} />);
+    expect(screen.getByText("(3 items)")).toBeTruthy();
+  });
+
+  it.each([
+    ["[null]", [null]],
+    ["[42]", [42]],
+    ['["text"]', ["text"]],
+  ])("renders %s without throwing, and shows nothing for it", (_, result) => {
+    expect(() => render(<ResultView result={result} />)).not.toThrow();
+    expect(screen.queryByTestId("chat-result")).toBeNull();
+  });
+
+  it("renders a recognised list with a null row past the first without throwing", () => {
+    expect(() =>
+      render(<ResultView result={[{ id: 10, name: "n1" }, null, { id: 30, name: "n3" }]} />),
+    ).not.toThrow();
+    expect(screen.getByText("n1")).toBeTruthy();
+    expect(screen.getByText("n3")).toBeTruthy();
+  });
+
+  it("renders 40 rows of multi-megabyte values and huge arrays in under 500ms", () => {
+    const huge = "z".repeat(2_000_000);
+    const wide = Array.from({ length: 200_000 }, (_, i) => `item-${i}`);
+    const rows = many(40, (i) => ({
+      id: i,
+      description: huge,
+      category: wide,
+      date: "2026-07-01",
+      amount: i,
+    }));
+    const started = Date.now();
+    render(<ResultView result={rows} />);
+    const elapsed = Date.now() - started;
+    expect(screen.getAllByText(`${"z".repeat(200)}… (+1999800 more characters)`)).toHaveLength(40);
+    expect(screen.getAllByText(/^\(200000 items\)/)).toHaveLength(40);
+    expect(elapsed).toBeLessThan(500);
+  });
+});

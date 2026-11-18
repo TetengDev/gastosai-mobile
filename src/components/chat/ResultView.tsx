@@ -13,6 +13,24 @@ const MAX_ROWS = 40;
 const MAX_COUNTED = 5_000;
 
 /**
+ * How long one rendered value may be before it is cut (TEN-532). Same cap, and the same cut text,
+ * as `MAX_VALUE_CHARS` and `clampText` in `PreviewCard.tsx` (TEN-422), which are not exported.
+ */
+const MAX_VALUE_CHARS = 200;
+
+function clampText(text: string): string {
+  if (text.length <= MAX_VALUE_CHARS) return text;
+  return `${text.slice(0, MAX_VALUE_CHARS)}… (+${text.length - MAX_VALUE_CHARS} more characters)`;
+}
+
+/**
+ * `String()` without its one unbounded case: on an array it joins every element, nested arrays
+ * included, before any cap can cut the result. No field this view reads is an array in a real
+ * payload, so the count is all that is worth showing.
+ */
+const str = (v: unknown): string => (Array.isArray(v) ? `(${v.length} items)` : String(v));
+
+/**
  * Renders the `result` an assistant action returns.
  *
  * **This is the half that was missing.** `message` is only a caption — "Category totals for
@@ -31,10 +49,10 @@ export default function ResultView({ result }: { result: unknown }) {
   const t = useTheme();
 
   const label = (s: string) => (
-    <Text style={{ fontFamily: t.fonts.body, fontSize: 13, color: t.colors.text2 }}>{s}</Text>
+    <Text style={{ fontFamily: t.fonts.body, fontSize: 13, color: t.colors.text2 }}>{clampText(s)}</Text>
   );
   const value = (s: string) => (
-    <Text style={{ fontFamily: t.fonts.display, fontSize: 14, color: t.colors.textHi }}>{s}</Text>
+    <Text style={{ fontFamily: t.fonts.display, fontSize: 14, color: t.colors.textHi }}>{clampText(s)}</Text>
   );
   const row = (key: string, left: React.ReactNode, right: React.ReactNode, testID?: string) => (
     <View
@@ -80,8 +98,12 @@ export default function ResultView({ result }: { result: unknown }) {
   }
 
   if (Array.isArray(result) && result.length > 0) {
-    const first = result[0] as Record<string, unknown>;
-    const rows = (result as Record<string, unknown>[]).slice(0, MAX_ROWS);
+    // A row that is not an object reads as an empty one: `in` and property reads throw on `null`,
+    // and `in` throws on any primitive. `hidden` still counts the original rows.
+    const rows = (result.slice(0, MAX_ROWS) as unknown[]).map((r) =>
+      r !== null && typeof r === "object" ? (r as Record<string, unknown>) : {},
+    );
+    const first = rows[0];
     const hidden = result.length - rows.length;
 
     // Order matters: expenses also carry `category`, so the more specific shape is tested first.
@@ -89,11 +111,11 @@ export default function ResultView({ result }: { result: unknown }) {
       return list(
         rows.map((e, i) =>
           row(
-            String(e.id ?? i),
+            str(e.id ?? i),
             <>
-              {value(String(e.description ?? "-"))}
+              {value(str(e.description ?? "-"))}
               {label(
-                [e.category, e.date ? formatDateOnly(String(e.date)) : null]
+                [e.category ? str(e.category) : null, e.date ? formatDateOnly(str(e.date)) : null]
                   .filter(Boolean)
                   .join(" · "),
               )}
@@ -109,8 +131,8 @@ export default function ResultView({ result }: { result: unknown }) {
       return list(
         rows.map((c, i) =>
           row(
-            String(c.category ?? i),
-            value(String(c.category ?? "Uncategorized")),
+            str(c.category ?? i),
+            value(str(c.category ?? "Uncategorized")),
             value(formatCentavos(centavosOf(c.total))),
           ),
         ),
@@ -122,9 +144,9 @@ export default function ResultView({ result }: { result: unknown }) {
       return list(
         rows.map((g, i) =>
           row(
-            String(g.id ?? i),
+            str(g.id ?? i),
             <>
-              {value(String(g.name ?? "-"))}
+              {value(str(g.name ?? "-"))}
               {label(
                 `${formatCentavos(centavosOf(g.savedAmount))} of ${formatCentavos(centavosOf(g.targetAmount))}`,
               )}
@@ -139,7 +161,7 @@ export default function ResultView({ result }: { result: unknown }) {
     if ("severity" in first) {
       return list(
         rows.map((a, i) =>
-          row(String(a.id ?? i), value(String(a.message ?? "-")), label(String(a.severity ?? ""))),
+          row(str(a.id ?? i), value(str(a.message ?? "-")), label(str(a.severity ?? ""))),
         ),
         hidden,
       );
@@ -147,7 +169,7 @@ export default function ResultView({ result }: { result: unknown }) {
 
     if ("name" in first && "id" in first) {
       return list(
-        rows.map((c, i) => row(String(c.id ?? i), value(String(c.name ?? "-")), null)),
+        rows.map((c, i) => row(str(c.id ?? i), value(str(c.name ?? "-")), null)),
         hidden,
       );
     }
