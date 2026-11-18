@@ -106,7 +106,8 @@ export default function AmountSheet({
             flexDirection: "row",
             alignItems: "center",
             paddingHorizontal: t.spacing.screen,
-            paddingVertical: 14,
+            // Cancel's 44 pt target now gives the bar its height; 14 on top of it made it 72 pt.
+            paddingVertical: 4,
             borderBottomColor: t.colors.border,
             borderBottomWidth: 1,
           }}
