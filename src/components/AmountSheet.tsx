@@ -152,7 +152,9 @@ export default function AmountSheet({
               <TextInput
                 testID="sheet-amount"
                 value={amount}
-                onChangeText={setAmount}
+                // A peso has two decimal places: a third is refused, not rounded into a centavo
+                // the user never typed.
+                onChangeText={(v) => (/\.\d{3}/.test(v) ? undefined : setAmount(v))}
                 keyboardType="decimal-pad"
                 inputAccessoryViewID={Platform.OS === "ios" ? ACCESSORY_ID : undefined}
                 placeholder="0.00"
