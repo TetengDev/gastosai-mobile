@@ -139,23 +139,22 @@ export default function Dashboard() {
           daysLeft: daysLeftInMonth(month, today),
         });
 
-  const refreshing =
-    report.isRefetching ||
-    expenses.isRefetching ||
-    budgets.isRefetching ||
-    bills.some((q) => q.isRefetching) ||
-    recurring.isRefetching ||
-    billsLastMonth.isRefetching ||
-    goals.isRefetching;
-  const refreshAll = () => {
-    report.refetch();
-    expenses.refetch();
-    budgets.refetch();
-    bills.forEach((q) => q.refetch());
-    recurring.refetch();
-    // refetch() ignores `enabled`; last month's bills are only the current month's business.
-    if (isCurrentMonth) billsLastMonth.refetch();
-    goals.refetch();
+  // The spinner is the user's refresh alone: a background refetch (Mark paid's, a focus refetch)
+  // would otherwise spin it with nobody having pulled.
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshAll = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      report.refetch(),
+      expenses.refetch(),
+      budgets.refetch(),
+      ...bills.map((q) => q.refetch()),
+      recurring.refetch(),
+      // refetch() ignores `enabled`; last month's bills are only the current month's business.
+      isCurrentMonth ? billsLastMonth.refetch() : null,
+      goals.refetch(),
+    ]);
+    setRefreshing(false);
   };
 
   return (

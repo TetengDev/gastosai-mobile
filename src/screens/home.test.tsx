@@ -151,7 +151,10 @@ describe("Home, Mark paid", () => {
     await act(async () => answer([meralco(true)]));
 
     jest.mocked(listRecurring).mockImplementation(() => new Promise((r) => (answer = r)));
-    await act(async () => screen.UNSAFE_getByType(RefreshControl).props.onRefresh());
+    // Not awaited: the refresh holds until the list answers, below.
+    act(() => {
+      void screen.UNSAFE_getByType(RefreshControl).props.onRefresh();
+    });
     expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
     await act(async () => answer([meralco(true)]));
     await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false));
