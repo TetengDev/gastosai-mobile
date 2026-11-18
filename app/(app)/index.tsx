@@ -51,8 +51,9 @@ export default function Dashboard() {
   const upcoming = bills.flatMap((q) => q.data ?? []);
   // Either month's bills failing is said in Needs attention, beside the bills that did load —
   // unless the hero already says the server is unreachable, where the sections stay silent
-  // (.maestro/offline.yaml) rather than repeat it.
-  const billsFailed = report.isError ? undefined : bills.find((q) => q.isError);
+  // (.maestro/offline.yaml) rather than repeat it. Hidden while the report is still retrying too,
+  // so it does not flash up before the hero's own error.
+  const billsFailed = report.isError || report.isLoading ? undefined : bills.find((q) => q.isError);
   const goals = useQuery({ queryKey: ["goals"], queryFn: listGoals });
   // The month that just closed, for its celebration — fetched only on the current month's view.
   const prevMonth = previousMonth(month);

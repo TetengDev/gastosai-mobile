@@ -10,8 +10,10 @@ import { useTheme } from "../theme/useTheme";
 // this synchronous claim is what lets only one of them play.
 const claimed = new Set<string>();
 
-/** How long one celebration holds the stage before `onDone`: the coin's drop, with or without it. */
-const PLAY_MS = 600;
+/** The coin's drop. */
+const COIN_MS = 600;
+/** How long one celebration holds the stage before `onDone`, coin or not: web's CELEBRATION_HOLD_MS. */
+const HOLD_MS = 1500;
 
 /**
  * Mount it only when the trigger holds. The event is spent only at the moment it plays, so an
@@ -25,7 +27,10 @@ export function Celebrate({
 }: {
   event: string;
   size?: number;
-  /** Called once it has played, or at once when it will not (seen already, or claimed elsewhere). */
+  /**
+   * Called once it has played and held, or at once when it will not (seen already, or claimed
+   * elsewhere). Never called by a signed-out mount, which plays nothing, nor by one unmounted mid-play.
+   */
   onDone?: () => void;
 }) {
   const t = useTheme();
@@ -62,9 +67,9 @@ export function Celebrate({
       setWithCoin(!reduce);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       if (!reduce) {
-        Animated.timing(drop, { toValue: 1, duration: PLAY_MS, useNativeDriver: true }).start();
+        Animated.timing(drop, { toValue: 1, duration: COIN_MS, useNativeDriver: true }).start();
       }
-      timer = setTimeout(() => done.current?.(), PLAY_MS);
+      timer = setTimeout(() => done.current?.(), HOLD_MS);
     })();
     return () => {
       live = false;

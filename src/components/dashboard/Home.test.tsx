@@ -93,13 +93,14 @@ describe("Hero", () => {
     expect(seen("goal-21")).toBeUndefined();
     expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
 
-    await waitFor(() => expect(seen("goal-21")).toBe("1"));
+    // Each holds 1.5 s before the next (web's CELEBRATION_HOLD_MS).
+    await waitFor(() => expect(seen("goal-21")).toBe("1"), { timeout: 2500 });
     expect(seen("goal-22")).toBeUndefined();
     expect(Haptics.notificationAsync).toHaveBeenCalledTimes(2);
 
-    await waitFor(() => expect(seen("goal-22")).toBe("1"));
+    await waitFor(() => expect(seen("goal-22")).toBe("1"), { timeout: 2500 });
     expect(Haptics.notificationAsync).toHaveBeenCalledTimes(3);
-  });
+  }, 10000);
 
   it("skips an event already seen without replaying it or holding up the next", async () => {
     mockStore.set(celebrationKey("a@example.com", "month-2026-08"), "1");
