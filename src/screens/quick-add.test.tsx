@@ -67,10 +67,11 @@ jest.mock("../components/Celebrate", () => {
 });
 
 const mockNavigate = jest.fn();
+const mockReplace = jest.fn();
 jest.mock("expo-router", () => {
   const { useEffect } = jest.requireActual<typeof import("react")>("react");
   return {
-    useRouter: () => ({ navigate: mockNavigate, replace: jest.fn() }),
+    useRouter: () => ({ navigate: mockNavigate, replace: mockReplace }),
     useFocusEffect: (effect: () => void | (() => void)) => {
       useEffect(() => effect(), [effect]);
     },
@@ -203,6 +204,19 @@ describe("Quick add", () => {
     expect(screen.UNSAFE_getByType(KeyboardAvoidingView).props.keyboardVerticalOffset).toBeGreaterThan(0);
     const content = StyleSheet.flatten(screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle);
     expect(content.paddingBottom).toBeGreaterThan(content.padding as number);
+  });
+
+  // Spec §4: the entry is focused on open.
+  it("focuses the typed entry on open", () => {
+    renderQuickAdd();
+    expect(screen.getByTestId("quick-add-input").props.autoFocus).toBe(true);
+  });
+
+  // The amount-first form is otherwise reachable only through a parse or a 429.
+  it("always offers the amount-first form, empty", () => {
+    renderQuickAdd();
+    fireEvent.press(screen.getByText("Enter manually"));
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/(app)/add-expense" });
   });
 
   // Pin: receipt scan stays, as the second path under the typed one.
