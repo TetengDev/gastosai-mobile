@@ -86,7 +86,7 @@ function QuickAddScreen() {
 
   const runParse = () => {
     // The saved hold is on its way out; a new read would be abandoned mid-flight.
-    if (logged) return;
+    if (logged || save.isPending) return;
     // The proposal card renders below; with the keyboard still up it would sit behind it.
     Keyboard.dismiss();
     setError(null);
@@ -107,7 +107,7 @@ function QuickAddScreen() {
    * people deny, and iOS only ever asks once.
    */
   const capture = async (source: "camera" | "library") => {
-    if (logged) return;
+    if (logged || save.isPending) return;
     setError(null);
     setParsed(null);
     setQuotaReached(false);
