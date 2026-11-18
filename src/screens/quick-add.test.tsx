@@ -202,7 +202,7 @@ describe("Quick add", () => {
     renderQuickAdd();
     expect(screen.UNSAFE_getByType(KeyboardAvoidingView).props.keyboardVerticalOffset).toBeGreaterThan(0);
     const content = StyleSheet.flatten(screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle);
-    expect(content.paddingBottom).toBeGreaterThan(content.paddingTop);
+    expect(content.paddingBottom).toBeGreaterThan(content.padding as number);
   });
 
   // Pin: receipt scan stays, as the second path under the typed one.
