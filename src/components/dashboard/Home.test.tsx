@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import * as Haptics from "expo-haptics";
 import type { ReactNode } from "react";
-import { AccessibilityInfo } from "react-native";
+import { AccessibilityInfo, StyleSheet } from "react-native";
 import { monthSummary } from "../../api/insights";
 import { celebrationKey } from "../../lib/celebrateStore";
 import { GoalsStrip, Hero, Insights, NeedsAttention, RecentList } from "./Home";
@@ -143,6 +143,44 @@ describe("NeedsAttention", () => {
     expect(screen.getByText("₱549.00")).toBeOnTheScreen();
     fireEvent.press(screen.getByText("Netflix"));
     expect(mockPush).toHaveBeenCalledWith("/(app)/more/recurring");
+  });
+
+  /** TEN-540: a bill row the current month's mark covers says so, and marks it from Home. */
+  it("gives a markable bill a Mark paid button, named for the bill, that does not navigate", () => {
+    const onMarkPaid = jest.fn();
+    wrap(
+      <NeedsAttention
+        rows={[
+          {
+            key: "o",
+            label: "Meralco",
+            sub: "Overdue · was due Nov 10",
+            href: "/(app)/more/recurring",
+            amount: 250000,
+            markPaid: { id: 7 },
+          },
+        ]}
+        onMarkPaid={onMarkPaid}
+      />,
+    );
+    const button = screen.getByRole("button", { name: "Mark Meralco paid" });
+    expect(button).toHaveTextContent("Mark paid");
+    // A 44pt target: the pill's text alone is well under it.
+    expect(StyleSheet.flatten(button.props.style).minHeight).toBeGreaterThanOrEqual(44);
+    fireEvent.press(button);
+    expect(onMarkPaid).toHaveBeenCalledWith(7);
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("gives a bill row without the mark no button", () => {
+    wrap(
+      <NeedsAttention
+        rows={[{ key: "n", label: "Netflix", sub: "Due Dec 1", href: "/(app)/more/recurring", amount: 54900 }]}
+        onMarkPaid={jest.fn()}
+      />,
+    );
+    expect(screen.queryByText("Mark paid")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Mark .* paid$/ })).toBeNull();
   });
 });
 
