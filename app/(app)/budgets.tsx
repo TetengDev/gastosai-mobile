@@ -126,9 +126,11 @@ export default function Budgets() {
           />
         }
       >
-        {/* The screen's one Piso, in the worst line's mood. Rows carry none (spec §4). */}
+        {/* The screen's one Piso, in the worst line's mood. Rows carry none (spec §4). Drawn only
+            once the summary has landed: without bands it would read calm beside "Could not load"
+            and flash amber on every month step. The spacer keeps the stepper from jumping. */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Piso state={mood} size={44} />
+          {summary.data ? <Piso state={mood} size={44} /> : <View style={{ width: 44, height: 44 }} />}
           <View style={{ flex: 1 }}>
             <MonthStepper
               label={formatMonth(month)}
