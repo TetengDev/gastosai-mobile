@@ -211,6 +211,8 @@ describe("Goals", () => {
     fireEvent.press(await screen.findByTestId("goal-contribute-3"));
     jest.mocked(listGoals).mockResolvedValueOnce([completed, atHundred, { ...behind, savedAmount: 2_100_000 }]);
     await act(() => screen.getByTestId("goals-screen").props.refreshControl.props.onRefresh());
+    // The query publishes the refetched list a tick later; the open sheet hides the cards.
+    await screen.findByText(/₱21,000\.00 of/, { includeHiddenElements: true });
     fireEvent.changeText(screen.getByTestId("sheet-amount"), "500");
     fireEvent.press(screen.getByTestId("sheet-save"));
     await act(async () => {});
