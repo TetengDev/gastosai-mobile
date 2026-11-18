@@ -94,8 +94,12 @@ behind `more/`, not beside the existing tabs.
 
 ## Home is a check-in first, a dashboard second
 
-The month total, safe-to-spend and the insight sentence stay above the fold so a two-second glance
-still works; the report cards sit below. Adding a card means adding it *below*, not at the top.
+The hero — the month's spend, Piso's mood, the budget meter and one status line built from the
+server's `safeToSpend` — stays above the fold so a two-second glance still works. Needs attention,
+goals and recent follow it. The report is not on the page at all until asked for: the insight
+sentence, the trend, top expenses and the category split sit in **Insights**, collapsed by default,
+and nothing inside it is fetched until it opens (which also spares the per-user `/ai/**` quota on
+every glance at Home). A new report card goes inside Insights, not above the hero.
 
 ## SDK 54, not the latest
 
