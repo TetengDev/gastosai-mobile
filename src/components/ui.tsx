@@ -294,6 +294,8 @@ export function Pill({
         paddingHorizontal: 14,
         // Taller when tappable, to stay near the 44pt target.
         paddingVertical: onPress ? 9 : 4,
+        // And never under it: the target is the chip's own box, not a hitSlop past its parent.
+        minHeight: onPress ? 44 : undefined,
       }}
     >
       {dotColor ? (
