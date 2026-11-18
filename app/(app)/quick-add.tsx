@@ -108,6 +108,8 @@ function QuickAddScreen() {
    */
   const capture = async (source: "camera" | "library") => {
     if (logged || save.isPending) return;
+    // As in runParse: the proposal card the photo comes back as would sit behind the keyboard.
+    Keyboard.dismiss();
     setError(null);
     setParsed(null);
     setQuotaReached(false);

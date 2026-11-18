@@ -333,6 +333,21 @@ describe("Quick add", () => {
     await screen.findByText("Save this");
   });
 
+  // The picker opens over the screen; a keyboard left up from the typed entry covers the
+  // proposal card the photo comes back as.
+  it("puts the keyboard away when it opens the photo picker", async () => {
+    const dismiss = jest.spyOn(Keyboard, "dismiss");
+    try {
+      jest.mocked(scanReceipt).mockResolvedValueOnce({ amount: 19_500, confidence: "HIGH", saveable: true });
+      renderQuickAdd();
+      fireEvent.press(screen.getByTestId("choose-photo"));
+      expect(dismiss).toHaveBeenCalled();
+      await screen.findByText("Save this");
+    } finally {
+      dismiss.mockRestore();
+    }
+  });
+
   it("keeps its content clear of the header and the keyboard", () => {
     renderQuickAdd();
     expect(screen.UNSAFE_getByType(KeyboardAvoidingView).props.keyboardVerticalOffset).toBeGreaterThan(0);
