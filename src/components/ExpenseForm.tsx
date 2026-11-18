@@ -61,6 +61,8 @@ const CHIP_COUNT = 6;
 
 /** Spec §2: how long Piso holds `saved` before the screen moves on (R18). */
 const SAVED_HOLD_MS = 1200;
+/** How long the R19 line waits for the budget summary before it says the amount alone. */
+const SUMMARY_WAIT_MS = 1500;
 const SAVED_PISO_SIZE = 56;
 
 export interface Logged {
@@ -116,16 +118,28 @@ export function useLogExpense(onError: (e: unknown) => void) {
       // hold, and the confirmation waits only on the line it shows.
       void queryClient.invalidateQueries({ queryKey: ["expenses"] });
       void queryClient.invalidateQueries({ queryKey: ["report", "monthly"] });
-      const summary = await queryClient
-        .fetchQuery({
-          queryKey: ["budgets", "summary", month],
-          queryFn: () => budgetSummary(month),
-          // Always the server, never the cache: the app keeps queries fresh for 30 s, and a summary
-          // from before the save does not count the expense just logged.
-          staleTime: 0,
-          retry: false,
-        })
-        .catch(() => undefined);
+      const summaryKey = ["budgets", "summary", month];
+      // A request Home started before the save would otherwise be reused, and its answer
+      // predates the expense.
+      await queryClient.cancelQueries({ queryKey: summaryKey });
+      let gaveUp: ReturnType<typeof setTimeout> | undefined;
+      const summary = await Promise.race([
+        queryClient
+          .fetchQuery({
+            queryKey: summaryKey,
+            queryFn: () => budgetSummary(month),
+            // Always the server, never the cache: the app keeps queries fresh for 30 s, and a
+            // summary from before the save does not count the expense just logged.
+            staleTime: 0,
+            retry: false,
+          })
+          .catch(() => undefined),
+        // A slow summary must not hold the confirmation hostage; past this, the amount alone.
+        new Promise<undefined>((resolve) => {
+          gaveUp = setTimeout(resolve, SUMMARY_WAIT_MS);
+        }),
+      ]);
+      clearTimeout(gaveUp);
       // A new expense is usually dated today; a user browsing an earlier month would otherwise
       // save successfully and then see nothing (docs/lessons.md).
       resetToCurrent();
