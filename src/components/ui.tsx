@@ -352,6 +352,9 @@ export function ProgressMeter({
         backgroundColor: t.colors.track,
         overflow: "hidden",
         flexDirection: "row",
+        // Over shares warning's amber fill, so it also gets an outline — a shape cue that shows at
+        // every percentage, not only past 100 where the overflow segment appears (TEN-455).
+        ...(tone === "over" ? { borderWidth: 1, borderColor: t.colors.warnText } : null),
       }}
     >
       <View testID="meter-fill" style={{ width: `${width - overflowShare}%`, backgroundColor: fill }} />
