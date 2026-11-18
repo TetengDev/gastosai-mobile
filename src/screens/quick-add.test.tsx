@@ -107,6 +107,7 @@ beforeEach(() => {
   jest.useFakeTimers();
   celebrated.length = 0;
   mockNavigate.mockClear();
+  jest.mocked(createExpense).mockClear();
 });
 afterEach(() => {
   jest.useRealTimers();
