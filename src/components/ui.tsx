@@ -352,15 +352,28 @@ export function ProgressMeter({
         backgroundColor: t.colors.track,
         overflow: "hidden",
         flexDirection: "row",
+        // Over shares warning's amber fill, so it is also an outlined capsule: ring, track-coloured
+        // gap, bar. The gap is what keeps a full over meter from merging into one solid amber bar
+        // like a full warning; the cue shows at every percentage, not only past 100 (TEN-455).
+        ...(tone === "over"
+          ? { borderWidth: 1, borderColor: t.colors.warnText, padding: 1 }
+          : null),
       }}
     >
-      <View testID="meter-fill" style={{ width: `${width - overflowShare}%`, backgroundColor: fill }} />
-      {overflowShare > 0 ? (
+      {/* Its own rounded clip: the track's clip ignores padding, so inside the gap the fill's ends
+          would come out square. For tones without the gap this box is the track's exact size. */}
+      <View style={{ flex: 1, flexDirection: "row", borderRadius: 999, overflow: "hidden" }}>
         <View
-          testID="meter-overflow"
-          style={{ width: `${overflowShare}%`, backgroundColor: t.colors.warnBorder }}
+          testID="meter-fill"
+          style={{ width: `${width - overflowShare}%`, backgroundColor: fill }}
         />
-      ) : null}
+        {overflowShare > 0 ? (
+          <View
+            testID="meter-overflow"
+            style={{ width: `${overflowShare}%`, backgroundColor: t.colors.warnBorder }}
+          />
+        ) : null}
+      </View>
     </View>
   );
 }

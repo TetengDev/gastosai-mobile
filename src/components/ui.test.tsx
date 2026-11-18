@@ -502,6 +502,25 @@ describe("ProgressMeter", () => {
     expect(screen.getByTestId("meter-fill")).toHaveStyle({ width: "80%" });
   });
 
+  // TEN-455: over and warning share the amber fill, so over carries a shape cue as well — an
+  // outline on the track — at every percentage, including at or below 100 where no overflow shows.
+  it.each([80, 100, 130])("over has the outline and the gap at %i", (percent) => {
+    render(<ProgressMeter percent={percent} tone="over" label="Food budget" />);
+    expect(screen.getByLabelText("Food budget")).toHaveStyle({
+      borderWidth: 1,
+      borderColor: palettes.light.warnText,
+      // The gap: without it a full fill merges with a same-colour ring into one solid bar.
+      padding: 1,
+    });
+  });
+
+  it.each([80, 100, 130])("warning has no outline and no gap at %i", (percent) => {
+    render(<ProgressMeter percent={percent} tone="warning" label="Food budget" />);
+    const track = screen.getByLabelText("Food budget");
+    expect(track).not.toHaveStyle({ borderWidth: 1 });
+    expect(track).not.toHaveStyle({ padding: 1 });
+  });
+
   it("draws no overflow for a goal past 100", () => {
     render(<ProgressMeter percent={120} tone="goal" label="Trip fund" />);
     expect(screen.queryByTestId("meter-overflow")).toBeNull();

@@ -68,6 +68,15 @@ appId: host.exp.Exponent
     element:
       id: "card-goals"
     direction: DOWN
+# Each "See all" is named for where it goes (TEN-505): two bare "See all" links read alike to a
+# screen reader.
+- assertVisible: "See all goals"
+
+- scrollUntilVisible:
+    element:
+      id: "recent-see-all"
+    direction: DOWN
+- assertVisible: "See all expenses"
 
 # Insights is collapsed by default (spec §4): the report is opened on purpose, not scrolled past.
 # Centred, not merely "visible": at the bottom edge the toggle sits under the tab bar, and a tap

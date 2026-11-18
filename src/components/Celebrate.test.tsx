@@ -71,6 +71,51 @@ describe("Celebrate", () => {
     expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
   });
 
+  /** TEN-505: Home's queue moves on when a celebration is skipped or has finished playing. */
+  it("reports done at once when the event was already seen", async () => {
+    mockStore.set(celebrationKey("a@example.com", "goal-40"), "1");
+    const onDone = jest.fn();
+    render(<Celebrate event="goal-40" onDone={onDone} />);
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+    expect(Haptics.notificationAsync).not.toHaveBeenCalled();
+  });
+
+  it("reports done only after it has played and held for 1.5 s, as web does", async () => {
+    const onDone = jest.fn();
+    render(<Celebrate event="goal-41" onDone={onDone} />);
+    expect(await screen.findByLabelText("Celebrating")).toBeOnTheScreen();
+    // Past the coin's 600 ms but inside the hold: queued haptics stay well apart.
+    await new Promise((r) => setTimeout(r, 1000));
+    expect(onDone).not.toHaveBeenCalled();
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1), { timeout: 1500 });
+    // Still cheering: the queue moves on, the Piso stays.
+    expect(screen.getByLabelText("Celebrating")).toBeOnTheScreen();
+  });
+
+  it("reports done once, at once, for the mount that lost the claim", async () => {
+    const first = jest.fn();
+    const second = jest.fn();
+    render(
+      <>
+        <Celebrate event="goal-42" onDone={first} />
+        <Celebrate event="goal-42" onDone={second} />
+      </>,
+    );
+    expect(await screen.findByLabelText("Celebrating")).toBeOnTheScreen();
+    // The loser reports straight away; the winner is still inside its hold.
+    await waitFor(() => expect(first.mock.calls.length + second.mock.calls.length).toBe(1));
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("never reports done when it unmounts mid-play", async () => {
+    const onDone = jest.fn();
+    const view = render(<Celebrate event="goal-43" onDone={onDone} />);
+    expect(await screen.findByLabelText("Celebrating")).toBeOnTheScreen();
+    view.unmount();
+    await new Promise((r) => setTimeout(r, 1700));
+    expect(onDone).not.toHaveBeenCalled();
+  });
+
   it("still cheers under reduced motion, without the coin", async () => {
     jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
     render(<Celebrate event="goal-3" />);

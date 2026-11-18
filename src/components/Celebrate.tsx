@@ -10,16 +10,37 @@ import { useTheme } from "../theme/useTheme";
 // this synchronous claim is what lets only one of them play.
 const claimed = new Set<string>();
 
+/** The coin's drop. */
+const COIN_MS = 600;
+/** How long one celebration holds the stage before `onDone`, coin or not: web's CELEBRATION_HOLD_MS. */
+const HOLD_MS = 1500;
+
 /**
  * Mount it only when the trigger holds. The event is spent only at the moment it plays, so an
  * unmount mid-check leaves it for the next mount. The coin is the only motion in the Piso family;
  * Piso itself stays static.
  */
-export function Celebrate({ event, size = 96 }: { event: string; size?: number }) {
+export function Celebrate({
+  event,
+  size = 96,
+  onDone,
+}: {
+  event: string;
+  size?: number;
+  /**
+   * Called once it has played and held, or at once when it will not (seen already, or claimed
+   * elsewhere). Never called by a signed-out mount, which plays nothing, nor by one unmounted mid-play.
+   */
+  onDone?: () => void;
+}) {
   const t = useTheme();
   const [playing, setPlaying] = useState(false);
   const [withCoin, setWithCoin] = useState(false);
   const drop = useRef(new Animated.Value(0)).current;
+
+  // A ref, so a caller's inline callback does not re-run the effect below.
+  const done = useRef(onDone);
+  done.current = onDone;
 
   const account = useAuth().user?.email;
 
@@ -27,22 +48,32 @@ export function Celebrate({ event, size = 96 }: { event: string; size?: number }
     // The seen flag is per account; with no account there is nothing to scope it to.
     if (!account) return;
     let live = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     (async () => {
-      if (await hasCelebrated(account, event)) return;
+      if (await hasCelebrated(account, event)) {
+        if (live) done.current?.();
+        return;
+      }
       const reduce = await AccessibilityInfo.isReduceMotionEnabled().catch(() => true);
       const claim = celebrationKey(account, event);
-      if (!live || claimed.has(claim)) return;
+      if (!live) return;
+      if (claimed.has(claim)) {
+        done.current?.();
+        return;
+      }
       claimed.add(claim);
       void markCelebrated(account, event);
       setPlaying(true);
       setWithCoin(!reduce);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       if (!reduce) {
-        Animated.timing(drop, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+        Animated.timing(drop, { toValue: 1, duration: COIN_MS, useNativeDriver: true }).start();
       }
+      timer = setTimeout(() => done.current?.(), HOLD_MS);
     })();
     return () => {
       live = false;
+      clearTimeout(timer);
     };
   }, [account, event, drop]);
 

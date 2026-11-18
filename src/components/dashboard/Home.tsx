@@ -7,7 +7,7 @@ import { formatCentavos, formatDayMonth } from "../../lib/formatters";
 import { goalTone, type MeterTone } from "../../lib/pisoMood";
 import { useTheme } from "../../theme/useTheme";
 import { Celebrate } from "../Celebrate";
-import { Amount, Body, Card, ErrorText, ProgressMeter, Skeleton } from "../ui";
+import { Amount, Body, Button, Card, ErrorText, ProgressMeter, Skeleton } from "../ui";
 import { CategoryBreakdownCard, TopExpensesCard } from "./cards";
 import InsightCard from "./InsightCard";
 import TrendCard from "./TrendCard";
@@ -32,22 +32,23 @@ function SectionLabel({ children }: { children: string }) {
   );
 }
 
-function SeeAll({ onPress, testID }: { onPress: () => void; testID?: string }) {
+/** Named for where it goes, on screen and to a screen reader: two bare "See all" links read alike. */
+function SeeAll({ label, onPress, testID }: { label: string; onPress: () => void; testID?: string }) {
   const t = useTheme();
   return (
-    <Pressable testID={testID} accessibilityRole="link" onPress={onPress} hitSlop={12}>
+    <Pressable testID={testID} accessibilityRole="link" accessibilityLabel={label} onPress={onPress} hitSlop={12}>
       <Text style={{ fontFamily: t.fonts.bodyMedium, fontSize: t.fontSizes.control, color: t.colors.link }}>
-        See all
+        {label}
       </Text>
     </Pressable>
   );
 }
 
-function SectionHead({ label, onSeeAll, testID }: { label: string; onSeeAll?: () => void; testID?: string }) {
+function SectionHead({ label, seeAll }: { label: string; seeAll: { label: string; onPress: () => void; testID?: string } }) {
   return (
     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
       <SectionLabel>{label}</SectionLabel>
-      {onSeeAll ? <SeeAll onPress={onSeeAll} testID={testID} /> : null}
+      <SeeAll {...seeAll} />
     </View>
   );
 }
@@ -61,6 +62,7 @@ export function Hero({
   status,
   meter,
   celebrations,
+  noBudget,
   children,
 }: {
   spent: number;
@@ -69,13 +71,22 @@ export function Hero({
   mood: PisoState;
   status: string | null;
   meter: { percent: number; tone: MeterTone; caption: string } | null;
-  /** `Celebrate` events whose trigger holds; each plays once, over Piso. */
+  /** `Celebrate` events whose trigger holds, in play order; each plays once, over Piso, one at a time. */
   celebrations: readonly string[];
+  /** The month has no budget: offer to set one under the status line. */
+  noBudget?: boolean;
   /** The error and empty-month affordances, under the status line. */
   children?: ReactNode;
 }) {
   const t = useTheme();
+  const router = useRouter();
   const heads = mood === "overBudget" || mood === "worried";
+
+  // One at a time: events mount up to the first that has not finished. Finished ones stay mounted,
+  // so a played cheer stays on Piso as it always has; a skipped one renders nothing.
+  const [done, setDone] = useState<readonly string[]>([]);
+  const next = celebrations.findIndex((e) => !done.includes(e));
+  const shown = next === -1 ? celebrations : celebrations.slice(0, next + 1);
 
   return (
     <Card testID="home-hero" style={{ gap: 14 }}>
@@ -91,7 +102,7 @@ export function Hero({
           {/* Drawn over the mood Piso at the same size, so a celebration replaces it rather than
               adding a second one. Hidden from screen readers: Celebrate's own Piso would announce
               twice what the status line already says. */}
-          {celebrations.map((event) => (
+          {shown.map((event) => (
             <View
               key={event}
               pointerEvents="none"
@@ -99,7 +110,11 @@ export function Hero({
               importantForAccessibility="no-hide-descendants"
               style={{ position: "absolute", top: 0, left: 0 }}
             >
-              <Celebrate event={event} size={PISO_SIZE} />
+              <Celebrate
+                event={event}
+                size={PISO_SIZE}
+                onDone={() => setDone((d) => (d.includes(event) ? d : [...d, event]))}
+              />
             </View>
           ))}
         </View>
@@ -128,19 +143,33 @@ export function Hero({
         </Text>
       ) : null}
 
+      {noBudget ? (
+        <Button
+          testID="home-set-budget"
+          size="sm"
+          variant="secondary"
+          title="Set a budget"
+          onPress={() => router.push("/(app)/budgets")}
+        />
+      ) : null}
+
       {children}
     </Card>
   );
 }
 
-/** Budgets the server bands as close or over, and bills due within a week. Hidden when empty. */
-export function NeedsAttention({ rows }: { rows: readonly AttentionRow[] }) {
+/**
+ * Budgets the server bands as close or over, and bills due within a week. Hidden when empty and
+ * nothing failed: a bills query that errors says so here rather than dropping its bills unseen.
+ */
+export function NeedsAttention({ rows, error }: { rows: readonly AttentionRow[]; error?: string | null }) {
   const router = useRouter();
-  if (rows.length === 0) return null;
+  if (rows.length === 0 && !error) return null;
 
   return (
     <Card testID="needs-attention">
       <SectionLabel>NEEDS ATTENTION</SectionLabel>
+      <ErrorText>{error}</ErrorText>
       {rows.map((r) => (
         <Pressable
           key={r.key}
@@ -176,7 +205,7 @@ export function GoalsStrip({ goals }: { goals: readonly GoalResponse[] }) {
 
   return (
     <View testID="card-goals" style={{ gap: 10 }}>
-      <SectionHead label="GOALS" onSeeAll={() => router.push("/(app)/goals")} />
+      <SectionHead label="GOALS" seeAll={{ label: "See all goals", onPress: () => router.push("/(app)/goals") }} />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -238,7 +267,10 @@ export function RecentList({
 
   return (
     <Card>
-      <SectionHead label="RECENT" onSeeAll={() => router.push("/(app)/expenses")} testID="recent-see-all" />
+      <SectionHead
+        label="RECENT"
+        seeAll={{ label: "See all expenses", onPress: () => router.push("/(app)/expenses"), testID: "recent-see-all" }}
+      />
       {loading ? <Skeleton height={120} /> : null}
       <ErrorText>{error}</ErrorText>
       {recent.map((e, i) => (

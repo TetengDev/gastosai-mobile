@@ -6,7 +6,7 @@ import { listExpenses, monthlyReport } from "../../src/api/expenses";
 import { listGoals } from "../../src/api/goals";
 import { upcomingBills } from "../../src/api/recurring";
 import { formatMonth, monthRange, nowForApi } from "../../src/lib/formatters";
-import { pisoMoodFor, toBand } from "../../src/lib/pisoMood";
+import { toBand } from "../../src/lib/pisoMood";
 import { useMonth } from "../../src/context/MonthContext";
 import { Body, Button, ErrorText, MonthStepper } from "../../src/components/ui";
 import { GoalsStrip, Hero, Insights, NeedsAttention, RecentList } from "../../src/components/dashboard/Home";
@@ -15,6 +15,7 @@ import {
   budgetMeter,
   celebrationsFor,
   daysLeftInMonth,
+  heroMood,
   needsAttention,
   previousMonth,
   statusLine,
@@ -48,6 +49,11 @@ export default function Dashboard() {
     })),
   });
   const upcoming = bills.flatMap((q) => q.data ?? []);
+  // Either month's bills failing is said in Needs attention, beside the bills that did load —
+  // unless the hero already says the server is unreachable, where the sections stay silent
+  // (.maestro/offline.yaml) rather than repeat it. Hidden while the report is still retrying too,
+  // so it does not flash up before the hero's own error.
+  const billsFailed = report.isError || report.isLoading ? undefined : bills.find((q) => q.isError);
   const goals = useQuery({ queryKey: ["goals"], queryFn: listGoals });
   // The month that just closed, for its celebration — fetched only on the current month's view.
   const prevMonth = previousMonth(month);
@@ -73,17 +79,21 @@ export default function Dashboard() {
 
   const items = budgets.data?.items ?? [];
   const bands = items.map((b) => toBand(b.status));
-  const mood = pisoMoodFor({
+  // Everything Piso's mood reads; until it has all landed, Piso and the line under it hold still.
+  const moodLoading = report.isLoading || budgets.isLoading || expenses.isLoading;
+  const mood = heroMood({
+    loading: moodLoading,
     bands,
     hasExpenses: (thisMonth?.total ?? 0) > 0 || (expenses.data?.length ?? 0) > 0,
   });
+  const hasBudget = (budgets.data?.totalBudgeted ?? 0) > 0;
   const status =
-    report.isLoading || budgets.isLoading || report.isError || showJump
+    moodLoading || report.isError || showJump
       ? null
       : statusLine({
           mood,
           safeToSpend: budgets.data?.safeToSpend ?? 0,
-          hasBudget: (budgets.data?.totalBudgeted ?? 0) > 0,
+          hasBudget,
           daysLeft: daysLeftInMonth(month, today),
         });
 
@@ -124,12 +134,19 @@ export default function Dashboard() {
         mood={mood}
         status={status}
         meter={budgetMeter(budgets.data, bands)}
-        celebrations={celebrationsFor({
-          month,
-          today,
-          previousBands: (closed.data?.items ?? []).map((b) => toBand(b.status)),
-          goals: goals.data ?? [],
-        })}
+        noBudget={status !== null && mood !== "empty" && !hasBudget && !budgets.isError}
+        // Nothing until both sources land: otherwise a goal starts playing, the closed month
+        // arrives, and the queue's "month first" order cuts the goal off mid-cheer.
+        celebrations={
+          goals.isLoading || closed.isLoading
+            ? []
+            : celebrationsFor({
+                month,
+                today,
+                previousBands: (closed.data?.items ?? []).map((b) => toBand(b.status)),
+                goals: goals.data ?? [],
+              })
+        }
       >
         {report.isError ? (
           <>
@@ -153,7 +170,10 @@ export default function Dashboard() {
         ) : null}
       </Hero>
 
-      <NeedsAttention rows={needsAttention(items, upcoming, today)} />
+      <NeedsAttention
+        rows={needsAttention(items, upcoming, today)}
+        error={billsFailed ? errorMessage(billsFailed.error) : null}
+      />
       <GoalsStrip goals={goals.data ?? []} />
       <RecentList
         expenses={expenses.data ?? []}
