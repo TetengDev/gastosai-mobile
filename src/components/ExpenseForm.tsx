@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type UseMutationResult } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -81,7 +81,14 @@ export interface Logged {
  * opened from. Both routes are hidden tabs that stay mounted, so leaving early cancels the hold and
  * clears the line rather than pulling the user back, or greeting the next visit with it.
  */
-export function useLogExpense(onError: (e: unknown) => void) {
+export interface LogExpense {
+  /** `mutate(body)` posts a new expense; `isPending` covers the POST and the summary read. */
+  save: UseMutationResult<{ saved: ExpenseResponse; first: boolean }, unknown, ExpenseRequest>;
+  /** Set only during the 1.2 s hold, and only while the screen is in focus. */
+  logged: Logged | null;
+}
+
+export function useLogExpense(onError: (e: unknown) => void): LogExpense {
   const queryClient = useQueryClient();
   const router = useRouter();
   const { resetToCurrent } = useMonth();
