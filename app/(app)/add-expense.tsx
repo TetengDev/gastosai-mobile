@@ -1,6 +1,5 @@
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { errorMessage } from "../../src/api/client";
 import ExpenseForm, { LoggedNotice, useLogExpense, useVisitKey } from "../../src/components/ExpenseForm";
 
 /** Remounted on every return visit: the route is a hidden tab that stays mounted. */
@@ -22,7 +21,7 @@ function AddExpenseScreen() {
 
   // Invalidation, the month reset and the 1.2 s hold on Piso `saved` live in the hook, shared
   // with quick-add.
-  const { save, logged } = useLogExpense((e) => setError(errorMessage(e, "Could not save the expense.")));
+  const { save, logged } = useLogExpense(setError);
 
   return (
     <ExpenseForm

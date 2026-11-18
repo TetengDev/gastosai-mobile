@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
+  Alert,
   InputAccessoryView,
   Keyboard,
   KeyboardAvoidingView,
@@ -14,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { budgetSummary } from "../api/budgets";
+import { errorMessage } from "../api/client";
 import { createExpense, listCategories, listExpenses } from "../api/expenses";
 import type { BudgetSummaryItem, ExpenseRequest, ExpenseResponse } from "../api/types";
 import { Piso } from "../brand/Piso";
@@ -88,7 +90,8 @@ export interface LogExpense {
   logged: Logged | null;
 }
 
-export function useLogExpense(onError: (e: unknown) => void): LogExpense {
+/** `onError` gets the failure line to show on the screen; off screen, it is an alert instead. */
+export function useLogExpense(onError: (message: string) => void): LogExpense {
   const queryClient = useQueryClient();
   const router = useRouter();
   const { resetToCurrent } = useMonth();
@@ -159,7 +162,13 @@ export function useLogExpense(onError: (e: unknown) => void): LogExpense {
         router.navigate(origin as never);
       }, SAVED_HOLD_MS);
     },
-    onError,
+    onError: (e) => {
+      const message = errorMessage(e, "Could not save the expense.");
+      // Left or remounted before the POST failed: the screen's own error line would land on an
+      // instance nobody sees, and the user would believe the expense was logged.
+      if (focused.current) onError(message);
+      else Alert.alert(message);
+    },
   });
 
   return { save, logged };

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { AxiosError, type AxiosResponse } from "axios";
-import { Keyboard, KeyboardAvoidingView, ScrollView, StyleSheet } from "react-native";
+import { Alert, Keyboard, KeyboardAvoidingView, ScrollView, StyleSheet } from "react-native";
 import QuickAdd from "../../app/(app)/quick-add";
 import { createExpense, listExpenses, parseExpense } from "../api/expenses";
 import { budgetSummary } from "../api/budgets";
@@ -263,6 +263,58 @@ describe("Quick add", () => {
     await hold();
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("Expense saved")).toBeNull();
+  });
+
+  // The screen that would have shown the error is gone or behind another tab; the failure must
+  // still reach the user, or they believe an unsaved expense was logged.
+  describe("when the save fails off screen", () => {
+    const failLater = () =>
+      jest.mocked(createExpense).mockImplementationOnce(
+        () => new Promise((_, reject) => setTimeout(() => reject(new Error("boom")), 500)),
+      );
+
+    it("says so in an alert after the user has left the screen", async () => {
+      const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+      try {
+        failLater();
+        renderQuickAdd();
+        await readAndSave();
+        await act(async () => {
+          mockFocusSetters.forEach((set) => set(false));
+        });
+        await act(() => jest.advanceTimersByTimeAsync(500));
+        expect(alert).toHaveBeenCalledWith("Could not save the expense.");
+      } finally {
+        alert.mockRestore();
+      }
+    });
+
+    it("says so in an alert after the screen has unmounted", async () => {
+      const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+      try {
+        failLater();
+        renderQuickAdd();
+        await readAndSave();
+        screen.unmount();
+        await act(() => jest.advanceTimersByTimeAsync(500));
+        expect(alert).toHaveBeenCalledWith("Could not save the expense.");
+      } finally {
+        alert.mockRestore();
+      }
+    });
+
+    it("does not alert while the screen is still on", async () => {
+      const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+      try {
+        jest.mocked(createExpense).mockRejectedValueOnce(new Error("boom"));
+        renderQuickAdd();
+        await readAndSave();
+        expect(await screen.findByText("Could not save the expense.")).toBeOnTheScreen();
+        expect(alert).not.toHaveBeenCalled();
+      } finally {
+        alert.mockRestore();
+      }
+    });
   });
 
   it("names the typed entry for a screen reader", () => {

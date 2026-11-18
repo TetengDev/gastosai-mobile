@@ -54,7 +54,7 @@ function QuickAddScreen() {
 
   // Invalidation, the month reset and the 1.2 s hold on Piso `saved` live in the hook, shared
   // with add-expense.
-  const { save, logged } = useLogExpense((e) => setError(errorMessage(e, "Could not save the expense.")));
+  const { save, logged } = useLogExpense(setError);
 
   const scan = useMutation({
     mutationFn: ({ uri, mimeType }: { uri: string; mimeType?: string }) =>
