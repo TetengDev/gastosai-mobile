@@ -51,7 +51,12 @@ onFlowComplete:
 # Saving pops back to whichever tab launched the +, which is Home. Assert on the month total's
 # sub-line rather than a screen title: Home has no title of its own now that it is a tab, and
 # "Home" as a text match collides with Expo Go's own launcher tab.
-- assertVisible: "(?i).*spent this month.*"
+#
+# extendedWaitUntil, not assertVisible: since TEN-446 the screen first holds for 1.2 s on Piso
+# `saved` and "Logged ₱177.00 …", after the budget summary has been read, before it navigates.
+- extendedWaitUntil:
+    visible: "(?i).*spent this month.*"
+    timeout: 20000
 
 # The new expense must appear under Recent — proof it round-tripped through the API rather than
 # only rendering locally.
