@@ -188,6 +188,9 @@ export default function Budgets() {
                         justifyContent: "space-between",
                         alignItems: "center",
                         gap: 8,
+                        // The RowMenu's 36 pt target needs a 44 pt row: hitSlop does not reliably
+                        // reach past the parent's bounds.
+                        minHeight: 44,
                       }}
                     >
                       {/* flex: 1 holds the pill beside the menu instead of floating mid-row. */}
