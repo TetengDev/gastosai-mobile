@@ -80,6 +80,8 @@ export default function QuickAdd() {
   });
 
   const runParse = () => {
+    // The saved hold is on its way out; a new read would be abandoned mid-flight.
+    if (logged) return;
     setError(null);
     setParsed(null);
     setQuotaReached(false);
@@ -98,6 +100,7 @@ export default function QuickAdd() {
    * people deny, and iOS only ever asks once.
    */
   const capture = async (source: "camera" | "library") => {
+    if (logged) return;
     setError(null);
     setParsed(null);
     setQuotaReached(false);
