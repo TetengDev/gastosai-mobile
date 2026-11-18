@@ -172,6 +172,17 @@ describe("Goals", () => {
     expect(screen.UNSAFE_queryAllByType(Piso)).toHaveLength(0);
   });
 
+  // A failed pull-to-refresh keeps the cached goals, but the screen is now saying "Could not load":
+  // a calm Piso beside that would contradict it.
+  it("draws no Piso when a refresh fails", async () => {
+    renderGoals();
+    await screen.findByText("Laptop");
+    jest.mocked(listGoals).mockRejectedValueOnce(new Error("boom"));
+    await act(() => screen.getByTestId("goals-screen").props.refreshControl.props.onRefresh());
+    expect(await screen.findByText("Try again")).toBeOnTheScreen();
+    expect(screen.UNSAFE_queryAllByType(Piso)).toHaveLength(0);
+  });
+
   it("lets a completed goal still be edited or deleted", async () => {
     renderGoals();
     await screen.findByText("Laptop");
