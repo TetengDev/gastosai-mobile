@@ -1,5 +1,5 @@
 import type { PisoState } from "../../brand/Piso";
-import type { BudgetSummaryResponse, GoalResponse, UpcomingBill } from "../../api/types";
+import type { BudgetSummaryResponse, GoalResponse, RecurringExpenseResponse, UpcomingBill } from "../../api/types";
 import { formatCentavos, formatDayMonth, monthRange } from "../../lib/formatters";
 import {
   budgetTone,
@@ -75,6 +75,8 @@ export interface AttentionRow {
   percent?: number;
   /** Bill rows: what is due, centavos in the base currency. */
   amount?: number;
+  /** Bill rows the current month's mark covers (R6): overdue ones, and those due this month. */
+  markPaid?: { id: number };
 }
 
 const BILL_WINDOW_DAYS = 7;
@@ -95,12 +97,29 @@ export function billMonths(month: string, today: string): string[] {
 }
 
 /**
- * Budgets the server bands `WARNING` or `OVER_BUDGET`, fullest first, then bills due from today
- * through the next seven days. Empty means the section is not drawn.
+ * Budgets the server bands `WARNING` or `OVER_BUDGET`, fullest first; then bills left unpaid; then
+ * bills due from today through the next seven days. Empty means the section is not drawn.
+ *
+ * The paid state is the server's, joined by id, and only on the current month's view (R7). Without
+ * it — `/recurring` failed or is loading — the bills are listed as they were before 3.5.0 (R2).
  */
 export function needsAttention(
   items: readonly BudgetItem[],
-  bills: readonly UpcomingBill[],
+  {
+    month,
+    upcoming,
+    upcomingPrevious = [],
+    recurring,
+  }: {
+    /** The month on screen, `YYYY-MM`. */
+    month: string;
+    /** `/recurring/upcoming` for each of `billMonths`. */
+    upcoming: readonly UpcomingBill[];
+    /** `/recurring/upcoming` for the month before today's: what was due last month (R3). */
+    upcomingPrevious?: readonly UpcomingBill[];
+    /** `/recurring`, the only source of `paidThisMonth` and `lastPaidMonth` (R2). */
+    recurring?: readonly RecurringExpenseResponse[];
+  },
   today: string,
 ): AttentionRow[] {
   const budgets = items
@@ -121,9 +140,47 @@ export function needsAttention(
       };
     });
 
+  const thisMonth = today.slice(0, 7);
+  const lastMonth = previousMonth(thisMonth);
+  const state = month === thisMonth && recurring ? new Map(recurring.map((r) => [r.id, r])) : null;
+  const inThisMonth = (b: UpcomingBill) => b.dueDate?.slice(0, 7) === thisMonth;
+  const billRow = (b: UpcomingBill, key: string, sub: string, markable: boolean): AttentionRow => ({
+    key,
+    label: b.name ?? "Bill",
+    sub,
+    href: "/(app)/more/recurring",
+    amount: b.amountInBaseCurrency ?? b.amount ?? 0,
+    ...(markable && b.id != null ? { markPaid: { id: b.id } } : {}),
+  });
+
+  // One row per unpaid bill (R4), keyed by id. A mark at or after this month settles it.
+  const overdue = new Map<number | undefined, AttentionRow>();
+  if (state) {
+    const unpaid = (id: number | undefined) => {
+      const r = state.get(id);
+      return !!r && !r.paidThisMonth && !(r.lastPaidMonth && r.lastPaidMonth >= thisMonth) ? r : null;
+    };
+    // Earliest first, so the latest missed date is the one a row ends up naming.
+    const missed = upcoming
+      .filter((b) => !!b.dueDate && inThisMonth(b) && b.dueDate < today)
+      .sort((a, b) => (a.dueDate as string).localeCompare(b.dueDate as string));
+    for (const b of missed) {
+      if (unpaid(b.id)) {
+        overdue.set(b.id, billRow(b, `overdue-${b.id}`, `Overdue · was due ${formatDayMonth(b.dueDate)}`, true));
+      }
+    }
+    // Last month, for a bill due then and last marked before it. Never marked is not unpaid (R1).
+    for (const b of upcomingPrevious) {
+      const lastPaid = unpaid(b.id)?.lastPaidMonth;
+      if (!overdue.has(b.id) && b.dueDate?.slice(0, 7) === lastMonth && lastPaid && lastPaid < lastMonth) {
+        overdue.set(b.id, billRow(b, `overdue-${b.id}`, "Overdue · not paid last month", true));
+      }
+    }
+  }
+
   const until = addDays(today, BILL_WINDOW_DAYS);
   const seen = new Set<string>();
-  const due = bills
+  const due = upcoming
     .filter((b) => !!b.dueDate && b.dueDate >= today && b.dueDate <= until)
     // Two months' answers can carry the same occurrence; list it once.
     .filter((b) => {
@@ -132,17 +189,14 @@ export function needsAttention(
       seen.add(id);
       return true;
     })
-    .map(
-      (b, i): AttentionRow => ({
-        key: `bill-${b.id}-${b.dueDate}-${i}`,
-        label: b.name ?? "Bill",
-        sub: `Due ${formatDayMonth(b.dueDate)}`,
-        href: "/(app)/more/recurring",
-        amount: b.amountInBaseCurrency ?? b.amount ?? 0,
-      }),
+    // An unpaid bill is its overdue row alone (R4); a paid one has nothing left this month (R5).
+    .filter((b) => !overdue.has(b.id) && !(inThisMonth(b) && state?.get(b.id)?.paidThisMonth))
+    .map((b, i) =>
+      // Next month's rows get no action: this month's mark does not cover them (R6).
+      billRow(b, `bill-${b.id}-${b.dueDate}-${i}`, `Due ${formatDayMonth(b.dueDate)}`, !!state && inThisMonth(b)),
     );
 
-  return [...budgets, ...due];
+  return [...budgets, ...overdue.values(), ...due];
 }
 
 /** `2027-01` -> `2026-12`. */
@@ -174,18 +228,19 @@ export function celebrationsFor({
 }
 
 /**
- * The hero meter: the month's budgeted spend against its total budget. The server publishes both
- * totals but no overall percentage, so the fill is their ratio — a bar width, never a band. Its
- * tone is the worst server band on screen, as spec §3 asks, so colour never comes from the ratio.
+ * The hero meter: the month's budgeted spend against its total budget, filled to the server's
+ * `percentUsed` (contract 3.5.0) — a bar width, never a band. The server sends 0 both for nothing
+ * budgeted and for nothing spent, so "no budget" is still read off `totalBudgeted`. Its tone is the
+ * worst server band on screen, as spec §3 asks.
  */
 export function budgetMeter(
-  summary: Pick<BudgetSummaryResponse, "totalSpent" | "totalBudgeted"> | undefined,
+  summary: Pick<BudgetSummaryResponse, "totalSpent" | "totalBudgeted" | "percentUsed"> | undefined,
   bands: readonly BudgetBand[],
 ): { percent: number; tone: MeterTone; caption: string } | null {
   const budgeted = summary?.totalBudgeted ?? 0;
   if (!summary || budgeted <= 0) return null;
   const spent = summary.totalSpent ?? 0;
-  const percent = Math.round((spent * 100) / budgeted);
+  const percent = summary.percentUsed ?? 0;
   return {
     percent,
     tone: budgetTone(worstBand(bands) ?? "ON_TRACK"),

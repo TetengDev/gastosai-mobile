@@ -171,7 +171,7 @@ export default function Dashboard() {
       </Hero>
 
       <NeedsAttention
-        rows={needsAttention(items, upcoming, today)}
+        rows={needsAttention(items, { month, upcoming }, today)}
         error={billsFailed ? errorMessage(billsFailed.error) : null}
       />
       <GoalsStrip goals={goals.data ?? []} />
