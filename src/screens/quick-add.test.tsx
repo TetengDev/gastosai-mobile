@@ -189,6 +189,26 @@ describe("Quick add", () => {
     expect(after.props.value).toBe("");
   });
 
+  // Saving covers the POST and up to 1.5 s of summary wait; a read or scan started then would
+  // clear the proposal card that is about to host the confirmation.
+  it("does not read or scan while the save is still in flight", async () => {
+    jest.mocked(createExpense).mockImplementationOnce(
+      (body) =>
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ id: 99, amount: body.amount, category: body.category, date: "2026-11-18T12:00:00+08:00" }), 500),
+        ),
+    );
+    renderQuickAdd();
+    await readAndSave();
+    fireEvent.press(screen.getByText("Read it"));
+    fireEvent.press(screen.getByTestId("scan-receipt"));
+    await act(async () => {});
+    expect(jest.mocked(parseExpense)).toHaveBeenCalledTimes(1);
+    expect(jest.mocked(scanReceipt)).not.toHaveBeenCalled();
+    await act(() => jest.advanceTimersByTimeAsync(500));
+    expect(await screen.findByText(/^Logged ₱250\.00/)).toBeOnTheScreen();
+  });
+
   // The + button opens this screen, so it is where a first expense usually comes from (R23).
   it("celebrates the first expense ever", async () => {
     jest.mocked(listExpenses).mockResolvedValue([]);
