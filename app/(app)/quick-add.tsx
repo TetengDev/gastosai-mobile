@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
-import { KeyboardAvoidingView, Linking, Platform, ScrollView, Text, View } from "react-native";
+import { Keyboard, KeyboardAvoidingView, Linking, Platform, ScrollView, Text, View } from "react-native";
 import { errorMessage } from "../../src/api/client";
 import { scanReceipt } from "../../src/api/ai";
 import { parseExpense } from "../../src/api/expenses";
@@ -82,6 +82,8 @@ export default function QuickAdd() {
   const runParse = () => {
     // The saved hold is on its way out; a new read would be abandoned mid-flight.
     if (logged) return;
+    // The proposal card renders below; with the keyboard still up it would sit behind it.
+    Keyboard.dismiss();
     setError(null);
     setParsed(null);
     setQuotaReached(false);
@@ -165,10 +167,14 @@ export default function QuickAdd() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
+      // ponytail: the header's height, fixed as chat.tsx does; useHeaderHeight lives in
+      // @react-navigation/elements, which is not a direct dependency.
+      keyboardVerticalOffset={90}
       style={{ flex: 1, backgroundColor: t.colors.page }}
     >
       <ScrollView
-        contentContainerStyle={{ padding: t.spacing.screen, gap: t.spacing.gap }}
+        // Bottom room so the proposal card and its Save can scroll clear of the keyboard.
+        contentContainerStyle={{ padding: t.spacing.screen, gap: t.spacing.gap, paddingBottom: 140 }}
         keyboardShouldPersistTaps="handled"
       >
   
