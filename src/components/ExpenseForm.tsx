@@ -124,10 +124,13 @@ export function useLogExpense(onError: (message: string) => void): LogExpense {
       // The month the server filed it in (Manila wall-clock), not today's: a parsed receipt can
       // carry another date. Fetched after the save, so `remaining` already counts it.
       const month = saved.date?.slice(0, 7) ?? currentMonth();
-      // Both the list and the month total are now stale. Not awaited: they refetch during the
-      // hold, and the confirmation waits only on the line it shows.
+      // The list, every report (month total, day totals, trend, top, category) and every month's
+      // budget summary now miss it. Not awaited: they refetch during the hold, and the
+      // confirmation waits only on the line it shows. This month's summary is cancelled and
+      // fetched fresh just below.
       void queryClient.invalidateQueries({ queryKey: ["expenses"] });
-      void queryClient.invalidateQueries({ queryKey: ["report", "monthly"] });
+      void queryClient.invalidateQueries({ queryKey: ["report"] });
+      void queryClient.invalidateQueries({ queryKey: ["budgets", "summary"] });
       const summaryKey = ["budgets", "summary", month];
       // A request Home started before the save would otherwise be reused, and its answer
       // predates the expense.

@@ -181,6 +181,24 @@ describe("Add expense", () => {
     expect(await screen.findByText("Logged ₱250.00 · ₱1,750.00 left in Food")).toBeOnTheScreen();
   });
 
+  // Expenses' day totals and trend, Home's top and category cards, and every month's budget
+  // summary all count the new expense; the monthly report is not the only stale one.
+  it("marks every report and budget summary stale after the save", async () => {
+    const { client } = renderAdd(true);
+    const keys = [
+      ["report", "monthly"],
+      ["report", "daily", "2026-11"],
+      ["report", "comparison", "2026-11"],
+      ["report", "top", "2026-11"],
+      ["report", "category"],
+      ["budgets", "summary", "2026-10"],
+    ];
+    keys.forEach((key) => client.setQueryData(key, {}));
+    await saveLunch(client);
+    await screen.findByText(/^Logged/);
+    for (const key of keys) expect([key, client.getQueryState(key)?.isInvalidated]).toEqual([key, true]);
+  });
+
   // A slow summary must not hold the confirmation hostage: 1.5 s, then the amount alone.
   it("falls back to the amount alone when the summary takes over 1.5 s", async () => {
     jest.mocked(budgetSummary).mockImplementation(() => new Promise(() => {}));
