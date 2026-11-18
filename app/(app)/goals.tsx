@@ -247,9 +247,10 @@ export default function Goals() {
         }
       >
         {/* The screen's one Piso, drawn only once there are goals to be in a mood about: never
-            beside the skeleton or an error, and not over the empty state. A completed goal's
+            beside the skeleton or an error (a failed refresh keeps cached goals, so `goals` alone
+            is not enough), and not over the empty state. A completed goal's
             Celebrate plays over it at the same size, so it replaces Piso rather than adding one. */}
-        {goals.length > 0 && (
+        {goals.length > 0 && !isError && (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
             <View style={{ width: PISO_SIZE, height: PISO_SIZE }}>
               <Piso state={pisoMoodFor({ bands: [], hasExpenses: true })} size={PISO_SIZE} />
