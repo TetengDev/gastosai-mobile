@@ -193,9 +193,9 @@ export default function Budgets() {
                         minHeight: 44,
                       }}
                     >
-                      {/* flex: 1 holds the pill beside the menu instead of floating mid-row. */}
+                      {/* flex: 1 holds the pill beside the menu; two lines keep a name whole at large text sizes. */}
                       <Text
-                        numberOfLines={1}
+                        numberOfLines={2}
                         style={{ flex: 1, fontFamily: t.fonts.bodySemi, fontSize: 15, color: t.colors.textHi }}
                       >
                         {b.categoryName}
