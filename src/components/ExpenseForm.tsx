@@ -120,6 +120,9 @@ export function useLogExpense(onError: (e: unknown) => void) {
         .fetchQuery({
           queryKey: ["budgets", "summary", month],
           queryFn: () => budgetSummary(month),
+          // Always the server, never the cache: the app keeps queries fresh for 30 s, and a summary
+          // from before the save does not count the expense just logged.
+          staleTime: 0,
           retry: false,
         })
         .catch(() => undefined);
