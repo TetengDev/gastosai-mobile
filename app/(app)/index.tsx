@@ -18,6 +18,7 @@ import {
   celebrationsFor,
   daysLeftInMonth,
   heroMood,
+  isPaidUp,
   needsAttention,
   previousMonth,
   statusLine,
@@ -88,9 +89,9 @@ export default function Dashboard() {
     },
   });
   const onMarkPaid = (id: number) => {
-    // The bill as it is now, not as the row saw it; one already paid needs no call.
+    // The bill as it is now, not as the row saw it; one already paid up needs no call.
     const bill = recurring.data?.find((r) => r.id === id);
-    if (marking.current || !bill || bill.paidThisMonth) return;
+    if (marking.current || !bill || isPaidUp(bill, currentMonth())) return;
     marking.current = true;
     markPaid.mutate(id);
   };

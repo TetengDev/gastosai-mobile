@@ -99,6 +99,18 @@ export function billMonths(month: string, today: string): string[] {
 }
 
 /**
+ * Marked paid for `month` (`YYYY-MM`) or later. A `lastPaidMonth` at or after `month` means nothing
+ * is overdue and nothing is left to mark, the same as `paidThisMonth`. Web's `paidUp`.
+ */
+export function isPaidUp(r: Pick<RecurringExpenseResponse, "paidThisMonth" | "lastPaidMonth">, month: string): boolean {
+  return !!r.paidThisMonth || (r.lastPaidMonth != null && r.lastPaidMonth >= month);
+}
+
+/** A bill occurrence that can be joined (by id) and placed (by date); any other is skipped. */
+type KnownBill = UpcomingBill & { id: number; dueDate: string };
+const isKnown = (b: UpcomingBill): b is KnownBill => b.id != null && !!b.dueDate;
+
+/**
  * Budgets the server bands `WARNING` or `OVER_BUDGET`, fullest first; then bills left unpaid; then
  * bills due from today through the next seven days. Empty means the section is not drawn.
  *
@@ -145,27 +157,28 @@ export function needsAttention(
   const thisMonth = today.slice(0, 7);
   const lastMonth = previousMonth(thisMonth);
   const state = month === thisMonth && recurring ? new Map(recurring.map((r) => [r.id, r])) : null;
-  const inThisMonth = (b: UpcomingBill) => b.dueDate?.slice(0, 7) === thisMonth;
-  const billRow = (b: UpcomingBill, key: string, sub: string, markable: boolean): AttentionRow => ({
+  const inThisMonth = (b: KnownBill) => b.dueDate.slice(0, 7) === thisMonth;
+  const billRow = (b: KnownBill, key: string, sub: string, markable: boolean): AttentionRow => ({
     key,
     label: b.name ?? "Bill",
     sub,
     href: "/(app)/more/recurring",
     amount: b.amountInBaseCurrency ?? b.amount ?? 0,
-    ...(markable && b.id != null ? { markPaid: { id: b.id } } : {}),
+    ...(markable ? { markPaid: { id: b.id } } : {}),
   });
+  const bills = upcoming.filter(isKnown);
 
   // One row per unpaid bill (R4), keyed by id. A mark at or after this month settles it.
-  const overdue = new Map<number | undefined, AttentionRow>();
+  const overdue = new Map<number, AttentionRow>();
   if (state) {
-    const unpaid = (id: number | undefined) => {
+    const unpaid = (id: number) => {
       const r = state.get(id);
-      return !!r && !r.paidThisMonth && !(r.lastPaidMonth && r.lastPaidMonth >= thisMonth) ? r : null;
+      return r && !isPaidUp(r, thisMonth) ? r : null;
     };
     // Earliest first, so the latest missed date is the one a row ends up naming.
-    const missed = upcoming
-      .filter((b) => !!b.dueDate && inThisMonth(b) && b.dueDate < today)
-      .sort((a, b) => (a.dueDate as string).localeCompare(b.dueDate as string));
+    const missed = bills
+      .filter((b) => inThisMonth(b) && b.dueDate < today)
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
     for (const b of missed) {
       if (unpaid(b.id)) {
         overdue.set(b.id, {
@@ -175,9 +188,9 @@ export function needsAttention(
       }
     }
     // Last month, for a bill due then and last marked before it. Never marked is not unpaid (R1).
-    for (const b of upcomingPrevious) {
+    for (const b of upcomingPrevious.filter(isKnown)) {
       const lastPaid = unpaid(b.id)?.lastPaidMonth;
-      if (!overdue.has(b.id) && b.dueDate?.slice(0, 7) === lastMonth && lastPaid && lastPaid < lastMonth) {
+      if (!overdue.has(b.id) && b.dueDate.slice(0, 7) === lastMonth && lastPaid && lastPaid < lastMonth) {
         overdue.set(b.id, { ...billRow(b, `overdue-${b.id}`, "Overdue · not paid last month", true), overdue: true });
       }
     }
@@ -185,8 +198,8 @@ export function needsAttention(
 
   const until = addDays(today, BILL_WINDOW_DAYS);
   const seen = new Set<string>();
-  const due = upcoming
-    .filter((b) => !!b.dueDate && b.dueDate >= today && b.dueDate <= until)
+  const due = bills
+    .filter((b) => b.dueDate >= today && b.dueDate <= until)
     // Two months' answers can carry the same occurrence; list it once.
     .filter((b) => {
       const id = `${b.id}-${b.dueDate}`;
@@ -194,11 +207,15 @@ export function needsAttention(
       seen.add(id);
       return true;
     })
-    // An unpaid bill is its overdue row alone (R4); a paid one has nothing left this month (R5).
-    .filter((b) => !overdue.has(b.id) && !(inThisMonth(b) && state?.get(b.id)?.paidThisMonth))
+    // An unpaid bill is its overdue row alone (R4); a paid-up one has nothing left this month (R5).
+    .filter((b) => {
+      const r = state?.get(b.id);
+      return !overdue.has(b.id) && !(inThisMonth(b) && r && isPaidUp(r, thisMonth));
+    })
     .map((b, i) =>
-      // Next month's rows get no action: this month's mark does not cover them (R6).
-      billRow(b, `bill-${b.id}-${b.dueDate}-${i}`, `Due ${formatDayMonth(b.dueDate)}`, !!state && inThisMonth(b)),
+      // Only a bill the list knows, and not next month's rows: this month's mark does not cover
+      // them (R6).
+      billRow(b, `bill-${b.id}-${b.dueDate}-${i}`, `Due ${formatDayMonth(b.dueDate)}`, !!state?.has(b.id) && inThisMonth(b)),
     );
 
   return [...budgets, ...overdue.values(), ...due];
