@@ -1,10 +1,10 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, type ReactTestInstance } from "@testing-library/react-native";
+import { render, screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import Budgets from "../../app/(app)/budgets";
 import { MonthProvider } from "../context/MonthContext";
-import { palettes } from "../theme";
+import { accents, palettes } from "../theme";
 
 /**
  * The Budgets route (spec §4): one Piso in the header in the worst line's mood, rows fullest
@@ -48,7 +48,8 @@ function renderBudgets() {
 
 /** The colour of the status dot drawn beside a pill's label. */
 function pillDotColor(label: string): unknown {
-  for (let node: ReactTestInstance | null = screen.getByText(label); node; node = node.parent) {
+  type Node = ReturnType<typeof screen.getByText>;
+  for (let node: Node | null = screen.getByText(label); node; node = node.parent) {
     for (const child of node.children) {
       if (typeof child === "string") continue;
       const style = StyleSheet.flatten(child.props.style);
@@ -70,7 +71,7 @@ describe("Budgets", () => {
     await screen.findByText("Rent");
     expect(pillDotColor("104%")).toBe(palettes.light.warnText);
     expect(pillDotColor("84%")).toBe(palettes.light.warnText);
-    expect(pillDotColor("30%")).toBe(palettes.light.brand);
+    expect(pillDotColor("30%")).toBe(accents.brand);
   });
 
   it("says what is left, or how far over", async () => {
