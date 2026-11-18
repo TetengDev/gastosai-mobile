@@ -107,6 +107,10 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
+// The finders run on real timers; under a loaded CI box 1 s is not enough for a refetch to land.
+// 2.5 s, as dashboard/Home.test.tsx waits for its cheers.
+const settle = { timeout: 2500 };
+
 function renderHome() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return render(
@@ -123,18 +127,18 @@ describe("Home, Mark paid", () => {
     let resolve: () => void = () => undefined;
     put.mockImplementation(() => new Promise((r) => (resolve = () => r({ data: undefined }))));
     renderHome();
-    expect(await screen.findByText("Overdue · was due Nov 10")).toBeOnTheScreen();
+    expect(await screen.findByText("Overdue · was due Nov 10", undefined, settle)).toBeOnTheScreen();
 
     const button = screen.getByRole("button", { name: "Mark paid: Meralco" });
     fireEvent.press(button);
     fireEvent.press(button);
     // The mutation starts a tick later; the second tap landed before it did.
-    await waitFor(() => expect(put).toHaveBeenCalledWith("/recurring/7/payments/2026-11"));
+    await waitFor(() => expect(put).toHaveBeenCalledWith("/recurring/7/payments/2026-11"), settle);
     expect(put).toHaveBeenCalledTimes(1);
 
     jest.mocked(listRecurring).mockResolvedValue([meralco(true)]);
     await act(async () => resolve());
-    await waitFor(() => expect(screen.queryByText("Meralco")).toBeNull());
+    await waitFor(() => expect(screen.queryByText("Meralco")).toBeNull(), settle);
     expect(screen.queryByText("Could not mark that bill paid. Try again.")).toBeNull();
     expect(mockPush).not.toHaveBeenCalled();
   });
@@ -143,10 +147,10 @@ describe("Home, Mark paid", () => {
   it("leaves the pull-to-refresh spinner off while Mark paid refetches, and on while the user pulls", async () => {
     put.mockResolvedValue({ data: undefined });
     renderHome();
-    fireEvent.press(await screen.findByRole("button", { name: "Mark paid: Meralco" }));
+    fireEvent.press(await screen.findByRole("button", { name: "Mark paid: Meralco" }, settle));
     let answer: (list: RecurringExpenseResponse[]) => void = () => undefined;
     jest.mocked(listRecurring).mockImplementation(() => new Promise((r) => (answer = r)));
-    await waitFor(() => expect(listRecurring).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(listRecurring).toHaveBeenCalledTimes(2), settle);
     expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
     await act(async () => answer([meralco(true)]));
 
@@ -157,28 +161,28 @@ describe("Home, Mark paid", () => {
     });
     expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
     await act(async () => answer([meralco(true)]));
-    await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false));
+    await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false), settle);
   });
 
   it("says so in Needs attention when the mark fails, keeps the row, and lets it be tried again", async () => {
     put.mockRejectedValue(new Error("boom"));
     renderHome();
-    fireEvent.press(await screen.findByRole("button", { name: "Mark paid: Meralco" }));
-    expect(await screen.findByText("Could not mark that bill paid. Try again.")).toBeOnTheScreen();
+    fireEvent.press(await screen.findByRole("button", { name: "Mark paid: Meralco" }, settle));
+    expect(await screen.findByText("Could not mark that bill paid. Try again.", undefined, settle)).toBeOnTheScreen();
     expect(screen.getByText("Overdue · was due Nov 10")).toBeOnTheScreen();
 
     fireEvent.press(screen.getByRole("button", { name: "Mark paid: Meralco" }));
-    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2), settle);
   });
 
   it("does not carry a failed mark's error onto a past month, where there is nothing to retry", async () => {
     put.mockRejectedValue(new Error("boom"));
     renderHome();
-    fireEvent.press(await screen.findByRole("button", { name: "Mark paid: Meralco" }));
-    expect(await screen.findByText("Could not mark that bill paid. Try again.")).toBeOnTheScreen();
+    fireEvent.press(await screen.findByRole("button", { name: "Mark paid: Meralco" }, settle));
+    expect(await screen.findByText("Could not mark that bill paid. Try again.", undefined, settle)).toBeOnTheScreen();
 
     fireEvent.press(screen.getByTestId("month-prev"));
-    await waitFor(() => expect(screen.queryByText("Overdue · was due Nov 10")).toBeNull());
+    await waitFor(() => expect(screen.queryByText("Overdue · was due Nov 10")).toBeNull(), settle);
     expect(screen.queryByText("Could not mark that bill paid. Try again.")).toBeNull();
   });
 
@@ -186,19 +190,19 @@ describe("Home, Mark paid", () => {
     let answer: (list: RecurringExpenseResponse[]) => void = () => undefined;
     jest.mocked(listRecurring).mockImplementation(() => new Promise((r) => (answer = r)));
     renderHome();
-    await screen.findByTestId("home-status");
+    await screen.findByTestId("home-status", undefined, settle);
     expect(screen.queryByText("Netflix")).toBeNull();
     expect(screen.queryByText("Meralco")).toBeNull();
 
     await act(async () => answer([meralco(false)]));
-    expect(await screen.findByText("Netflix")).toBeOnTheScreen();
+    expect(await screen.findByText("Netflix", undefined, settle)).toBeOnTheScreen();
     expect(screen.getByText("Overdue · was due Nov 10")).toBeOnTheScreen();
   });
 
   it("lists the upcoming bills as before, without a word, when /recurring fails (R2)", async () => {
     jest.mocked(listRecurring).mockRejectedValue(new Error("boom"));
     renderHome();
-    expect(await screen.findByText("Netflix")).toBeOnTheScreen();
+    expect(await screen.findByText("Netflix", undefined, settle)).toBeOnTheScreen();
     expect(screen.queryByText("Meralco")).toBeNull();
     expect(screen.queryByText("Mark paid")).toBeNull();
     expect(screen.queryByText("boom")).toBeNull();
@@ -209,13 +213,13 @@ describe("Home, celebrations", () => {
   it("holds a celebration while the tab is hidden, so it is not spent unseen", async () => {
     mockFocused = false;
     renderHome();
-    await screen.findByText("Netflix");
+    await screen.findByText("Netflix", undefined, settle);
     expect(celebrated).toEqual([]);
   });
 
   it("plays it while the tab is on screen", async () => {
     renderHome();
     // Hidden from screen readers by Hero on purpose, so it is found among hidden elements.
-    expect(await screen.findByTestId("celebrate-goal-2", { includeHiddenElements: true })).toBeOnTheScreen();
+    expect(await screen.findByTestId("celebrate-goal-2", { includeHiddenElements: true }, settle)).toBeOnTheScreen();
   });
 });
