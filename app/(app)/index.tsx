@@ -73,25 +73,26 @@ export default function Dashboard() {
     enabled: isCurrentMonth,
   });
 
+  const queryClient = useQueryClient();
+  // A ref as well as isPending: two taps inside one frame both read a stale isPending.
+  const marking = useRef(false);
   // The ["recurring"] prefix covers the list and every upcoming month, so a marked bill leaves
   // overdue on the refetch. Returned, so the mutation stays pending until that lands.
-  const queryClient = useQueryClient();
   const markPaid = useMutation({
     mutationFn: (id: number) => markRecurringPaid(id, currentMonth()),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["recurring"] }),
+    // Here, not per mutate(): those are skipped once their observer is gone, and a ref left set
+    // would hold every Mark paid dead until a restart.
+    onSettled: () => {
+      marking.current = false;
+    },
   });
-  // A ref, not isPending: two taps inside one frame both read a stale isPending.
-  const marking = useRef(false);
   const onMarkPaid = (id: number) => {
     // The bill as it is now, not as the row saw it; one already paid needs no call.
     const bill = recurring.data?.find((r) => r.id === id);
     if (marking.current || !bill || bill.paidThisMonth) return;
     marking.current = true;
-    markPaid.mutate(id, {
-      onSettled: () => {
-        marking.current = false;
-      },
-    });
+    markPaid.mutate(id);
   };
 
   // Tabs stay mounted when hidden: a cheer played behind another tab is spent where nobody sees it.
@@ -218,17 +219,26 @@ export default function Dashboard() {
       <NeedsAttention
         rows={needsAttention(
           items,
-          { month, upcoming, upcomingPrevious: billsLastMonth.data, recurring: recurring.data },
+          {
+            month,
+            // Held until the paid state lands, or a paid bill shows as due and then vanishes. A
+            // failed /recurring releases them (R2), after the app's one retry.
+            upcoming: isCurrentMonth && recurring.isLoading ? [] : upcoming,
+            upcomingPrevious: billsLastMonth.data,
+            recurring: recurring.data,
+          },
           today,
         )}
         error={
-          markPaid.isError
+          // Only where Mark paid is offered: a past month has no button to try again with.
+          markPaid.isError && isCurrentMonth
             ? "Could not mark that bill paid. Try again."
             : billsFailed
               ? errorMessage(billsFailed.error)
               : null
         }
         onMarkPaid={onMarkPaid}
+        busy={markPaid.isPending}
       />
       <GoalsStrip goals={goals.data ?? []} />
       <RecentList
