@@ -71,6 +71,25 @@ describe("Celebrate", () => {
     expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
   });
 
+  /** TEN-505: Home's queue moves on when a celebration is skipped or has finished playing. */
+  it("reports done at once when the event was already seen", async () => {
+    mockStore.set(celebrationKey("a@example.com", "goal-40"), "1");
+    const onDone = jest.fn();
+    render(<Celebrate event="goal-40" onDone={onDone} />);
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+    expect(Haptics.notificationAsync).not.toHaveBeenCalled();
+  });
+
+  it("reports done only after it has played", async () => {
+    const onDone = jest.fn();
+    render(<Celebrate event="goal-41" onDone={onDone} />);
+    expect(await screen.findByLabelText("Celebrating")).toBeOnTheScreen();
+    expect(onDone).not.toHaveBeenCalled();
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+    // Still cheering: the queue moves on, the Piso stays.
+    expect(screen.getByLabelText("Celebrating")).toBeOnTheScreen();
+  });
+
   it("still cheers under reduced motion, without the coin", async () => {
     jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
     render(<Celebrate event="goal-3" />);
