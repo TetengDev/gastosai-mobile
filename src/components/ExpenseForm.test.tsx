@@ -81,6 +81,13 @@ describe("ExpenseForm", () => {
     ]);
   });
 
+  // Lesson (c): the 44 pt target is the chip's own box, not a hitSlop past its parent.
+  it("gives each category chip a 44 pt target", async () => {
+    renderForm();
+    const chip = await screen.findByTestId("category-Food");
+    expect(StyleSheet.flatten(chip.props.style)).toMatchObject({ minHeight: 44, alignItems: "center" });
+  });
+
   // Pin: holds before TEN-446 and must keep holding.
   it("focuses the amount on open, ahead of the description", () => {
     renderForm();
