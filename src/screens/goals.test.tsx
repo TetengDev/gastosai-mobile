@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import Goals from "../../app/(app)/goals";
 import { listGoals } from "../api/goals";
 import { Piso } from "../brand/Piso";
@@ -53,13 +53,17 @@ jest.mock("../api/goals", () => ({
 
 // Celebrate reads the signed-in account and a secure-store flag; the screen's job is only to mount
 // it with the right event, which the stub records.
+// The stub's onPress stands in for "played and held", which is when the real one calls onDone.
 const celebrated: string[] = [];
-jest.mock("../components/Celebrate", () => ({
-  Celebrate: ({ event }: { event: string }) => {
-    celebrated.push(event);
-    return null;
-  },
-}));
+jest.mock("../components/Celebrate", () => {
+  const { Text } = jest.requireActual<typeof import("react-native")>("react-native");
+  return {
+    Celebrate: ({ event, onDone }: { event: string; onDone?: () => void }) => {
+      celebrated.push(event);
+      return <Text testID={`celebrate-${event}`} onPress={onDone} />;
+    },
+  };
+});
 
 function renderGoals() {
   celebrated.length = 0;
@@ -93,7 +97,8 @@ describe("Goals", () => {
     renderGoals();
     await screen.findByText("Laptop");
     expect(screen.queryByText("Japan trip")).toBeNull();
-    expect(achievedToggle()).toHaveTextContent("Achieved (1)");
+    // Named by its label, not its text content: the chevron beside it is not read out.
+    expect(screen.getByRole("button", { name: "Achieved (1)" })).toBeOnTheScreen();
     expect(achievedToggle().props.accessibilityState).toMatchObject({ expanded: false });
 
     fireEvent.press(achievedToggle());
@@ -120,6 +125,22 @@ describe("Goals", () => {
     renderGoals();
     await screen.findByText("Laptop");
     expect(new Set(celebrated)).toEqual(new Set(["goal-2"]));
+  });
+
+  // Spec §4: a reached goal "shows cheer once, then folds away", and two never play at once.
+  it("plays one celebration at a time, and folds each away once it has played", async () => {
+    jest.mocked(listGoals).mockResolvedValueOnce([completed, { ...behind, status: "COMPLETED" }]);
+    renderGoals();
+    // Hidden from screen readers and untouchable on purpose (the Achieved group says it in text),
+    // so the stub's onDone is called directly rather than pressed.
+    const hidden = { includeHiddenElements: true };
+    const finish = (id: string) => act(() => screen.getByTestId(id, hidden).props.onPress());
+    await screen.findByTestId("celebrate-goal-2", hidden);
+    expect(screen.queryByTestId("celebrate-goal-3", hidden)).toBeNull();
+    finish("celebrate-goal-2");
+    expect(screen.queryByTestId("celebrate-goal-2", hidden)).toBeNull();
+    finish("celebrate-goal-3");
+    expect(screen.queryByTestId(/^celebrate-/, hidden)).toBeNull();
   });
 
   // `.maestro/goals.yaml` and the demo cleanup tap `goal-menu-0` for the goal they just created.
