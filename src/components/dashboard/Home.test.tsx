@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import * as Haptics from "expo-haptics";
 import type { ReactNode } from "react";
 import { AccessibilityInfo } from "react-native";
 import { monthSummary } from "../../api/insights";
+import { celebrationKey } from "../../lib/celebrateStore";
 import { GoalsStrip, Hero, Insights, NeedsAttention, RecentList } from "./Home";
 
 /**
@@ -14,10 +16,14 @@ import { GoalsStrip, Hero, Insights, NeedsAttention, RecentList } from "./Home";
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: { email: "a@example.com" } }) }));
+const mockStore = new Map<string, string>();
 jest.mock("expo-secure-store", () => ({
-  getItemAsync: jest.fn(async () => null),
-  setItemAsync: jest.fn(async () => undefined),
+  getItemAsync: jest.fn(async (k: string) => mockStore.get(k) ?? null),
+  setItemAsync: jest.fn(async (k: string, v: string) => {
+    mockStore.set(k, v);
+  }),
 }));
+const seen = (event: string) => mockStore.get(celebrationKey("a@example.com", event));
 jest.mock("expo-haptics", () => ({
   notificationAsync: jest.fn(async () => undefined),
   NotificationFeedbackType: { Success: "success" },
@@ -40,6 +46,8 @@ function wrap(node: ReactNode) {
 
 beforeEach(() => {
   mockPush.mockClear();
+  mockStore.clear();
+  jest.mocked(Haptics.notificationAsync).mockClear();
   jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false);
 });
 
@@ -73,12 +81,52 @@ describe("Hero", () => {
     // Hidden from screen readers on purpose — the mood Piso under it already speaks.
     expect(await screen.findByTestId("coin", { includeHiddenElements: true })).toBeOnTheScreen();
   });
+
+  /**
+   * TEN-505: every event used to mount at once, so a load with a closed month and two finished
+   * goals played three coins and three haptics together. Event ids are fresh per test because
+   * Celebrate's session claim outlives a render.
+   */
+  it("plays its celebrations one at a time, in order, with one haptic each", async () => {
+    wrap(<Hero {...props} celebrations={["month-2026-09", "goal-21", "goal-22"]} />);
+    await waitFor(() => expect(seen("month-2026-09")).toBe("1"));
+    expect(seen("goal-21")).toBeUndefined();
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+
+    await waitFor(() => expect(seen("goal-21")).toBe("1"));
+    expect(seen("goal-22")).toBeUndefined();
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(2);
+
+    await waitFor(() => expect(seen("goal-22")).toBe("1"));
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(3);
+  });
+
+  it("skips an event already seen without replaying it or holding up the next", async () => {
+    mockStore.set(celebrationKey("a@example.com", "month-2026-08"), "1");
+    wrap(<Hero {...props} celebrations={["month-2026-08", "goal-31"]} />);
+    // Well inside one play's length: a skip must not wait out a celebration that never ran.
+    await waitFor(() => expect(seen("goal-31")).toBe("1"), { timeout: 300 });
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers a way to set a budget when there is none", () => {
+    wrap(<Hero {...props} mood="resting" meter={null} status="No budget set for this month." noBudget />);
+    fireEvent.press(screen.getByText("Set a budget"));
+    expect(mockPush).toHaveBeenCalledWith("/(app)/budgets");
+  });
 });
 
 describe("NeedsAttention", () => {
   it("is hidden when nothing needs attention", () => {
     wrap(<NeedsAttention rows={[]} />);
     expect(screen.queryByTestId("needs-attention")).toBeNull();
+  });
+
+  /** TEN-505: a failed bills query used to drop its bills without a word. */
+  it("shows a bills error even when nothing else needs attention", () => {
+    wrap(<NeedsAttention rows={[]} error="Could not reach the server." />);
+    expect(screen.getByTestId("needs-attention")).toBeOnTheScreen();
+    expect(screen.getByText("Could not reach the server.")).toBeOnTheScreen();
   });
 
   it("shows a budget's meter and a bill's amount, each linking to its tab", () => {
@@ -112,6 +160,13 @@ describe("GoalsStrip", () => {
     expect(screen.getByLabelText("Trip fund").props.accessibilityValue.now).toBe(90);
     expect(screen.getByText("₱90.00 of ₱100.00")).toBeOnTheScreen();
   });
+
+  it("names its link for where it goes, on screen and to a screen reader", () => {
+    wrap(<GoalsStrip goals={[{ id: 7, name: "Trip fund", status: "ON_TRACK" }]} />);
+    expect(screen.getByText("See all goals")).toBeOnTheScreen();
+    fireEvent.press(screen.getByLabelText("See all goals"));
+    expect(mockPush).toHaveBeenCalledWith("/(app)/goals");
+  });
 });
 
 describe("RecentList", () => {
@@ -123,11 +178,12 @@ describe("RecentList", () => {
     date: "2026-10-20T10:00:00+08:00",
   }));
 
-  it("shows the last five and a See all link", () => {
+  it("shows the last five and a See all expenses link", () => {
     wrap(<RecentList expenses={expenses} loading={false} error={null} emptyText="" />);
     expect(screen.getByTestId("recent-row-4")).toBeOnTheScreen();
     expect(screen.queryByTestId("recent-row-5")).toBeNull();
-    fireEvent.press(screen.getByText("See all"));
+    expect(screen.getByText("See all expenses")).toBeOnTheScreen();
+    fireEvent.press(screen.getByLabelText("See all expenses"));
     expect(mockPush).toHaveBeenCalledWith("/(app)/expenses");
   });
 

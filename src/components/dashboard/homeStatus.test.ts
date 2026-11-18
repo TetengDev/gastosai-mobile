@@ -4,6 +4,7 @@ import {
   budgetMeter,
   celebrationsFor,
   daysLeftInMonth,
+  heroMood,
   needsAttention,
   previousMonth,
   statusLine,
@@ -40,12 +41,12 @@ describe("statusLine", () => {
 
   it("invites the first expense on an empty account", () => {
     expect(statusLine({ ...base, mood: "empty", hasBudget: false })).toBe(
-      "Nothing logged yet. Tap + to add your first expense.",
+      "Nothing logged yet. Your first expense goes straight into Piso's slot.",
     );
   });
 
   it("does not invent a budget that was never set", () => {
-    expect(statusLine({ ...base, mood: "resting", hasBudget: false })).toBe("No budget set for this month");
+    expect(statusLine({ ...base, mood: "resting", hasBudget: false })).toBe("No budget set for this month.");
   });
 });
 
@@ -127,11 +128,32 @@ describe("celebrationsFor", () => {
     expect(celebrationsFor({ month: "2023-04", today, previousBands: ["ON_TRACK"], goals: [] })).toEqual([]);
   });
 
+  /** TEN-505: the queue plays them in this order, so the month goes first. */
+  it("puts the month that closed ahead of the goals", () => {
+    expect(celebrationsFor({ month: "2026-10", today, previousBands: ["ON_TRACK"], goals })).toEqual([
+      "month-2026-09",
+      "goal-7",
+    ]);
+  });
+
   it("names December of last year in January", () => {
     expect(previousMonth("2027-01")).toBe("2026-12");
     expect(
       celebrationsFor({ month: "2027-01", today: "2027-01-02", previousBands: ["ON_TRACK"], goals: [] }),
     ).toEqual(["month-2026-12"]);
+  });
+});
+
+/** TEN-505: Piso flipped resting -> worried mid-load as the budgets arrived after the report. */
+describe("heroMood", () => {
+  it("holds resting while any of its inputs is still loading", () => {
+    expect(heroMood({ loading: true, bands: ["WARNING"], hasExpenses: true })).toBe("resting");
+    expect(heroMood({ loading: true, bands: [], hasExpenses: false })).toBe("resting");
+  });
+
+  it("is the real mood once they settle", () => {
+    expect(heroMood({ loading: false, bands: ["WARNING"], hasExpenses: true })).toBe("worried");
+    expect(heroMood({ loading: false, bands: [], hasExpenses: false })).toBe("empty");
   });
 });
 

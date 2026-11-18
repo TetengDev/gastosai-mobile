@@ -1,7 +1,15 @@
 import type { PisoState } from "../../brand/Piso";
 import type { BudgetSummaryResponse, GoalResponse, UpcomingBill } from "../../api/types";
 import { formatCentavos, formatDayMonth, monthRange } from "../../lib/formatters";
-import { budgetTone, toBand, worstBand, type BudgetBand, type MeterTone } from "../../lib/pisoMood";
+import {
+  budgetTone,
+  pisoMoodFor,
+  toBand,
+  worstBand,
+  type BudgetBand,
+  type MeterTone,
+  type PisoMoodInput,
+} from "../../lib/pisoMood";
 
 /**
  * What Home says and lists, kept apart from how it looks so spec §5's Dashboard table can be
@@ -24,6 +32,14 @@ const MOOD_PREFIX: Partial<Record<PisoState, string>> = {
   overBudget: "A budget ran over · ",
 };
 
+/**
+ * The hero's Piso. Held at `resting` until every input has settled: the report, expenses and
+ * budgets land at different moments, and without the hold Piso changed face as each one arrived.
+ */
+export function heroMood({ loading, ...input }: PisoMoodInput & { loading: boolean }): PisoState {
+  return loading ? "resting" : pisoMoodFor(input);
+}
+
 /** The hero's one line, tied to Piso's mood. Never the only signal of it, and never a scolding. */
 export function statusLine({
   mood,
@@ -37,8 +53,9 @@ export function statusLine({
   hasBudget: boolean;
   daysLeft: number | null;
 }): string {
-  if (mood === "empty") return "Nothing logged yet. Tap + to add your first expense.";
-  if (!hasBudget) return "No budget set for this month";
+  // Word for word with web's Dashboard (ruling R2, TEN-505).
+  if (mood === "empty") return "Nothing logged yet. Your first expense goes straight into Piso's slot.";
+  if (!hasBudget) return "No budget set for this month.";
   if (safeToSpend < 0) return `Over by ${formatCentavos(-safeToSpend)}`;
   const left = formatCentavos(safeToSpend);
   const tail =
@@ -135,9 +152,9 @@ export function previousMonth(month: string): string {
 }
 
 /**
- * The `Celebrate` events Home holds: each completed goal, and — on the current month only — the
- * month that just closed, if it had budgets and the server banded none of them over. Stepping
- * back to a past month never celebrates it; `Celebrate`'s per-event key stops repeats.
+ * The `Celebrate` events Home holds, in the order they play: on the current month only, the month
+ * that just closed, if it had budgets and the server banded none of them over; then each completed
+ * goal. Stepping back to a past month never celebrates it; `Celebrate`'s per-event key stops repeats.
  */
 export function celebrationsFor({
   month,
@@ -151,10 +168,9 @@ export function celebrationsFor({
   previousBands: readonly BudgetBand[];
   goals: readonly Pick<GoalResponse, "id" | "status">[];
 }): string[] {
-  const events = goals.filter((g) => g.status === "COMPLETED").map((g) => `goal-${g.id}`);
+  const goalEvents = goals.filter((g) => g.status === "COMPLETED").map((g) => `goal-${g.id}`);
   const closedUnder = previousBands.length > 0 && worstBand(previousBands) !== "OVER_BUDGET";
-  if (month === today.slice(0, 7) && closedUnder) events.push(`month-${previousMonth(month)}`);
-  return events;
+  return month === today.slice(0, 7) && closedUnder ? [`month-${previousMonth(month)}`, ...goalEvents] : goalEvents;
 }
 
 /**
