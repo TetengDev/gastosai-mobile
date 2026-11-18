@@ -219,7 +219,9 @@ export default function Goals() {
         {done ? null : (
           // Contributing is the frequent action and stays on the card, full size; editing and
           // deleting are rare and sit behind the menu.
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginTop: 6 }}>
+          <View
+            style={{ flexDirection: "row", alignItems: "center", gap: 16, marginTop: 6, minHeight: 44 }}
+          >
             <View style={{ flex: 1 }}>
               <Button
                 testID={`goal-contribute-${g.id}`}
