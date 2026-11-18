@@ -2,7 +2,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import Goals from "../../app/(app)/goals";
-import { listGoals } from "../api/goals";
+import { listGoals, updateGoal } from "../api/goals";
 import { Piso } from "../brand/Piso";
 import type { GoalResponse } from "../api/types";
 import { formatDateOnly } from "../lib/formatters";
@@ -47,7 +47,7 @@ const behind: GoalResponse = {
 jest.mock("../api/goals", () => ({
   listGoals: jest.fn(async () => [completed, atHundred, behind]),
   createGoal: jest.fn(),
-  updateGoal: jest.fn(),
+  updateGoal: jest.fn(async () => ({})),
   deleteGoal: jest.fn(),
 }));
 
@@ -181,6 +181,40 @@ describe("Goals", () => {
     await act(() => screen.getByTestId("goals-screen").props.refreshControl.props.onRefresh());
     expect(await screen.findByText("Try again")).toBeOnTheScreen();
     expect(screen.UNSAFE_queryAllByType(Piso)).toHaveLength(0);
+  });
+
+  // Controller ruling (fix round 1): "Add savings" is the amount to add, on both platforms.
+  it("asks Add savings for the amount to add, in a sheet with no name field", async () => {
+    renderGoals();
+    fireEvent.press(await screen.findByTestId("goal-contribute-3"));
+    expect(screen.getAllByText("Add savings").length).toBeGreaterThan(1);
+    expect(screen.getByTestId("sheet-amount").props.value).toBe("");
+    expect(screen.queryByTestId("sheet-label")).toBeNull();
+  });
+
+  it("adds what was entered to the saved total, in centavos", async () => {
+    renderGoals();
+    fireEvent.press(await screen.findByTestId("goal-contribute-3"));
+    fireEvent.changeText(screen.getByTestId("sheet-amount"), "500");
+    fireEvent.press(screen.getByTestId("sheet-save"));
+    await act(async () => {});
+    expect(jest.mocked(updateGoal).mock.lastCall).toEqual([
+      3,
+      expect.objectContaining({ savedAmount: 2_050_000, name: "Laptop", targetAmount: 5_000_000 }),
+    ]);
+  });
+
+  // The sheet can sit open across a refresh; adding to the figure it opened with would drop
+  // whatever another device saved in between.
+  it("adds to the saved total as it stands at submit, not as it was when the sheet opened", async () => {
+    renderGoals();
+    fireEvent.press(await screen.findByTestId("goal-contribute-3"));
+    jest.mocked(listGoals).mockResolvedValueOnce([completed, atHundred, { ...behind, savedAmount: 2_100_000 }]);
+    await act(() => screen.getByTestId("goals-screen").props.refreshControl.props.onRefresh());
+    fireEvent.changeText(screen.getByTestId("sheet-amount"), "500");
+    fireEvent.press(screen.getByTestId("sheet-save"));
+    await act(async () => {});
+    expect(jest.mocked(updateGoal).mock.lastCall?.[1]).toMatchObject({ savedAmount: 2_150_000 });
   });
 
   it("lets a completed goal still be edited or deleted", async () => {

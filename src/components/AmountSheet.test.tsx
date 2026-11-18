@@ -4,7 +4,7 @@ import AmountSheet from "./AmountSheet";
 
 /** What the Goals screen relies on from its sheet: centavos out, with the label, and nothing past centavos. */
 
-function renderSheet() {
+function renderSheet(props: Partial<Parameters<typeof AmountSheet>[0]> = {}) {
   const onSubmit = jest.fn();
   render(
     <AmountSheet
@@ -16,6 +16,7 @@ function renderSheet() {
       submitting={false}
       onSubmit={onSubmit}
       onClose={() => {}}
+      {...props}
     />,
   );
   return onSubmit;
@@ -40,5 +41,14 @@ describe("AmountSheet", () => {
     fireEvent.press(screen.getByTestId("sheet-save"));
     expect(screen.getByTestId("sheet-amount").props.value).toBe("25.00");
     expect(onSubmit).toHaveBeenCalledWith({ amount: 2_500, label: "Japan trip" });
+  });
+
+  // Contributing asks for one thing, the amount; the goal is already known.
+  it("submits the amount alone when it has no label field", () => {
+    const onSubmit = renderSheet({ labelField: undefined, labelPlaceholder: undefined });
+    expect(screen.queryByTestId("sheet-label")).toBeNull();
+    fireEvent.changeText(screen.getByTestId("sheet-amount"), "500");
+    fireEvent.press(screen.getByTestId("sheet-save"));
+    expect(onSubmit).toHaveBeenCalledWith({ amount: 50_000, label: "" });
   });
 });
