@@ -6,6 +6,7 @@ import {
   celebrationsFor,
   daysLeftInMonth,
   heroMood,
+  isPaidUp,
   needsAttention,
   previousMonth,
   statusLine,
@@ -275,6 +276,49 @@ describe("overdue bills", () => {
       today,
     );
     expect(rows).toEqual([]);
+  });
+
+  /** Fix round 1: web's paidUp. A month marked ahead covers this month's coming dates too. */
+  it("hides a bill's coming date this month, and its Mark paid, when it is marked at or after this month", () => {
+    const today = manilaToday("2026-11-17T20:00:00Z");
+    const ahead = [{ id: 7, name: "Meralco", paidThisMonth: false, lastPaidMonth: "2026-12" }];
+    expect(
+      needsAttention([], { month: "2026-11", upcoming: [meralco("2026-11-20")], upcomingPrevious: [], recurring: ahead }, today),
+    ).toEqual([]);
+    expect(isPaidUp(ahead[0], "2026-11")).toBe(true);
+    expect(isPaidUp({ paidThisMonth: false, lastPaidMonth: "2026-10" }, "2026-11")).toBe(false);
+    expect(isPaidUp({ paidThisMonth: true, lastPaidMonth: null }, "2026-11")).toBe(true);
+  });
+
+  it("offers Mark paid only on a bill /recurring knows, as web does", () => {
+    const today = manilaToday("2026-11-17T20:00:00Z");
+    // Water is in /upcoming but not in the list: its paid state is unknown, so it is listed as due
+    // and not markable, and a missed date of its is not overdue.
+    const water = (dueDate: string) => ({ id: 9, name: "Water", dueDate, amount: 30_000 });
+    const rows = needsAttention(
+      [],
+      { month: "2026-11", upcoming: [water("2026-11-10"), water("2026-11-20")], upcomingPrevious: [], recurring: unpaid("2026-10") },
+      today,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].sub).toBe("Due Nov 20");
+    expect(rows[0].markPaid).toBeUndefined();
+  });
+
+  it("skips a bill without an id rather than joining it to a list entry without one", () => {
+    const today = manilaToday("2026-11-17T20:00:00Z");
+    expect(
+      needsAttention(
+        [],
+        {
+          month: "2026-11",
+          upcoming: [{ name: "Ghost", dueDate: "2026-11-10", amount: 1_000 }],
+          upcomingPrevious: [],
+          recurring: [{ name: "Ghost", paidThisMonth: false, lastPaidMonth: "2026-10" }],
+        },
+        today,
+      ),
+    ).toEqual([]);
   });
 
   it("flags a bill last paid before the previous month, once the 1st has passed", () => {

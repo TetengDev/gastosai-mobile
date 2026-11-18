@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { RefreshControl } from "react-native";
 import Home from "../../app/(app)/index";
 import { api } from "../api/client";
 import { listRecurring } from "../api/recurring";
@@ -136,6 +137,24 @@ describe("Home, Mark paid", () => {
     await waitFor(() => expect(screen.queryByText("Meralco")).toBeNull());
     expect(screen.queryByText("Could not mark that bill paid. Try again.")).toBeNull();
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  /** Fix round 1: the pull-to-refresh spinner is the user's pull, not Mark paid's refetch. */
+  it("leaves the pull-to-refresh spinner off while Mark paid refetches, and on while the user pulls", async () => {
+    put.mockResolvedValue({ data: undefined });
+    renderHome();
+    fireEvent.press(await screen.findByRole("button", { name: "Mark paid: Meralco" }));
+    let answer: (list: RecurringExpenseResponse[]) => void = () => undefined;
+    jest.mocked(listRecurring).mockImplementation(() => new Promise((r) => (answer = r)));
+    await waitFor(() => expect(listRecurring).toHaveBeenCalledTimes(2));
+    expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
+    await act(async () => answer([meralco(true)]));
+
+    jest.mocked(listRecurring).mockImplementation(() => new Promise((r) => (answer = r)));
+    await act(async () => screen.UNSAFE_getByType(RefreshControl).props.onRefresh());
+    expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
+    await act(async () => answer([meralco(true)]));
+    await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false));
   });
 
   it("says so in Needs attention when the mark fails, keeps the row, and lets it be tried again", async () => {
