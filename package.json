@@ -1,6 +1,6 @@
 {
   "name": "gastosai-mobile",
-  "version": "0.25.0",
+  "version": "0.26.0",
   "main": "expo-router/entry",
   "dependencies": {
     "@expo-google-fonts/hanken-grotesk": "^0.4.3",

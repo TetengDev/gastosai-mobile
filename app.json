@@ -2,7 +2,7 @@
   "expo": {
     "name": "GastosAI",
     "slug": "gastosai-mobile",
-    "version": "0.25.0",
+    "version": "0.26.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -47,6 +47,7 @@
           "resizeMode": "contain",
           "backgroundColor": "#1f8a5b",
           "dark": {
+            "image": "./assets/splash-icon-dark.png",
             "backgroundColor": "#003c33"
           }
         }
