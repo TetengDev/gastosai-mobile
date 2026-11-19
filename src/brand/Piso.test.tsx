@@ -122,9 +122,9 @@ describe("the two decorative states are hidden from assistive technology", () =>
 describe("the 32px threshold lives inside the component", () => {
   it("size={24} renders the faceless mark — no eye circles", () => {
     render(<Piso state="resting" size={24} testID="piso" />);
-    // The mark (viewBox 0 0 24 24) has no Circle primitive at all: just the two Rects and the
-    // one Path. Its absence here is what distinguishes it from the full face below.
-    expect(tree()).not.toMatch(/RNSVGCircle/);
+    // The mark has a coin (r=8.5) but never the full character's eyes (r=4.2). Their absence is
+    // what distinguishes it from the full face below.
+    expect(tree()).not.toMatch(/"r":4\.2/);
   });
 
   it("size={96} renders the full face — eye circles present", () => {
@@ -137,7 +137,74 @@ describe("the 32px threshold lives inside the component", () => {
 
   it("never renders a scaled-down face just under the threshold", () => {
     render(<Piso state="resting" size={31} testID="piso" />);
-    expect(tree()).not.toMatch(/RNSVGCircle/);
+    expect(tree()).not.toMatch(/"r":4\.2/);
+  });
+});
+
+/**
+ * TEN-554: the below-32px mark is the workspace's `docs/brand/gastosai-mark-small.svg` — coin
+ * sinking into a bamboo tube, two joints sticking out past it — so the in-app mark, the app icon
+ * and the web favicon are one drawing. Geometry is pinned to the master's numbers; colours still
+ * come from the mood tokens.
+ */
+describe("the small mark is the brand mark", () => {
+  function mark(state: "resting" | "empty" | "overBudget") {
+    const { toJSON } = render(<Piso state={state} size={24} testID="piso" />);
+    const root = toJSON() as SvgNode;
+    const [coin] = findAll(root, (n) => n.type === "RNSVGCircle" && n.props?.r === 8.5);
+    const [tube] = findAll(root, (n) => n.type === "RNSVGRect" && n.props?.width === 26);
+    const [joints] = findAll(
+      root,
+      (n) => n.type === "RNSVGPath" && n.props?.d === "M14.5 33h35M14.5 47h35",
+    );
+    return { root, coin, tube, joints };
+  }
+
+  it("draws a coin, a tube and two joints at the master's geometry", () => {
+    const { coin, tube, joints } = mark("resting");
+
+    expect(coin?.props).toMatchObject({ cx: 32, cy: 15, r: 8.5, strokeWidth: 4 });
+    expect(tube?.props).toMatchObject({ x: 19, y: 19, width: 26, height: 41, rx: 7, strokeWidth: 4 });
+    expect(joints?.props).toMatchObject({ strokeWidth: 4.5 });
+  });
+
+  it("sinks the coin into the tube — the tube is drawn over it", () => {
+    const { root } = mark("resting");
+    const order = findAll(root, (n) => n.type === "RNSVGCircle" || n.type === "RNSVGRect").map(
+      (n) => n.type,
+    );
+    expect(order).toEqual(["RNSVGCircle", "RNSVGRect"]);
+  });
+
+  it("keeps its testID", () => {
+    render(<Piso state="saved" size={24} testID="piso" />);
+    expect(screen.getByTestId("piso")).toBeTruthy();
+  });
+
+  it("resting: mint body, deep line, gold coin", () => {
+    const { coin, tube, joints } = mark("resting");
+
+    expect(fillPayload(tube)).toBe(colorPayload(palettes.light.greenSoft));
+    expect(strokePayload(tube)).toBe(colorPayload(palettes.light.greenHi));
+    expect(strokePayload(joints)).toBe(colorPayload(palettes.light.greenHi));
+    expect(fillPayload(coin)).toBe(colorPayload(palettes.light.warnBorder));
+    expect(strokePayload(coin)).toBe(colorPayload(palettes.light.greenHi));
+  });
+
+  it("empty: warm panel body, same line", () => {
+    const { tube } = mark("empty");
+
+    expect(fillPayload(tube)).toBe(colorPayload(palettes.light.surface3));
+    expect(strokePayload(tube)).toBe(colorPayload(palettes.light.greenHi));
+  });
+
+  it("overBudget: the whole mark moves to the amber pair", () => {
+    const { coin, tube, joints } = mark("overBudget");
+
+    expect(fillPayload(tube)).toBe(colorPayload(palettes.light.warnBg));
+    expect(strokePayload(tube)).toBe(colorPayload(palettes.light.warnText));
+    expect(strokePayload(joints)).toBe(colorPayload(palettes.light.warnText));
+    expect(strokePayload(coin)).toBe(colorPayload(palettes.light.warnText));
   });
 });
 

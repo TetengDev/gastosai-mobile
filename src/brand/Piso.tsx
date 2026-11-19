@@ -87,10 +87,13 @@ export function Piso({
 
   if (size < MARK_THRESHOLD) {
     return (
-      <Svg testID={testID} width={size} height={size} viewBox="0 0 24 24" {...accessibilityProps}>
-        <Rect x={5} y={3} width={14} height={18} rx={4} fill={bodyFill} stroke={line} strokeWidth={2} />
-        <Path d="M5 10h14" stroke={line} strokeWidth={2} strokeLinecap="round" />
-        <Rect x={9} y={5.6} width={6} height={2} rx={1} fill={line} />
+      // The brand mark, verbatim from the workspace's docs/brand/gastosai-mark-small.svg: a coin
+      // sinking into the tube (drawn first, so the tube covers its lower half) and two joints that
+      // stick out past it like bamboo. Same drawing as the app icon and the web favicon (TEN-554).
+      <Svg testID={testID} width={size} height={size} viewBox="0 0 64 64" {...accessibilityProps}>
+        <Circle cx={32} cy={15} r={8.5} fill={t.colors.warnBorder} stroke={line} strokeWidth={4} />
+        <Rect x={19} y={19} width={26} height={41} rx={7} fill={bodyFill} stroke={line} strokeWidth={4} />
+        <Path d="M14.5 33h35M14.5 47h35" stroke={line} strokeWidth={4.5} strokeLinecap="round" />
       </Svg>
     );
   }
