@@ -2,15 +2,17 @@
   GastosAI app mark. Rendered by scripts/brand/make-icons.sh via headless Chrome.
 
   Variants are driven by the `?v=` query string so every asset comes from one source of truth:
-    (default)   full-bleed green tile      -> assets/icon.png, favicon
+    (default)   full-bleed green tile      -> assets/icon.png
     v=fg        glyph only, transparent    -> Android adaptive foreground
     v=bg        gradient only              -> Android adaptive background
     v=mono      flat white line drawing    -> Android monochrome (themed icons)
     v=splash    glyph only, full size      -> splash (its background colour comes from app.json)
     v=splash-dark  the same, line in #7fd6b8  -> dark splash, on #003c33 where the deep line vanishes
+    v=favicon   docs/brand/gastosai-favicon.svg -> favicon: one joint, heavier strokes, no leaf, so
+                                                  it still reads at 16px in a browser tab
 
   The drawing is the workspace's docs/brand/gastosai-app-icon.svg, copied verbatim into #art
-  below. Edit it there first, then paste it here; never redraw it by eye.
+  below, and docs/brand/gastosai-favicon.svg into .fav. Edit it there first, then paste it here; never redraw it by eye.
 
   Design constraints, in order of authority:
     1. It has to read at 60px.
@@ -45,6 +47,10 @@
      line colour; the body stays mint so the tube keeps a fill. */
   body.splash-dark .tile { display: none; }
   body.splash-dark .colour { --line: #7fd6b8; }
+
+  .fav { display: none; }
+  body.favicon .tile, body.favicon .fit { display: none; }
+  body.favicon .fav { display: inline; }
 </style>
 <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -69,6 +75,14 @@
     <g transform="translate(5 5.5) scale(.8125)">
       <use class="colour" href="#art"/>
       <rect class="silhouette" x="-8" y="-8" width="80" height="80" fill="#fff" mask="url(#mono)"/>
+    </g>
+  </g>
+  <g class="fav">
+    <rect width="64" height="64" rx="14" fill="url(#g)"/>
+    <g transform="translate(4 3) scale(.875)">
+      <circle cx="32" cy="14" r="10" fill="#f0dca0" stroke="#003c33" stroke-width="6"/>
+      <rect x="17" y="20" width="30" height="40" rx="8" fill="#9fe3c9" stroke="#003c33" stroke-width="6"/>
+      <path d="M12 39h40" stroke="#003c33" stroke-width="6.5" stroke-linecap="round"/>
     </g>
   </g>
 </svg>

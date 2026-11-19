@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Render every GastosAI app asset from scripts/brand/icon.html.
 #
-# One HTML source, six variants, so the mark cannot drift between the iOS tile, the Android
+# One HTML source, seven variants, so the mark cannot drift between the iOS tile, the Android
 # adaptive layers and the splash. Re-run after editing icon.html.
 set -euo pipefail
 
@@ -18,7 +18,7 @@ shot() { # shot <variant|-> <size> <outfile>
     --screenshot="$S/_raw.png" --window-size=1024,1024 \
     --default-background-color=00000000 "$url" >/dev/null 2>&1
   if [ "$size" = "1024" ]; then cp "$S/_raw.png" "$out"
-  else "$FF" -nostdin -loglevel error -y -i "$S/_raw.png" -vf "scale=$size:$size" "$out"; fi
+  else "$FF" -nostdin -loglevel error -y -i "$S/_raw.png" -vf "scale=$size:$size:flags=area" "$out"; fi
   printf "  %-34s %s\n" "$(basename "$out")" "$(( $(stat -f%z "$out") / 1024 ))KB"
 }
 
@@ -31,6 +31,6 @@ shot bg     1024 "$OUT/android-icon-background.png"
 shot mono   1024 "$OUT/android-icon-monochrome.png"
 shot splash 1024 "$OUT/splash-icon.png"
 shot splash-dark 1024 "$OUT/splash-icon-dark.png"
-shot -        48 "$OUT/favicon.png"
+shot favicon  48 "$OUT/favicon.png"
 rm -f "$S/_raw.png"
 echo "▶ done"
