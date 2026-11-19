@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
-import { describe, expect, it } from "@jest/globals";
+import { afterEach, describe, expect, it, jest } from "@jest/globals";
+import * as ReactNative from "react-native";
 import { processColor } from "react-native";
 import { render, screen } from "@testing-library/react-native";
 import { Piso } from "./Piso";
@@ -152,7 +153,8 @@ describe("the small mark is the brand mark", () => {
     const { toJSON } = render(<Piso state={state} size={24} testID="piso" />);
     const root = toJSON() as SvgNode;
     const [coin] = findAll(root, (n) => n.type === "RNSVGCircle" && n.props?.r === 8.5);
-    const [tube] = findAll(root, (n) => n.type === "RNSVGRect" && n.props?.width === 26);
+    // The tube is the last 26-wide rect: an opaque backing of the same geometry sits under it.
+    const [, tube] = findAll(root, (n) => n.type === "RNSVGRect" && n.props?.width === 26);
     const [joints] = findAll(
       root,
       (n) => n.type === "RNSVGPath" && n.props?.d === "M14.5 33h35M14.5 47h35",
@@ -173,7 +175,7 @@ describe("the small mark is the brand mark", () => {
     const order = findAll(root, (n) => n.type === "RNSVGCircle" || n.type === "RNSVGRect").map(
       (n) => n.type,
     );
-    expect(order).toEqual(["RNSVGCircle", "RNSVGRect"]);
+    expect(order).toEqual(["RNSVGCircle", "RNSVGRect", "RNSVGRect"]);
   });
 
   it("keeps its testID", () => {
@@ -187,7 +189,7 @@ describe("the small mark is the brand mark", () => {
     expect(fillPayload(tube)).toBe(colorPayload(palettes.light.greenSoft));
     expect(strokePayload(tube)).toBe(colorPayload(palettes.light.greenHi));
     expect(strokePayload(joints)).toBe(colorPayload(palettes.light.greenHi));
-    expect(fillPayload(coin)).toBe(colorPayload(palettes.light.warnBorder));
+    expect(fillPayload(coin)).toBe(colorPayload(palettes.light.coin));
     expect(strokePayload(coin)).toBe(colorPayload(palettes.light.greenHi));
   });
 
@@ -238,11 +240,11 @@ describe("colour roles meet contrast, not just availability", () => {
     expect(strokePayload(body)).toBe(colorPayload(palettes.light.greenHi));
   });
 
-  it("the saved coin is gold (warnBorder/warnText), not the vivid amber accent", () => {
+  it("the saved coin is gold (coin/warnText), not the vivid amber accent", () => {
     const { toJSON } = render(<Piso state="saved" />);
     const [coin] = findAll(toJSON(), (n) => n.type === "RNSVGCircle" && n.props?.r === 9);
 
-    expect(fillPayload(coin)).toBe(colorPayload(palettes.light.warnBorder));
+    expect(fillPayload(coin)).toBe(colorPayload(palettes.light.coin));
     expect(strokePayload(coin)).toBe(colorPayload(palettes.light.warnText));
     expect(fillPayload(coin)).not.toBe(colorPayload(accents.amber));
   });
@@ -270,6 +272,47 @@ describe("colour roles meet contrast, not just availability", () => {
     expect(fillPayload(body)).toBe(colorPayload(palettes.light.warnBg));
     expect(strokePayload(body)).toBe(colorPayload(palettes.light.warnText));
     expect(strokePayload(body)).not.toBe(colorPayload(accents.danger));
+  });
+});
+
+/**
+ * TEN-554 review, matching web's TEN-553: in dark, `warnBorder` is a 20% wash and `warnBg` a 7%
+ * one. The coin filled from `warnBorder` read as an empty ring, and an overBudget tube filled from
+ * `warnBg` let the coin show through its lower half. The coin now has its own role, and the small
+ * mark's tube sits on an opaque backing.
+ */
+describe("in dark mode", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  function darkRender(state: "saved" | "overBudget", size: number) {
+    jest.spyOn(ReactNative, "useColorScheme").mockReturnValue("dark");
+    return render(<Piso state={state} size={size} />).toJSON() as SvgNode;
+  }
+
+  it("the small mark's coin is solid gold, not the 20% warn wash", () => {
+    const [coin] = findAll(darkRender("overBudget", 24), (n) => n.props?.r === 8.5);
+
+    expect(fillPayload(coin)).toBe(colorPayload(palettes.dark.coin));
+    expect(fillPayload(coin)).not.toBe(colorPayload(palettes.dark.warnBorder));
+  });
+
+  it("the saved state's coin is solid gold too", () => {
+    const [coin] = findAll(darkRender("saved", 96), (n) => n.props?.r === 9);
+
+    expect(fillPayload(coin)).toBe(colorPayload(palettes.dark.coin));
+  });
+
+  it("an overBudget tube sits on an opaque backing, so the coin cannot show through it", () => {
+    const [backing, tube] = findAll(
+      darkRender("overBudget", 24),
+      (n) => n.type === "RNSVGRect" && n.props?.width === 26,
+    );
+
+    expect(backing?.props).toMatchObject({ x: 19, y: 19, width: 26, height: 41, rx: 7 });
+    expect(fillPayload(backing)).toBe(colorPayload(palettes.dark.surface));
+    expect(fillPayload(tube)).toBe(colorPayload(palettes.dark.warnBg));
   });
 });
 

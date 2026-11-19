@@ -34,6 +34,7 @@ describe("palette matches gastosai-web", () => {
       warnBg: "#fff8ea",
       warnBorder: "#f0dca0",
       warnText: "#8a6a00",
+      coin: "#f0dca0",
     });
   });
 
@@ -61,6 +62,7 @@ describe("palette matches gastosai-web", () => {
       warnBg: "rgba(240, 220, 160, 0.07)",
       warnBorder: "rgba(240, 220, 160, 0.2)",
       warnText: "#d4b060",
+      coin: "#d4b060",
     });
   });
 

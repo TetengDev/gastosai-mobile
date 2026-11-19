@@ -42,6 +42,11 @@ export interface Palette {
   warnBg: string;
   warnBorder: string;
   warnText: string;
+  /**
+   * Piso's coin (web's `--ga-coin`, TEN-553): solid gold in both schemes. Kept apart from
+   * `warnBorder` because that one fades to a 20% wash in dark, which left the coin an empty ring.
+   */
+  coin: string;
 }
 
 const light: Palette = {
@@ -67,6 +72,7 @@ const light: Palette = {
   warnBg: "#fff8ea",
   warnBorder: "#f0dca0",
   warnText: "#8a6a00",
+  coin: "#f0dca0",
 };
 
 const dark: Palette = {
@@ -92,6 +98,7 @@ const dark: Palette = {
   warnBg: "rgba(240, 220, 160, 0.07)",
   warnBorder: "rgba(240, 220, 160, 0.2)",
   warnText: "#d4b060",
+  coin: "#d4b060",
 };
 
 export const palettes = { light, dark } as const;

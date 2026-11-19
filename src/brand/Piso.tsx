@@ -27,10 +27,10 @@ import { useTheme } from "../theme/useTheme";
  *   existing warning pair, reused here rather than inventing a second amber. This is the
  *   `overBudget` recolour, not the coin below.
  *
- * The coin (`saved`) is gold: `colors.warnBorder` fill, `colors.warnText` stroke — both already
- * existing tokens, no new one needed. An earlier version of this file used `colors.amber`
- * (#e8590c), a vivid orange that reads as an alert rather than a peso coin; `warnBorder` is the
- * same family at a gold weight instead. The three thinking dots stay on the line colour
+ * The coin is gold: `colors.coin` fill — the sixth role, matching web's (TEN-553) — and
+ * `colors.warnText` stroke on the `saved` coin. It used to fill from `warnBorder`, which is a 20%
+ * wash in dark and left the coin an empty ring there. An earlier version still used
+ * `colors.amber` (#e8590c), a vivid orange that reads as an alert rather than a peso coin. The three thinking dots stay on the line colour
  * (`greenHi`, via the `line` variable below) — not `colors.amber` either, which a stale version
  * of this comment once claimed while the code already used the line colour correctly.
  */
@@ -90,8 +90,11 @@ export function Piso({
       // The brand mark, verbatim from the workspace's docs/brand/gastosai-mark-small.svg: a coin
       // sinking into the tube (drawn first, so the tube covers its lower half) and two joints that
       // stick out past it like bamboo. Same drawing as the app icon and the web favicon (TEN-554).
+      // The unstroked rect under the tube is an opaque backing: overBudget's body is a 7% wash in
+      // dark, and without it the coin's lower half shows through the tube.
       <Svg testID={testID} width={size} height={size} viewBox="0 0 64 64" {...accessibilityProps}>
-        <Circle cx={32} cy={15} r={8.5} fill={t.colors.warnBorder} stroke={line} strokeWidth={4} />
+        <Circle cx={32} cy={15} r={8.5} fill={t.colors.coin} stroke={line} strokeWidth={4} />
+        <Rect x={19} y={19} width={26} height={41} rx={7} fill={t.colors.surface} />
         <Rect x={19} y={19} width={26} height={41} rx={7} fill={bodyFill} stroke={line} strokeWidth={4} />
         <Path d="M14.5 33h35M14.5 47h35" stroke={line} strokeWidth={4.5} strokeLinecap="round" />
       </Svg>
@@ -120,7 +123,7 @@ export function Piso({
           cx={64}
           cy={12}
           r={9}
-          fill={t.colors.warnBorder}
+          fill={t.colors.coin}
           stroke={t.colors.warnText}
           strokeWidth={3}
         />
