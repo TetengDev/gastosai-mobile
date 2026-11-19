@@ -7,6 +7,7 @@
     v=bg        gradient only              -> Android adaptive background
     v=mono      flat white line drawing    -> Android monochrome (themed icons)
     v=splash    glyph only, full size      -> splash (its background colour comes from app.json)
+    v=splash-dark  the same, line in #7fd6b8  -> dark splash, on #003c33 where the deep line vanishes
 
   The drawing is the workspace's docs/brand/gastosai-app-icon.svg, copied verbatim into #art
   below. Edit it there first, then paste it here; never redraw it by eye.
@@ -38,6 +39,12 @@
   body.bg .colour { display: none; }
   body.mono .colour { display: none; }
   body.mono .silhouette { display: inline; }
+
+  /* Dark splash: on #003c33 the master's deep line disappears into the background, taking the
+     joints' overhang and the leaf's outline with it. Only the line swaps, to the README's dark
+     line colour; the body stays mint so the tube keeps a fill. */
+  body.splash-dark .tile { display: none; }
+  body.splash-dark .colour { --line: #7fd6b8; }
 </style>
 <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
