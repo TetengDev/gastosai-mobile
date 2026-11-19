@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Render every GastosAI app asset from scratchpad/icon.html.
+# Render every GastosAI app asset from scripts/brand/icon.html.
 #
 # One HTML source, five variants, so the mark cannot drift between the iOS tile, the Android
 # adaptive layers and the splash. Re-run after editing icon.html.
